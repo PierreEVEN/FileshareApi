@@ -1,7 +1,7 @@
-use std::fs;
-use std::path::PathBuf;
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct PostgresConfig {
@@ -21,10 +21,9 @@ pub struct ServiceEmailConfig {
 pub struct TlsConfig {
     pub certificate: PathBuf,
     pub private_key: PathBuf,
-    pub chain: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub port: u16,
     pub postgres_db_config: PostgresConfig,
@@ -33,14 +32,36 @@ pub struct Config {
     pub use_tls: bool
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            port: 3000,
+            postgres_db_config: PostgresConfig {
+                username: "postgres".to_string(),
+                password: "postgres".to_string(),
+                scheme_name: "fileshare_v3".to_string(),
+            },
+            server_mail_server: ServiceEmailConfig {
+                host: "mail.fileshare.fr".to_string(),
+                smtp_port: "465".to_string(),
+                email_username: "noreply@fileshare.fr".to_string(),
+            },
+            tls_config: TlsConfig {
+                certificate: PathBuf::from("/Path/To/certificate.pem"),
+                private_key: PathBuf::from("/Path/To/private_key.pem"),
+            },
+            use_tls: true,
+        }
+    }
+}
+
 impl Config {
     pub fn from_file(path: PathBuf) -> Result<Self, Error> {
         if path.exists() {
             Ok(serde_json::from_str(&fs::read_to_string(path)?)?)
         }
         else {
-            fs::write(path, serde_json::to_string(&Config::default())?)?;
-            tracing::info!("Created a new config file. Please fill in information first");
+            fs::write(path.clone(), serde_json::to_string_pretty(&Config::default())?)?;
             Err(Error::msg("Created a new config file. Please fill in information first"))
         }
     }
