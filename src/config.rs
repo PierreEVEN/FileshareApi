@@ -3,27 +3,26 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct PostgresConfig {
-    pub username: String,
-    pub password: String,
+    pub database_url: String,
     pub scheme_name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ServiceEmailConfig {
     pub host: String,
     pub smtp_port: String,
     pub email_username: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct TlsConfig {
     pub certificate: PathBuf,
     pub private_key: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub port: u16,
     pub postgres_db_config: PostgresConfig,
@@ -37,8 +36,7 @@ impl Default for Config {
         Self {
             port: 3000,
             postgres_db_config: PostgresConfig {
-                username: "postgres".to_string(),
-                password: "postgres".to_string(),
+                database_url: "postgres://postgres:password@localhost/test".to_string(),
                 scheme_name: "fileshare_v3".to_string(),
             },
             server_mail_server: ServiceEmailConfig {

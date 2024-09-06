@@ -1,9 +1,12 @@
 pub mod routes;
 pub mod config;
+pub mod database;
+mod app_ctx;
 
 use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::Arc;
 use anyhow::Error;
 use crate::routes::root::RootRoutes;
 use axum::http::StatusCode;
@@ -13,7 +16,9 @@ use serde::{Deserialize, Serialize};
 use tracing::error;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use crate::app_ctx::AppCtx;
 use crate::config::Config;
+use crate::database::Database;
 
 #[tokio::main]
 async fn main() {
@@ -28,8 +33,20 @@ async fn main() {
         }
     };
 
+    let database = match Database::new(&config.postgres_db_config).await {
+        Ok(database) => { database }
+        Err(error) => {
+            error!("{}", error);
+            return;
+        }
+    };
+
+    let ctx = Arc::new(AppCtx::new(
+        config.clone(),
+        database));
+
     // Instantiate router
-    let router = RootRoutes::create().unwrap();
+    let router = RootRoutes::create(ctx).unwrap();
 
     // Create server
     let addr = SocketAddr::from(([127, 0, 0, 1], config.port));

@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use anyhow::Error;
 use axum::body::Body;
 use axum::http::{HeaderValue, Request, StatusCode, Uri};
@@ -5,15 +6,16 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::{middleware, Router};
 use tracing::{info, warn};
+use crate::app_ctx::AppCtx;
 use crate::routes::user::UserRoutes;
 
 pub struct RootRoutes {}
 
 
 impl RootRoutes {
-    pub fn create() -> Result<Router, Error> {
+    pub fn create(ctx: Arc<AppCtx>) -> Result<Router, Error> {
         let router = axum::Router::new()
-            .nest("/:user", UserRoutes::create()?)
+            .nest("/:user", UserRoutes::create(ctx)?)
             .layer(middleware::from_fn(middleware_get_connected_user))
             .fallback(handler_404);
 
