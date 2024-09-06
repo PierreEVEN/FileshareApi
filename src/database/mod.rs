@@ -21,14 +21,9 @@ pub struct Database {
 
 pub type DatabaseId = i64;
 trait DatabaseIdTrait {
-    fn generate_id() -> DatabaseId;
     fn is_valid(&self) -> bool;
 }
 impl DatabaseIdTrait for DatabaseId {
-    fn generate_id() -> DatabaseId {
-        random::<DatabaseId>()
-    }
-
     fn is_valid(&self) -> bool { *self != 0 }
 }
 
@@ -94,7 +89,7 @@ impl Database {
 
 #[macro_export]
 macro_rules! query_fmt {
-    ($db:expr, $query:literal, $( $bound_values:expr),*) => {{
+    ($db:expr, $query:expr, $( $bound_values:expr),*) => {{
         let str = $query.replace("SCHEMA_NAME", $db.schema_name.as_str());
         let mut query = sqlx::query(str.as_str());
         $(
@@ -106,7 +101,14 @@ macro_rules! query_fmt {
 
 #[macro_export]
 macro_rules! query_objects {
-    ($db:expr, $obj:ty, $query:literal, $( $bound_values:expr),*) => {{
+    ($db:expr, $obj:ty, $query:expr) => {{
+        let str = $query.replace("SCHEMA_NAME", $db.schema_name.as_str());
+        let mut query = sqlx::query_as(str.as_str());
+        let objects : Result<Vec<$obj>, sqlx::Error> = query.fetch_all($db.db()).await;
+        objects
+    }};
+    
+    ($db:expr, $obj:ty, $query:expr, $( $bound_values:expr),*) => {{
         let str = $query.replace("SCHEMA_NAME", $db.schema_name.as_str());
         let mut query = sqlx::query_as(str.as_str());
         $(
@@ -119,7 +121,7 @@ macro_rules! query_objects {
 
 #[macro_export]
 macro_rules! query_object {
-    ($db:expr, $obj:ty, $query:literal, $( $bound_values:expr),*) => {{
+    ($db:expr, $obj:ty, $query:expr, $( $bound_values:expr),*) => {{
         match crate::query_objects!($db, $obj, $query, $($bound_values)*) {
             Ok(mut object) => {
                 if object.len() <= 1 { Ok(object.pop().unwrap()) }

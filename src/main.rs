@@ -2,23 +2,20 @@ pub mod routes;
 pub mod config;
 pub mod database;
 mod app_ctx;
+pub mod utils;
 
 use std::env;
 use std::net::SocketAddr;
-use std::path::PathBuf;
 use std::sync::Arc;
 use anyhow::Error;
-use crate::routes::root::RootRoutes;
-use axum::http::StatusCode;
-use axum::Json;
+use crate::routes::root::{RootRoutes};
 use axum_server::tls_rustls::RustlsConfig;
-use serde::{Deserialize, Serialize};
-use tracing::error;
-use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
+use tracing::{debug, error, info};
 use crate::app_ctx::AppCtx;
 use crate::config::Config;
 use crate::database::Database;
+use crate::database::user::{PasswordHash, UserRole, User};
+use crate::utils::enc_string::EncString;
 
 #[tokio::main]
 async fn main() {
@@ -28,7 +25,7 @@ async fn main() {
     let config = match Config::from_file(env::current_exe().expect("Failed to find executable path").parent().unwrap().join("config.json")) {
         Ok(config) => { config }
         Err(error) => {
-            error!("{}", error);
+            error!("Failed to load config : {}", error);
             return;
         }
     };
@@ -40,6 +37,18 @@ async fn main() {
             return;
         }
     };
+
+    let mut new_user = User::default();
+    new_user.name = EncString::from("Toto");
+    new_user.email = EncString::from("Toto@gmail.com");
+    new_user.user_role = UserRole::Admin;
+    match new_user.create_or_reset_password(&database, &PasswordHash::new(&EncString::from("TESTUSER")).unwrap()).await {
+        Ok(_) => {}
+        Err(err) => { error!("err : {}", err); }
+    };
+
+    info!("{:?}", User::from_credentials(&database, &EncString::from("Toto"), &EncString::from("TESTUSER")).await);
+
 
     let ctx = Arc::new(AppCtx::new(
         config.clone(),

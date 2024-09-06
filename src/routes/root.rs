@@ -1,12 +1,13 @@
 use std::sync::Arc;
 use anyhow::Error;
 use axum::body::Body;
-use axum::http::{HeaderValue, Request, StatusCode, Uri};
+use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::{middleware, Router};
-use tracing::{info, warn};
+use tracing::{warn};
 use crate::app_ctx::AppCtx;
+use crate::database::user::User;
 use crate::routes::user::UserRoutes;
 
 pub struct RootRoutes {}
@@ -31,27 +32,16 @@ async fn handler_404(request: Request<Body>) -> impl IntoResponse {
     (StatusCode::NOT_FOUND, "Not found !")
 }
 
-
-#[derive(Default, Clone)]
-pub struct Repository {
-
-}
-
-#[derive(Default, Clone)]
-pub struct User {
-
-}
-
-#[derive(Default, Clone)]
+#[derive(Default)]
 struct RequestContext {
     connected_user: Option<User>,
     display_user: Option<User>,
-    display_repository: Option<Repository>,
+    display_repository: Option<User>,
 }
 
 async fn middleware_get_connected_user(mut request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
 
-    let mut context = RequestContext::default();
+    let mut context = Arc::new(RequestContext::default());
     match request.headers().get("authtoken") {
         None => {
 
