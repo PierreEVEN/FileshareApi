@@ -45,6 +45,7 @@ async fn main() {
         config.clone(),
         database));
 
+
     // Instantiate router
     let router = RootRoutes::create(ctx).unwrap();
 

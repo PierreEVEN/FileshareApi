@@ -9,6 +9,7 @@ dependencies = [
  "anyhow",
  "axum",
  "axum-server",
+ "rand",
  "rustls",
  "serde",
  "serde_json",

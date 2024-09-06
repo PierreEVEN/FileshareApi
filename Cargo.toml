@@ -14,3 +14,4 @@ anyhow = "1.0.86"
 rustls = "0.23.12"
 tracing = "0.1.40"
 sqlx = { version = "0.8.2", features = [ "postgres", "runtime-tokio", "tls-rustls" ] }
+rand = "0.8.5"

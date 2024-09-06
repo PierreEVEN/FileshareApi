@@ -2,6 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use anyhow::{Context, Error};
+use rand::{random};
+use rand::distributions::{Distribution, Standard};
 use sqlx::{Pool, Postgres};
 use sqlx::postgres::PgPoolOptions;
 use tracing::info;
@@ -18,6 +20,17 @@ pub struct Database {
 }
 
 pub type DatabaseId = i64;
+trait DatabaseIdTrait {
+    fn generate_id() -> DatabaseId;
+    fn is_valid(&self) -> bool;
+}
+impl DatabaseIdTrait for DatabaseId {
+    fn generate_id() -> DatabaseId {
+        random::<DatabaseId>()
+    }
+
+    fn is_valid(&self) -> bool { *self != 0 }
+}
 
 impl Database {
     pub async fn new(config: &PostgresConfig) -> Result<Self, Error> {

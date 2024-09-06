@@ -58,7 +58,6 @@ async fn middleware_get_connected_user(mut request: Request<Body>, next: Next) -
         }
         Some(authentication_token) => {
             //context.connected_user
-
         }
     }
 
