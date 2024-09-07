@@ -89,6 +89,12 @@ impl Database {
 
 #[macro_export]
 macro_rules! query_fmt {
+    ($db:expr, $query:expr) => {{
+        let str = $query.replace("SCHEMA_NAME", $db.schema_name.as_str());
+        let query = sqlx::query(str.as_str());
+        query.execute($db.db()).await
+    }};
+
     ($db:expr, $query:expr, $( $bound_values:expr),*) => {{
         let str = $query.replace("SCHEMA_NAME", $db.schema_name.as_str());
         let mut query = sqlx::query(str.as_str());

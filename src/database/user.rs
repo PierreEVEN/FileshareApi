@@ -1,9 +1,10 @@
+use std::any::type_name;
 use std::fmt::Debug;
 use crate::database::item::{Item, ItemId};
 use crate::database::{Database, DatabaseId, DatabaseIdTrait};
 use crate::{query_fmt, query_object, query_objects};
 use anyhow::Error;
-use sqlx::{ColumnIndex, Decode, FromRow, Row};
+use sqlx::{query_as, ColumnIndex, Decode, FromRow, Row};
 use std::ops::Deref;
 use bcrypt::DEFAULT_COST;
 use rand::random;
@@ -22,28 +23,13 @@ impl Deref for UserId {
     }
 }
 
-#[derive(Serialize, sqlx::Type, Debug, Default)]
-#[sqlx(type_name = "user_role", rename_all = "lowercase")]
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, sqlx::Type, Deserialize, Serialize)]
+#[sqlx(rename_all = "lowercase", type_name="user_role")]
 pub enum UserRole {
     #[default]
     Guest,
     Vip,
     Admin,
-}
-impl<'a, R: Row> FromRow<'a, R> for UserRole
-where
-    &'a ::std::primitive::str: ColumnIndex<R>,
-    String: ::sqlx::decode::Decode<'a, R::Database>,
-    String: ::sqlx::types::Type<R::Database>,
-{
-    fn from_row(row: &'a R) -> sqlx::Result<Self> {
-        Ok(match row.try_get::<'a, String, &str>("role")?.as_str() {
-            "guest" => { UserRole::Guest }
-            "vip" => { UserRole::Vip }
-            "admin" => { UserRole::Admin }
-            _ => { UserRole::Guest }
-        })
-    }
 }
 impl Deref for UserRole {
     type Target = str;
@@ -95,7 +81,9 @@ impl User {
 
     pub async fn from_credentials(db: &Database, login: &EncString, password: &EncString) -> Result<Self, Error> {
         info!("login : {}", login.encoded());
-        let users = query_objects!(db, User, format!("SELECT * FROM SCHEMA_NAME.users WHERE name = $1 OR email = '{}'", login.encoded()), login.encoded())?;
+
+        let users = query_objects!(db, User,
+            r#"SELECT id, email, name, password_hash, allow_contact, user_role FROM SCHEMA_NAME.users WHERE name = $1 OR email = $1"#, login.encoded())?;
         info!("res: {:?}", users);
         for user in users {
             if bcrypt::verify(password.encoded(), user.password_hash.as_str())? {
