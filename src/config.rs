@@ -12,6 +12,8 @@ pub struct PostgresConfig {
     pub database: String,
     pub ssl_mode: bool,
     pub scheme_name: String,
+    pub file_storage_path: PathBuf,
+    pub thumbnail_storage_path: PathBuf
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -48,6 +50,8 @@ impl Default for Config {
                 database: "postgres".to_string(),
                 ssl_mode: false,
                 scheme_name: "fileshare_v3".to_string(),
+                file_storage_path: PathBuf::from("data").join("files"),
+                thumbnail_storage_path: PathBuf::from("data").join("thumbnails"),
             },
             server_mail_server: ServiceEmailConfig {
                 host: "mail.fileshare.fr".to_string(),

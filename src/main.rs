@@ -4,14 +4,12 @@ pub mod database;
 mod app_ctx;
 pub mod utils;
 
-use std::backtrace::Backtrace;
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use anyhow::Error;
 use crate::routes::root::{RootRoutes};
 use axum_server::tls_rustls::RustlsConfig;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use crate::app_ctx::AppCtx;
 use crate::config::Config;
 use crate::database::Database;
@@ -39,16 +37,24 @@ async fn main() {
         }
     };
 
-    let mut new_user = User::default();
-    new_user.name = EncString::from("Toto");
-    new_user.email = EncString::from("Toto@gmail.com");
-    new_user.user_role = UserRole::Admin;
-    match new_user.create_or_reset_password(&database, &PasswordHash::new(&EncString::from("TESTUSER")).unwrap()).await {
-        Ok(_) => {}
-        Err(err) => { error!("err : {}", err); }
+
+    let user = if !User::exists(&database, &EncString::from("Toto")).await.unwrap() {
+        let mut new_user = User::default();
+        new_user.name = EncString::from("Toto");
+        new_user.email = EncString::from("Toto@gmail.com");
+        new_user.user_role = UserRole::Admin;
+
+        match new_user.create_or_reset_password(&database, &PasswordHash::new(&EncString::from("TESTUSER")).unwrap()).await {
+            Ok(_) => {}
+            Err(err) => { error!("err : {}", err); }
+        };
+        new_user
+    }
+    else {
+        User::from_credentials(&database, &EncString::from("Toto"), &EncString::from("TESTUSER")).await.expect("User not found")
     };
 
-    info!("{:?}", User::from_credentials(&database, &EncString::from("Toto"), &EncString::from("TESTUSER")).await);
+    info!("{:?}", user);
 
 
     let ctx = Arc::new(AppCtx::new(
@@ -67,13 +73,13 @@ async fn main() {
             return;
         }
 
-        tracing::info!("[secured] listening on {}", addr);
+        info!("[secured] listening on {}", addr);
         let tls_config = RustlsConfig::from_pem_file(config.tls_config.certificate.clone(), config.tls_config.private_key.clone()).await.unwrap();
         axum_server::bind_rustls(addr, tls_config).serve(router.into_make_service()).await.unwrap();
     } else {
-        tracing::info!("listening on {}", addr);
+        info!("listening on {}", addr);
         let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
         axum::serve(listener, router).await.unwrap();
     }
-    tracing::info!("Server closed !");
+    info!("Server closed !");
 }

@@ -2,9 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use anyhow::{Error};
-use postgres_from_row::FromRow;
 use tokio::net::TcpStream;
-use tokio_postgres::{Client, Config, Connection, Row};
+use tokio_postgres::{Client, Config, Connection};
 use tokio_postgres::tls::NoTlsStream;
 use tracing::info;
 use crate::config::PostgresConfig;
@@ -17,6 +16,8 @@ pub mod user;
 pub struct Database {
     db: Client,
     pub schema_name: String,
+    pub file_storage_path: PathBuf,
+    pub thumbnail_storage_path: PathBuf,
 }
 
 async fn connect_raw(s: &str) -> Result<(Client, Connection<TcpStream, NoTlsStream>), Error> {
@@ -43,7 +44,7 @@ impl DatabaseIdTrait for DatabaseId {
 impl Database {
     pub async fn new(config: &PostgresConfig) -> Result<Self, Error> {
         let db = connect(format!("host={} port={} user={} password={} dbname={} sslmode={}", config.url, config.port, config.username, config.secret, config.database, if config.ssl_mode { "enable" } else { "disable" }).as_str()).await?;
-        let database = Self { db, schema_name: config.scheme_name.to_string() };
+        let database = Self { db, schema_name: config.scheme_name.to_string(), file_storage_path: config.file_storage_path.clone(), thumbnail_storage_path: config.thumbnail_storage_path.clone() };
         database.migrate(PathBuf::from("./migrations"), "fileshare_v3").await?;
         Ok(database)
     }
@@ -99,14 +100,9 @@ impl Database {
 
 #[macro_export]
 macro_rules! make_wrapped_db_type {
-    ($T:ident, $Inside:ty) => {
-        #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
+    ($T:ident, $Inside:ty $(,$traits:ty)*) => {
+        #[derive($($traits,)*)]
         pub struct $T($Inside);
-        impl From<$Inside> for $T {
-            fn from(value: $Inside) -> Self {
-                Self(value)
-            }
-        }
         impl postgres_types::ToSql for $T {
             fn to_sql(&self, ty: &postgres_types::Type, out: &mut postgres_types::private::BytesMut) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> { self.0.to_sql(ty, out) }
             fn accepts(ty: &postgres_types::Type) -> bool { <$Inside>::accepts(ty) }
@@ -122,7 +118,7 @@ macro_rules! make_wrapped_db_type {
 #[macro_export]
 macro_rules! make_database_id {
     ($T:ident) => {
-        crate::make_wrapped_db_type!($T, crate::database::DatabaseId);
+        crate::make_wrapped_db_type!($T, crate::database::DatabaseId, serde::Serialize, serde::Deserialize, Default, std::fmt::Debug, Clone);
         impl std::ops::Deref for $T {
             type Target = crate::database::DatabaseId;
             fn deref(&self) -> &Self::Target {

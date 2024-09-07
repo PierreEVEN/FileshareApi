@@ -10,7 +10,7 @@ pub struct UserRoutes {
 }
 
 impl UserRoutes {
-    pub fn create(ctx: Arc<AppCtx>) -> Result<Router, Error> {
+    pub fn create(_: Arc<AppCtx>) -> Result<Router, Error> {
         let router = Router::new()
             .route("/", get(handler_user));
 

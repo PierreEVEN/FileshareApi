@@ -2,9 +2,9 @@ use std::fmt::{Debug, Display, Formatter};
 use std::ops::Deref;
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
+use crate::make_wrapped_db_type;
 
-#[derive(Serialize, Deserialize, Default)]
-pub struct EncString(String);
+make_wrapped_db_type!(EncString, String, Default, Serialize, Deserialize, Clone);
 
 impl EncString {
     pub fn plain(&self) -> Result<String, Error> {

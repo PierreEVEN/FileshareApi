@@ -1,21 +1,20 @@
-use std::fmt::Debug;
-use std::ops::Deref;
-use crate::database::item::{Item, ItemId};
+use crate::database::item::Item;
 use crate::database::{Database, DatabaseId, DatabaseIdTrait};
+use crate::utils::enc_string::EncString;
 use crate::{make_database_id, make_wrapped_db_type, query_fmt, query_object, query_objects};
 use anyhow::Error;
 use bcrypt::DEFAULT_COST;
 use postgres_from_row::FromRow;
-use postgres_types::{to_sql_checked, IsNull, Type};
 use postgres_types::private::BytesMut;
-use rand::random;
+use postgres_types::{to_sql_checked, IsNull, Type};
+use rand::distributions::Alphanumeric;
+use rand::{random, Rng};
 use serde::{Deserialize, Serialize};
-use tracing::info;
-use crate::utils::enc_string::EncString;
+use std::fmt::Debug;
 
 make_database_id!(UserId);
 
-make_wrapped_db_type!(PasswordHash, String);
+make_wrapped_db_type!(PasswordHash, String, Clone, Default, Debug, Serialize, Deserialize);
 
 impl PasswordHash {
     pub fn new(password_string: &EncString) -> Result<Self, Error> {
@@ -65,40 +64,80 @@ impl postgres_types::ToSql for UserRole {
 #[derive(Serialize, Debug, Default, FromRow)]
 pub struct User {
     id: UserId,
-    #[from_row(from = "String")]
     pub email: EncString,
-    #[from_row(from = "String")]
     pub name: EncString,
 
     #[serde(skip_serializing)]
-    #[from_row(from = "String")]
     password_hash: PasswordHash,
 
     pub allow_contact: bool,
     pub user_role: UserRole,
 }
 
+#[derive(Serialize, Debug, Default, FromRow)]
+pub struct AuthToken {
+    owner: UserId,
+    pub token: EncString,
+    pub device: EncString,
+    pub expdate: i64,
+}
+
+impl AuthToken {
+    pub async fn find(db: &Database, token: &EncString) -> Result<Self, Error> {
+        query_object!(db, AuthToken, "SELECT * FROM SCHEMA_NAME.authtoken WHERE token = $1", token).ok_or(Error::msg("Invalid authentication token"))
+    }
+
+    pub async fn from_user(db: &Database, id: &UserId) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, AuthToken, "SELECT * FROM SCHEMA_NAME.authtoken WHERE owner = $1", id))
+    }
+
+    pub async fn delete(&self, db: &Database)  -> Result<(), Error>{
+        query_fmt!(db, "DELETE FROM SCHEMA_NAME.authtoken WHERE token = $1", self.token);
+        Ok(())
+    }
+}
+
 impl User {
-    pub async fn from_id(db: &Database, id: &ItemId) -> Result<Self, Error> {
+    pub async fn from_id(db: &Database, id: &UserId) -> Result<Self, Error> {
         match query_object!(db, User, "SELECT * FROM SCHEMA_NAME.users WHERE id = $1", id) {
             None => { Err(Error::msg("User not found")) }
             Some(user) => { Ok(user) }
         }
     }
 
-    pub async fn from_credentials(db: &Database, login: &EncString, password: &EncString) -> Result<Self, Error> {
-        info!("login : {}", login.encoded());
+    pub async fn exists(db: &Database, login: &EncString) -> Result<bool, Error> {
+        Ok(!query_objects!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE name = $1 OR email = $1"#, login.encoded()).is_empty())
+    }
 
-        let users = query_objects!(db, User,
-            r#"SELECT id, email, name, password_hash, allow_contact, user_role FROM SCHEMA_NAME.users WHERE name = $1 OR email = $1"#, login.encoded());
-        info!("res: {:?}", users);
-        for user in users {
-            if bcrypt::verify(password.encoded(), user.password_hash.0.as_str())? {
-                return Ok(user);
+    pub async fn from_credentials(db: &Database, login: &EncString, password: &EncString) -> Result<Self, Error> {
+        let user = query_object!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE name = $1 OR email = $1"#, login.encoded()).ok_or(Error::msg("User not found"))?;
+        if bcrypt::verify(password.encoded(), user.password_hash.0.as_str())? {
+            Ok(user)
+        } else {
+            Err(Error::msg("Failed to find user with given credentials"))
+        }
+    }
+
+    pub async fn from_auth_token(db: &Database, authtoken: &EncString) -> Result<Self, Error> {
+        User::from_id(db, &AuthToken::find(db, authtoken).await?.owner).await
+    }
+
+    pub async fn generate_auth_token(&self, db: &Database, device: &EncString) -> Result<EncString, Error> {
+        let mut token: String;
+        loop {
+            token = rand::thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(10)
+                .map(char::from)
+                .collect();
+            if query_fmt!(db, "SELECT id FROM SCHEMA_NAME.authtoken WHERE token = $1", token).is_empty() {
+                break;
             }
         }
+        let enc_token = EncString::encode(token.as_str());
 
-        Err(Error::msg("Failed to find user with given credentials"))
+        query_fmt!(db, "INSERT INTO SCHEMA_NAME.authtoken (owner, token, device, expdate) VALUES ($1, $2, $3, $4)", self.id, enc_token, device, 0);
+        Ok(enc_token)
     }
 
     pub fn id(&self) -> &UserId {
@@ -118,26 +157,21 @@ impl User {
         self.push(db).await
     }
 
-    //
-
     pub async fn push(&mut self, db: &Database) -> Result<(), Error> {
         query_fmt!(db, "INSERT INTO SCHEMA_NAME.users
                         (id, email, password_hash, name, allow_contact, user_role) VALUES
                         ($1, $2, $3, $4, $5, $6)
                         ON CONFLICT(id) DO UPDATE SET
                         id = $1, email = $2, password_hash = $3, name = $4, allow_contact = $5, user_role = $6;",
-            self.id, self.email.encoded(), self.password_hash, self.name.encoded(), self.allow_contact, self.user_role);
+            self.id, self.email, self.password_hash, self.name, self.allow_contact, self.user_role);
         Ok(())
     }
 
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
-        todo!();
-        for item in Item::from_user(db, &self.id).await? {
-            //item.delete(db);
+        for mut item in Item::from_user(db, &self.id).await? {
+            item.delete(db).await?;
         }
-
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.users WHERE id = $1;"#, *self.id);
-
         Ok(())
     }
 }

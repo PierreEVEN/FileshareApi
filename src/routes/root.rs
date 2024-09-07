@@ -33,14 +33,15 @@ async fn handler_404(request: Request<Body>) -> impl IntoResponse {
 }
 
 #[derive(Default)]
-struct RequestContext {
-    connected_user: Option<User>,
-    display_user: Option<User>,
-    display_repository: Option<User>,
+pub struct RequestContext {
+    pub connected_user: Option<User>,
+    pub display_user: Option<User>,
+    pub display_repository: Option<User>,
 }
 
-async fn middleware_get_connected_user(mut request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
+async fn middleware_get_connected_user(request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
 
+    /*
     let mut context = Arc::new(RequestContext::default());
     match request.headers().get("authtoken") {
         None => {
@@ -53,9 +54,11 @@ async fn middleware_get_connected_user(mut request: Request<Body>, next: Next) -
 
 
     request.extensions_mut().insert(context);
+
+     */
     let uri = request.uri().clone();
     warn!("{}", uri);
-    let mut response = next.run(request).await;
+    let response = next.run(request).await;
 
     Ok(response)
 }
