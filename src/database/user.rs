@@ -105,6 +105,13 @@ impl User {
         }
     }
 
+    pub async fn from_name(db: &Database, name: &String) -> Result<Self, Error> {
+        match query_object!(db, User, "SELECT * FROM SCHEMA_NAME.users WHERE name = $1", name) {
+            None => { Err(Error::msg("User not found")) }
+            Some(user) => { Ok(user) }
+        }
+    }
+
     pub async fn exists(db: &Database, login: &EncString) -> Result<bool, Error> {
         Ok(!query_objects!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE name = $1 OR email = $1"#, login.encoded()).is_empty())
     }

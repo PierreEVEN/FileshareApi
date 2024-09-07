@@ -5,14 +5,15 @@ use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::{middleware, Router};
-use axum::extract::State;
+use axum::extract::{Path, State};
 use tracing::{info, warn};
 use crate::app_ctx::AppCtx;
+use crate::database::Database;
 use crate::database::user::User;
 use crate::routes::user::UserRoutes;
 use crate::utils::enc_string::EncString;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct RequestContext {
     connected_user: RwLock<Option<User>>,
     display_user: RwLock<Option<User>>,
@@ -27,6 +28,30 @@ impl RequestContext {
     pub fn connected_user_mut(&self) -> RwLockWriteGuard<Option<User>> {
         self.connected_user.write().unwrap()
     }
+    pub fn display_user(&self) -> RwLockReadGuard<Option<User>> {
+        self.display_user.read().unwrap()
+    }
+
+    pub fn display_user_mut(&self) -> RwLockWriteGuard<Option<User>> {
+        self.display_user.write().unwrap()
+    }
+    pub fn display_repository(&self) -> RwLockReadGuard<Option<User>> {
+        self.display_repository.read().unwrap()
+    }
+
+    pub fn display_repository_mut(&self) -> RwLockWriteGuard<Option<User>> {
+        self.display_repository.write().unwrap()
+    }
+
+    pub async fn parse_display_user(&self, db: &Database, user_name: &String) {
+        if let Ok(display_user) = User::from_name(db, user_name).await {
+            *self.display_user.write().unwrap() = Some(display_user);
+        }
+    }
+
+    pub async fn parse_display_repos(&self, db: &Database, user_name: &String) {
+        todo!()
+    }
 }
 
 
@@ -35,7 +60,7 @@ pub struct RootRoutes {}
 impl RootRoutes {
     pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         let router = Router::new()
-            .nest("/:user", UserRoutes::create()?)
+            .nest("/:display_user/", UserRoutes::create()?)
             .fallback(handler_404)
             .layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_connected_user));
 
