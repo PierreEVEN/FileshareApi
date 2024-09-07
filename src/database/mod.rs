@@ -42,32 +42,9 @@ impl DatabaseIdTrait for DatabaseId {
 
 impl Database {
     pub async fn new(config: &PostgresConfig) -> Result<Self, Error> {
-        let db = connect("host=127.0.0.1 port=5432 user=postgres password=Tecaxa_4 dbname=postgres sslmode=disable").await?;
-
+        let db = connect(format!("host={} port={} user={} password={} dbname={} sslmode={}", config.url, config.port, config.username, config.secret, config.database, if config.ssl_mode { "enable" } else { "disable" }).as_str()).await?;
         let database = Self { db, schema_name: config.scheme_name.to_string() };
-
         database.migrate(PathBuf::from("./migrations"), "fileshare_v3").await?;
-
-
-        #[derive(FromRow)]
-        struct Test {}
-
-        for row in database.db
-            .query("query", &[]).await? {
-            Test::try_from_row(&row)?;
-        }
-
-
-        let query = "efgea";
-
-        let params: &[&(dyn postgres_types::ToSql + Sync)] = &[&5, &"test"];
-        let query = database.db.query(&query.replace("SCHEMA_NAME", &database.schema_name), params).await?;
-        let mut rows = Vec::with_capacity(query.len());
-        for row in query {
-            rows.push(Test::try_from_row(&row)?);
-        }
-
-
         Ok(database)
     }
 
@@ -118,6 +95,41 @@ impl Database {
     pub fn db(&self) -> &Client {
         &self.db
     }
+}
+
+#[macro_export]
+macro_rules! make_wrapped_db_type {
+    ($T:ident, $Inside:ty) => {
+        #[derive(serde::Serialize, serde::Deserialize, Default, Debug, Clone)]
+        pub struct $T($Inside);
+        impl From<$Inside> for $T {
+            fn from(value: $Inside) -> Self {
+                Self(value)
+            }
+        }
+        impl postgres_types::ToSql for $T {
+            fn to_sql(&self, ty: &postgres_types::Type, out: &mut postgres_types::private::BytesMut) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> { self.0.to_sql(ty, out) }
+            fn accepts(ty: &postgres_types::Type) -> bool { <$Inside>::accepts(ty) }
+            postgres_types::to_sql_checked!();
+        }
+        impl<'a> postgres_types::FromSql<'a> for $T {
+            fn from_sql(ty: &postgres_types::Type, raw: &'a [u8]) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> { Ok(Self(<$Inside>::from_sql(ty, raw)?)) }
+            fn accepts(ty: &postgres_types::Type) -> bool { <$Inside>::accepts(ty) }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! make_database_id {
+    ($T:ident) => {
+        crate::make_wrapped_db_type!($T, crate::database::DatabaseId);
+        impl std::ops::Deref for $T {
+            type Target = crate::database::DatabaseId;
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+    };
 }
 
 #[macro_export]

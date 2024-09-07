@@ -5,7 +5,12 @@ use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct PostgresConfig {
-    pub database_url: String,
+    pub username: String,
+    pub secret: String,
+    pub url: String,
+    pub port: u16,
+    pub database: String,
+    pub ssl_mode: bool,
     pub scheme_name: String,
 }
 
@@ -36,7 +41,12 @@ impl Default for Config {
         Self {
             port: 3000,
             postgres_db_config: PostgresConfig {
-                database_url: "postgres://postgres:password@localhost/test".to_string(),
+                username: "postgres".to_string(),
+                secret: "password".to_string(),
+                url: "127.0.0.1".to_string(),
+                port: 5432,
+                database: "postgres".to_string(),
+                ssl_mode: false,
                 scheme_name: "fileshare_v3".to_string(),
             },
             server_mail_server: ServiceEmailConfig {

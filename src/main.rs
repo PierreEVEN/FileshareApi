@@ -4,6 +4,7 @@ pub mod database;
 mod app_ctx;
 pub mod utils;
 
+use std::backtrace::Backtrace;
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;

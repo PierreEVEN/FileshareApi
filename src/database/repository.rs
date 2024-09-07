@@ -1,12 +1,3 @@
-use std::ops::Deref;
-use crate::database::DatabaseId;
+use crate::make_database_id;
 
-pub struct RepositoryId(DatabaseId);
-
-impl Deref for RepositoryId {
-    type Target = DatabaseId;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+make_database_id!(RepositoryId);
