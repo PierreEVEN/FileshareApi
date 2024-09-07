@@ -1,11 +1,11 @@
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
-use anyhow::{Context, Error};
-use rand::{random};
-use rand::distributions::{Distribution, Standard};
-use sqlx::{Pool, Postgres};
-use sqlx::postgres::PgPoolOptions;
+use anyhow::{Error};
+use postgres_from_row::FromRow;
+use tokio::net::TcpStream;
+use tokio_postgres::{Client, Config, Connection, Row};
+use tokio_postgres::tls::NoTlsStream;
 use tracing::info;
 use crate::config::PostgresConfig;
 
@@ -15,8 +15,21 @@ pub mod repository;
 pub mod user;
 
 pub struct Database {
-    db: Pool<Postgres>,
+    db: Client,
     pub schema_name: String,
+}
+
+async fn connect_raw(s: &str) -> Result<(Client, Connection<TcpStream, NoTlsStream>), Error> {
+    let socket = TcpStream::connect("127.0.0.1:5432").await?;
+    let config = s.parse::<Config>()?;
+    Ok(config.connect_raw(socket, tokio_postgres::NoTls).await?)
+}
+
+async fn connect(s: &str) -> Result<Client, Error> {
+    let (client, connection) = connect_raw(s).await?;
+    //let connection = connection.map(|r| r.unwrap());
+    tokio::spawn(connection);
+    Ok(client)
 }
 
 pub type DatabaseId = i64;
@@ -29,15 +42,31 @@ impl DatabaseIdTrait for DatabaseId {
 
 impl Database {
     pub async fn new(config: &PostgresConfig) -> Result<Self, Error> {
-        let db = PgPoolOptions::new()
-            .max_connections(20)
-            .connect(&config.database_url)
-            .await
-            .context("failed to connect to DATABASE_URL")?;
+        let db = connect("host=127.0.0.1 port=5432 user=postgres password=Tecaxa_4 dbname=postgres sslmode=disable").await?;
 
         let database = Self { db, schema_name: config.scheme_name.to_string() };
 
         database.migrate(PathBuf::from("./migrations"), "fileshare_v3").await?;
+
+
+        #[derive(FromRow)]
+        struct Test {}
+
+        for row in database.db
+            .query("query", &[]).await? {
+            Test::try_from_row(&row)?;
+        }
+
+
+        let query = "efgea";
+
+        let params: &[&(dyn postgres_types::ToSql + Sync)] = &[&5, &"test"];
+        let query = database.db.query(&query.replace("SCHEMA_NAME", &database.schema_name), params).await?;
+        let mut rows = Vec::with_capacity(query.len());
+        for row in query {
+            rows.push(Test::try_from_row(&row)?);
+        }
+
 
         Ok(database)
     }
@@ -69,7 +98,10 @@ impl Database {
             let path = entry.path();
             if path.is_file() && path.extension().and_then(std::ffi::OsStr::to_str) == Some("sql") {
                 let sql = fs::read_to_string(path)?.replace("SCHEMA_NAME", schema_name);
-                match sqlx::query(&sql).execute(&self.db).await {
+
+                match self.db
+                    .simple_query(&sql,
+                    ).await {
                     Ok(_) => {
                         info!("Successfully executed migrations {}", entry.file_name().to_str().unwrap());
                     }
@@ -79,10 +111,11 @@ impl Database {
                 };
             }
         }
+
         Ok(())
     }
 
-    pub fn db(&self) -> &Pool<Postgres> {
+    pub fn db(&self) -> &Client {
         &self.db
     }
 }
@@ -90,50 +123,57 @@ impl Database {
 #[macro_export]
 macro_rules! query_fmt {
     ($db:expr, $query:expr) => {{
-        let str = $query.replace("SCHEMA_NAME", $db.schema_name.as_str());
-        let query = sqlx::query(str.as_str());
-        query.execute($db.db()).await
+        $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), &[]).await?
     }};
 
     ($db:expr, $query:expr, $( $bound_values:expr),*) => {{
-        let str = $query.replace("SCHEMA_NAME", $db.schema_name.as_str());
-        let mut query = sqlx::query(str.as_str());
-        $(
-                query = query.bind($bound_values);
-        )*
-        query.execute($db.db()).await
+        let params: &[&(dyn postgres_types::ToSql + Sync)] = &[$(&$bound_values,)*];
+        $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), params).await?
     }};
 }
 
 #[macro_export]
 macro_rules! query_objects {
-    ($db:expr, $obj:ty, $query:expr) => {{
-        let str = $query.replace("SCHEMA_NAME", $db.schema_name.as_str());
-        let mut query = sqlx::query_as(str.as_str());
-        let objects : Result<Vec<$obj>, sqlx::Error> = query.fetch_all($db.db()).await;
-        objects
+    ($db:expr, $StructType:ty, $query:expr) => {{
+        let query = $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), &[]).await?;
+        let mut rows = Vec::with_capacity(query.len());
+        for row in query {
+            rows.push(<$StructType>::try_from_row(&row)?);
+        }
+        rows
     }};
-    
-    ($db:expr, $obj:ty, $query:expr, $( $bound_values:expr),*) => {{
-        let str = $query.replace("SCHEMA_NAME", $db.schema_name.as_str());
-        let mut query = sqlx::query_as(str.as_str());
-        $(
-                query = query.bind($bound_values);
-        )*
-        let objects : Result<Vec<$obj>, sqlx::Error> = query.fetch_all($db.db()).await;
-        objects
+    ($db:expr, $StructType:ty, $query:expr, $( $bound_values:expr),*) => {{
+        let params: &[&(dyn postgres_types::ToSql + Sync)] = &[$(&$bound_values,)*];
+        let query = $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), params).await?;
+        let mut rows = Vec::with_capacity(query.len());
+        for row in query {
+            rows.push(<$StructType>::try_from_row(&row)?);
+        }
+        rows
     }}
 }
 
 #[macro_export]
 macro_rules! query_object {
-    ($db:expr, $obj:ty, $query:expr, $( $bound_values:expr),*) => {{
-        match crate::query_objects!($db, $obj, $query, $($bound_values)*) {
-            Ok(mut object) => {
-                if object.len() <= 1 { Ok(object.pop().unwrap()) }
-                else { Err(sqlx::Error::ColumnNotFound(format!("Expected 1 object, but retrieved {} items", object.len()))) }
-            }
-            Err(err) => { Err(err) }
+    ($db:expr, $StructType:ty, $query:expr) => {{
+        let mut query = $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), &[]).await?;
+        if query.len() > 1 {
+            return Err(Error::msg("Received more than one expected item"))
+        }
+        match query.pop() {
+            Some(item) => { Some(<$StructType>::try_from_row(&item)?) }
+            None => { None }
+        }
+    }};
+    ($db:expr, $StructType:ty, $query:expr, $( $bound_values:expr),*) => {{
+        let params: &[&(dyn postgres_types::ToSql + Sync)] = &[$(&$bound_values,)*];
+        let mut query = $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), params).await?;
+        if query.len() > 1 {
+            return Err(Error::msg("Received more than one expected item"))
+        }
+        match query.pop() {
+            Some(item) => { Some(<$StructType>::try_from_row(&item)?) }
+            None => { None }
         }
     }}
 }

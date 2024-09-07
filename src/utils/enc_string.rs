@@ -3,8 +3,7 @@ use std::ops::Deref;
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, sqlx::Type, Default)]
-#[sqlx(transparent)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct EncString(String);
 
 impl EncString {
