@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Deref;
 use anyhow::Error;
+use axum::http::HeaderValue;
 use serde::{Deserialize, Serialize};
 use crate::make_wrapped_db_type;
 
@@ -31,6 +32,12 @@ impl From<String> for EncString {
 impl From<&str> for EncString {
     fn from(value: &str) -> Self {
         Self::encode(value)
+    }
+}
+
+impl From<&HeaderValue> for EncString {
+    fn from(value: &HeaderValue) -> Self {
+        Self(value.to_str().unwrap().to_string())
     }
 }
 

@@ -57,13 +57,11 @@ async fn main() {
     info!("{:?}", user);
 
 
-    let ctx = Arc::new(AppCtx::new(
-        config.clone(),
-        database));
+    let ctx = Arc::new(AppCtx::new(config.clone(), database));
 
 
     // Instantiate router
-    let router = RootRoutes::create(ctx).unwrap();
+    let router = RootRoutes::create(&ctx).unwrap();
 
     // Create server
     let addr = SocketAddr::from(([127, 0, 0, 1], config.port));

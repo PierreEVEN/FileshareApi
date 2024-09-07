@@ -19,3 +19,4 @@ bcrypt = "0.15.1"
 tokio-postgres = "0.7.11"
 postgres-from-row = "0.5.2"
 postgres-types = "0.2.7"
+uuid = { version = "1.10.0", features = ["v4"] }
