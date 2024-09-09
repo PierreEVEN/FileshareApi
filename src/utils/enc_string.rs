@@ -21,6 +21,9 @@ impl EncString {
     pub fn encode(string: &str) -> Self {
         Self(urlencoding::encode(string).to_string())
     }
+    pub fn from_url_path(string: String) -> Self {
+        Self(string)
+    }
 }
 
 impl From<String> for EncString {

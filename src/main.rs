@@ -13,8 +13,6 @@ use tracing::{error, info};
 use crate::app_ctx::AppCtx;
 use crate::config::Config;
 use crate::database::Database;
-use crate::database::user::{PasswordHash, UserRole, User};
-use crate::utils::enc_string::EncString;
 
 #[tokio::main]
 async fn main() {
@@ -36,26 +34,6 @@ async fn main() {
             return;
         }
     };
-
-
-    let user = if !User::exists(&database, &EncString::from("Toto")).await.unwrap() {
-        let mut new_user = User::default();
-        new_user.name = EncString::from("Toto");
-        new_user.email = EncString::from("Toto@gmail.com");
-        new_user.user_role = UserRole::Admin;
-
-        match new_user.create_or_reset_password(&database, &PasswordHash::new(&EncString::from("TESTUSER")).unwrap()).await {
-            Ok(_) => {}
-            Err(err) => { error!("err : {}", err); }
-        };
-        new_user
-    }
-    else {
-        User::from_credentials(&database, &EncString::from("Toto"), &EncString::from("TESTUSER")).await.expect("User not found")
-    };
-
-    info!("{:?}", user);
-
 
     let ctx = Arc::new(AppCtx::new(config.clone(), database));
 

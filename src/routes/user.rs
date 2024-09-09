@@ -1,46 +1,29 @@
-use std::sync::{Arc, RwLock};
-use anyhow::Error;
-use axum::body::Body;
-use axum::extract::{Path, Request, State};
-use axum::http::StatusCode;
-use axum::middleware::Next;
-use axum::response::{IntoResponse, Response};
-use axum::routing::get;
-use axum::{middleware, Router};
-use tracing::log::info;
 use crate::app_ctx::AppCtx;
-use crate::database::user::User;
+use crate::routes::repository::RepositoryRoutes;
 use crate::routes::root::RequestContext;
-use crate::utils::enc_string::EncString;
+use anyhow::Error;
+use axum::extract::Request;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::Router;
+use std::sync::Arc;
 
 pub struct UserRoutes {}
 
 impl UserRoutes {
-    pub fn create() -> Result<Router, Error> {
+    pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         let router = Router::new()
-            .route("/", get(handler_user))
-            .layer(middleware::from_fn(middleware_get_display_user));
+            .route("/", get(handle_user))
+            .nest("/:display_repository/", RepositoryRoutes::create(ctx)?);
 
         Ok(router)
     }
 }
-async fn handler_user(Path(display_user): Path<String>, request: Request) -> impl IntoResponse {
 
-    let ctx = request.extensions().get::<Arc<RequestContext>>();
+async fn handle_user(request: Request) -> impl IntoResponse {
 
-    ctx.
-    
-    info!("Found user : {} / {:?}", display_user, ctx);
-    (StatusCode::FOUND, format!("Found user : {}", display_user))
-}
+    let ctx = request.extensions().get::<Arc<RequestContext>>().unwrap();
 
-
-async fn middleware_get_display_user(Path(user_id): Path<String>, request: Request, next: Next) -> Result<Response, StatusCode> {
-
-
-    let ctx = request.extensions().get::<Arc<RequestContext>>();
-
-    let response = next.run(request).await;
-
-    Ok(response)
+    (StatusCode::FOUND, format!("Display user : {}", ctx.display_user().await.as_ref().unwrap().name))
 }

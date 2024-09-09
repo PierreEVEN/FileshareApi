@@ -7,10 +7,11 @@ use bcrypt::DEFAULT_COST;
 use postgres_from_row::FromRow;
 use postgres_types::private::BytesMut;
 use postgres_types::{to_sql_checked, IsNull, Type};
-use rand::distributions::Alphanumeric;
-use rand::{random, Rng};
+use rand::distributions::{Alphanumeric, DistString};
+use rand::random;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 make_database_id!(UserId);
 
@@ -66,6 +67,7 @@ pub struct User {
     id: UserId,
     pub email: EncString,
     pub name: EncString,
+    pub login: EncString,
 
     #[serde(skip_serializing)]
     password_hash: PasswordHash,
@@ -74,7 +76,7 @@ pub struct User {
     pub user_role: UserRole,
 }
 
-#[derive(Serialize, Debug, Default, FromRow)]
+#[derive(Serialize, Deserialize, Debug, Default, FromRow, Clone)]
 pub struct AuthToken {
     owner: UserId,
     pub token: EncString,
@@ -91,7 +93,7 @@ impl AuthToken {
         Ok(query_objects!(db, AuthToken, "SELECT * FROM SCHEMA_NAME.authtoken WHERE owner = $1", id))
     }
 
-    pub async fn delete(&self, db: &Database)  -> Result<(), Error>{
+    pub async fn delete(&self, db: &Database) -> Result<(), Error> {
         query_fmt!(db, "DELETE FROM SCHEMA_NAME.authtoken WHERE token = $1", self.token);
         Ok(())
     }
@@ -105,19 +107,19 @@ impl User {
         }
     }
 
-    pub async fn from_name(db: &Database, name: &String) -> Result<Self, Error> {
-        match query_object!(db, User, "SELECT * FROM SCHEMA_NAME.users WHERE name = $1", name) {
+    pub async fn from_url_name(db: &Database, name: &EncString) -> Result<Self, Error> {
+        match query_object!(db, User, "SELECT * FROM SCHEMA_NAME.users WHERE name = LOWER($1)", name) {
             None => { Err(Error::msg("User not found")) }
             Some(user) => { Ok(user) }
         }
     }
 
-    pub async fn exists(db: &Database, login: &EncString) -> Result<bool, Error> {
-        Ok(!query_objects!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE name = $1 OR email = $1"#, login.encoded()).is_empty())
+    pub async fn exists(db: &Database, login: &EncString, email: &EncString) -> Result<bool, Error> {
+        Ok(!query_objects!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE login = $1 OR email = $2"#, login, email).is_empty())
     }
 
     pub async fn from_credentials(db: &Database, login: &EncString, password: &EncString) -> Result<Self, Error> {
-        let user = query_object!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE name = $1 OR email = $1"#, login.encoded()).ok_or(Error::msg("User not found"))?;
+        let user = query_object!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE login = $1 OR email = $1"#, login.encoded()).ok_or(Error::msg("User not found"))?;
         if bcrypt::verify(password.encoded(), user.password_hash.0.as_str())? {
             Ok(user)
         } else {
@@ -129,22 +131,20 @@ impl User {
         User::from_id(db, &AuthToken::find(db, authtoken).await?.owner).await
     }
 
-    pub async fn generate_auth_token(&self, db: &Database, device: &EncString) -> Result<EncString, Error> {
+    pub async fn generate_auth_token(&self, db: &Database, device: &EncString) -> Result<AuthToken, Error> {
         let mut token: String;
         loop {
-            token = rand::thread_rng()
-                .sample_iter(&Alphanumeric)
-                .take(10)
-                .map(char::from)
-                .collect();
-            if query_fmt!(db, "SELECT id FROM SCHEMA_NAME.authtoken WHERE token = $1", token).is_empty() {
+            token = Alphanumeric.sample_string(&mut rand::thread_rng(), 64);
+            if query_fmt!(db, "SELECT token FROM SCHEMA_NAME.authtoken WHERE token = $1", token).is_empty() {
                 break;
             }
         }
         let enc_token = EncString::encode(token.as_str());
 
-        query_fmt!(db, "INSERT INTO SCHEMA_NAME.authtoken (owner, token, device, expdate) VALUES ($1, $2, $3, $4)", self.id, enc_token, device, 0);
-        Ok(enc_token)
+        let exp_date = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
+
+        query_fmt!(db, "INSERT INTO SCHEMA_NAME.authtoken (owner, token, device, expdate) VALUES ($1, $2, $3, $4)", self.id, enc_token, device, exp_date);
+        query_object!(db, AuthToken, "SELECT * from SCHEMA_NAME.authtoken WHERE token = $1", enc_token).ok_or(Error::msg("Failed to add authentication token"))
     }
 
     pub fn id(&self) -> &UserId {
@@ -166,11 +166,11 @@ impl User {
 
     pub async fn push(&mut self, db: &Database) -> Result<(), Error> {
         query_fmt!(db, "INSERT INTO SCHEMA_NAME.users
-                        (id, email, password_hash, name, allow_contact, user_role) VALUES
-                        ($1, $2, $3, $4, $5, $6)
+                        (id, email, password_hash, name, allow_contact, user_role, login) VALUES
+                        ($1, $2, $3, $4, $5, $6, $7)
                         ON CONFLICT(id) DO UPDATE SET
-                        id = $1, email = $2, password_hash = $3, name = $4, allow_contact = $5, user_role = $6;",
-            self.id, self.email, self.password_hash, self.name, self.allow_contact, self.user_role);
+                        id = $1, email = $2, password_hash = $3, name = LOWER($4), allow_contact = $5, user_role = $6, login = $7;",
+            self.id, self.email, self.password_hash, self.name, self.allow_contact, self.user_role, self.login);
         Ok(())
     }
 

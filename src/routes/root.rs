@@ -1,69 +1,65 @@
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::Arc;
 use anyhow::Error;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
-use axum::{middleware, Router};
+use axum::{middleware, Json, Router};
 use axum::extract::{Path, State};
+use axum::routing::post;
+use deunicode::deunicode;
+use serde::Deserialize;
 use tracing::{info, warn};
 use crate::app_ctx::AppCtx;
-use crate::database::Database;
-use crate::database::user::User;
+use crate::database::repository::Repository;
+use crate::database::user::{AuthToken, PasswordHash, User, UserRole};
 use crate::routes::user::UserRoutes;
 use crate::utils::enc_string::EncString;
+use crate::utils::server_error::ServerError;
 
 #[derive(Default, Debug)]
 pub struct RequestContext {
-    connected_user: RwLock<Option<User>>,
-    display_user: RwLock<Option<User>>,
-    display_repository: RwLock<Option<User>>,
+    connected_user: tokio::sync::RwLock<Option<User>>,
+    display_user: tokio::sync::RwLock<Option<User>>,
+    display_repository: tokio::sync::RwLock<Option<Repository>>,
 }
 
 impl RequestContext {
-    pub fn connected_user(&self) -> RwLockReadGuard<Option<User>> {
-        self.connected_user.read().unwrap()
+    pub async fn connected_user(&self) -> tokio::sync::RwLockReadGuard<Option<User>> {
+        self.connected_user.read().await
     }
 
-    pub fn connected_user_mut(&self) -> RwLockWriteGuard<Option<User>> {
-        self.connected_user.write().unwrap()
+    pub async fn connected_user_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<User>> {
+        self.connected_user.write().await
     }
-    pub fn display_user(&self) -> RwLockReadGuard<Option<User>> {
-        self.display_user.read().unwrap()
-    }
-
-    pub fn display_user_mut(&self) -> RwLockWriteGuard<Option<User>> {
-        self.display_user.write().unwrap()
-    }
-    pub fn display_repository(&self) -> RwLockReadGuard<Option<User>> {
-        self.display_repository.read().unwrap()
+    pub async fn display_user(&self) -> tokio::sync::RwLockReadGuard<Option<User>> {
+        self.display_user.read().await
     }
 
-    pub fn display_repository_mut(&self) -> RwLockWriteGuard<Option<User>> {
-        self.display_repository.write().unwrap()
+    pub async fn display_user_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<User>> {
+        self.display_user.write().await
+    }
+    pub async fn display_repository(&self) -> tokio::sync::RwLockReadGuard<Option<Repository>> {
+        self.display_repository.read().await
     }
 
-    pub async fn parse_display_user(&self, db: &Database, user_name: &String) {
-        if let Ok(display_user) = User::from_name(db, user_name).await {
-            *self.display_user.write().unwrap() = Some(display_user);
-        }
-    }
-
-    pub async fn parse_display_repos(&self, db: &Database, user_name: &String) {
-        todo!()
+    pub async fn display_repository_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<Repository>> {
+        self.display_repository.write().await
     }
 }
-
 
 pub struct RootRoutes {}
 
 impl RootRoutes {
-    pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
+    pub fn create(ctx: &Arc<AppCtx>) -> Result<Router<>, Error> {
         let router = Router::new()
-            .nest("/:display_user/", UserRoutes::create()?)
+            .route("/auth/create-user/", post(create_user).with_state(ctx.clone()))
+            .route("/auth/login/", post(login).with_state(ctx.clone()))
+            .route("/auth/logout/", post(logout).with_state(ctx.clone()))
+            .route("/auth/tokens/", post(auth_tokens).with_state(ctx.clone()))
+            .nest("/:display_user/", UserRoutes::create(ctx)?)
             .fallback(handler_404)
-            .layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_connected_user));
-
+            .layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
         Ok(router)
     }
 }
@@ -73,19 +69,114 @@ async fn handler_404(_: Request<Body>) -> impl IntoResponse {
     (StatusCode::NOT_FOUND, "Not found !")
 }
 
-async fn middleware_get_connected_user(State(ctx): State<Arc<AppCtx>>, mut request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
+#[derive(Deserialize)]
+struct CreateUserInfos {
+    pub username: EncString,
+    pub email: EncString,
+    pub password: EncString,
+}
+async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateUserInfos>) -> Result<impl IntoResponse, ServerError> {
+    if payload.username.plain()? == "auth" {
+        Err(Error::msg("Forbidden username"))?
+    }
+
+    let url_name = EncString::from(deunicode(payload.username.plain()?.as_str())
+        .replace(|c: char| !c.is_ascii_alphanumeric(), "/")
+        .split("/").collect::<Vec<&str>>().into_iter()
+        .filter(|item| !item.is_empty()).collect::<Vec<&str>>()
+        .join("-").to_lowercase());
+
+    if User::from_url_name(&ctx.database, &url_name).await.is_ok() {
+        return Ok((StatusCode::CONFLICT, "User already exists : duplicated url identifier !".to_string()));
+    } else if User::exists(&ctx.database, &payload.username, &payload.email).await? {
+        return Ok((StatusCode::CONFLICT, "User already exists : duplicated logins !".to_string()));
+    } else {
+        let mut new_user = User::default();
+
+        new_user.name = url_name;
+        new_user.login = payload.username;
+        new_user.email = payload.email;
+        new_user.user_role = UserRole::Guest;
+        match new_user.create_or_reset_password(&ctx.database, &PasswordHash::new(&payload.password)?).await {
+            Ok(_) => {}
+            Err(err) => {
+                return Ok((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create user : {err}")))
+            }
+        };
+    };
+
+    Ok((StatusCode::FOUND, "Created new user".to_string()))
+}
+
+#[derive(Deserialize)]
+struct LoginInfos {
+    pub login: EncString,
+    pub password: EncString,
+    pub device: Option<EncString>,
+}
+async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) -> Result<Json<AuthToken>, ServerError> {
+    let auth_token = User::from_credentials(&ctx.database, &payload.login, &payload.password).await?.generate_auth_token(&ctx.database, &match payload.device {
+        None => { EncString::from("Unknown device") }
+        Some(device) => { device }
+    }).await?;
+
+    Ok(Json(auth_token))
+}
+
+#[axum::debug_handler]
+async fn auth_tokens(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<Json<Vec<AuthToken>>, ServerError> {
+    let req_ctx = request.extensions().get::<Arc<RequestContext>>().unwrap();
+
+    match &*req_ctx.connected_user().await {
+        None => { Err(Error::msg("User not connected"))? }
+        Some(user) => {
+            Ok(Json(AuthToken::from_user(&ctx.database, &user.id()).await?))
+        }
+    }
+}
+
+async fn logout(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
+    match request.headers().get("authtoken") {
+        None => { Err(Error::msg("No token provided in headers".to_string()))? }
+        Some(authentication_token) => {
+            let token = AuthToken::find(&ctx.database, &EncString::from(authentication_token)).await?;
+            token.delete(&ctx.database).await?;
+            Ok((StatusCode::ACCEPTED, "Successfully disconnected user".to_string()))
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+struct PathData {
+    display_user: Option<String>,
+    display_repository: Option<String>,
+}
+async fn middleware_get_request_context(State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
     let mut context = RequestContext::default();
     match request.headers().get("authtoken") {
         None => {}
         Some(authentication_token) => {
-            context.connected_user = RwLock::new(match User::from_auth_token(&ctx.database, &EncString::from(authentication_token)).await {
+            context.connected_user = tokio::sync::RwLock::new(match User::from_auth_token(&ctx.database, &EncString::from(authentication_token)).await {
                 Ok(connected_user) => { Some(connected_user) }
                 Err(_) => { None }
             })
         }
     }
+
+    if let Some(display_user) = display_user {
+        if let Ok(display_user) = User::from_url_name(&ctx.database, &EncString::from_url_path(display_user)).await {
+            *context.display_user.write().await = Some(display_user);
+        }
+    }
+
+    if let Some(display_repository) = display_repository {
+        if let Ok(display_repository) = Repository::from_url_name(&ctx.database, &EncString::from_url_path(display_repository.clone())).await {
+            *context.display_repository.write().await = Some(display_repository);
+        }
+    }
+
     let uri = request.uri().clone();
-    let user_string = if let Some(user) = context.connected_user().as_ref() {
+    let user_string = if let Some(user) = &*context.connected_user().await {
         format!("#{}", user.name)
     } else { String::from("{?}") };
     info!("[{}] {} | {}", request.method(), user_string, uri);
