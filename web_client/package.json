@@ -3,13 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "debug": "debug:build",
-    "debug:build": "webpack --watch --config webpack.debug.js",
-    "dev": "dev:build",
+    "dev": "npm run dev:build",
     "dev:build": "webpack --watch --config webpack.dev.js",
-    "prod": "rel:build",
-    "rel:build": "webpack --config webpack.prod.js",
-    "run_production": "prod"
+    "prod": "npm-run-all --parallel rel:build",
+    "rel:build": "webpack --config webpack.prod.js"
   },
   "dependencies": {
     "@babel/core": "^7.22.20",

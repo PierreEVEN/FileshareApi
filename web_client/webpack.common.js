@@ -19,7 +19,7 @@ module.exports = {
             {
                 test: /\.(hbs)$/,
                 include: path.resolve(__dirname, 'client'),
-                use: path.resolve('server/handlebars_custom_loader.js')
+                use: path.resolve('handlebars_custom_loader.js')
             },
             {
                 test: /\.(scss)$/,

@@ -7,7 +7,7 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::{middleware, Json, Router};
 use axum::extract::{FromRequest, Path, State};
-use axum::routing::post;
+use axum::routing::{get, post};
 use deunicode::deunicode;
 use serde::Deserialize;
 use tracing::{info, warn};
@@ -59,11 +59,11 @@ impl RootRoutes {
             .route("/auth/create-user/", post(create_user).with_state(ctx.clone()))
             .route("/auth/login/", post(login).with_state(ctx.clone()))
             .route("/auth/logout/", post(logout).with_state(ctx.clone()))
-            .route("/auth/tokens/", post(auth_tokens).with_state(ctx.clone()))
+            .route("/auth/tokens/", get(auth_tokens).with_state(ctx.clone()))
             .route("/delete-user/", post(delete_user).with_state(ctx.clone()))
             .nest("/:display_user/", UserRoutes::create(ctx)?)
             .fallback(handler_404)
-            .layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
+            ;//.layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
         Ok(router)
     }
 }
@@ -80,7 +80,7 @@ struct CreateUserInfos {
     pub password: EncString,
 }
 async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateUserInfos>) -> Result<impl IntoResponse, ServerError> {
-    let forbidden_usernames: HashSet<&str> = HashSet::from_iter(vec!["auth", "delete-user"]);
+    let forbidden_usernames: HashSet<&str> = HashSet::from_iter(vec!["auth", "delete-user", "api", "public"]);
 
     if forbidden_usernames.contains(payload.username.plain()?.as_str()) {
         Err(Error::msg("Forbidden username"))?
@@ -161,11 +161,11 @@ async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> 
 }
 
 #[derive(Deserialize, Debug)]
-struct PathData {
+pub struct PathData {
     display_user: Option<String>,
     display_repository: Option<String>,
 }
-async fn middleware_get_request_context(State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: Request<Body>, next: Next) -> Result<Response, impl IntoResponse> {
+pub async fn middleware_get_request_context(State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: Request<Body>, next: Next) -> Result<Response, impl IntoResponse> {
     let mut context = RequestContext::default();
     match request.headers().get("authtoken") {
         None => {}
@@ -178,8 +178,10 @@ async fn middleware_get_request_context(State(ctx): State<Arc<AppCtx>>, Path(Pat
     }
 
     if let Some(display_user) = display_user {
-        if let Ok(display_user) = User::from_url_name(&ctx.database, &EncString::from_url_path(display_user)).await {
+        if let Ok(display_user) = User::from_url_name(&ctx.database, &EncString::from_url_path(display_user.clone())).await {
             *context.display_user.write().await = Some(display_user);
+        } else {
+            return Err((StatusCode::NOT_FOUND, format!("Unknown user '{}'", display_user)));
         }
     }
 

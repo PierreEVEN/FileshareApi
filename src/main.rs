@@ -8,8 +8,8 @@ mod web_client;
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use anyhow::Error;
-use crate::routes::root::{RootRoutes};
+use axum::{middleware, Router};
+use crate::routes::root::{middleware_get_request_context, RootRoutes};
 use axum_server::tls_rustls::RustlsConfig;
 use tracing::{error, info};
 use crate::app_ctx::AppCtx;
@@ -30,6 +30,22 @@ async fn main() {
         }
     };
 
+    // Instantiate router
+    let mut router = Router::new();
+
+    // Start web client
+    let web_client = match WebClient::new(&config.web_client_config).await {
+        Ok(web_client) => { Some(web_client) }
+        Err(error) => {
+            error!("Failed to start web client : {}", error);
+            None
+        }
+    };
+    if let Some(web_client) = web_client {
+        router = router.nest("/", web_client.router().unwrap());
+    }
+
+    // Start server api
     let database = match Database::new(&config.postgres_db_config).await {
         Ok(database) => { database }
         Err(error) => {
@@ -37,22 +53,12 @@ async fn main() {
             return;
         }
     };
-
-    let web_client = match WebClient::new(&config.web_client_config) {
-        Ok(web_client) => { Some(web_client) }
-        Err(error) => {
-            error!("Failed to start web client : {}", error);
-            None
-        }
-    };
-
     let ctx = Arc::new(AppCtx::new(config.clone(), database));
+    router = router.nest("/api/", RootRoutes::create(&ctx).unwrap());
 
-
-    // Instantiate router
-    let router = RootRoutes::create(&ctx).unwrap();
-
-    // Create server
+    let router = router.layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
+    
+    // Create http server
     let addr = SocketAddr::from(([127, 0, 0, 1], config.port));
     if config.use_tls {
         if !config.tls_config.certificate.exists() || config.tls_config.private_key.exists() {

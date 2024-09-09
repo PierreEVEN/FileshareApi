@@ -1,8 +1,0 @@
-.idea
-node_modules
-package-lock.json
-.env
-data_storage
-logs
-public/dist
-**.fileshare
