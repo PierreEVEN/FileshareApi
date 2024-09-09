@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 use anyhow::Error;
 use axum::body::Body;
@@ -5,15 +6,17 @@ use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::{middleware, Json, Router};
-use axum::extract::{Path, State};
+use axum::extract::{FromRequest, Path, State};
 use axum::routing::post;
 use deunicode::deunicode;
 use serde::Deserialize;
 use tracing::{info, warn};
+use tracing_subscriber::fmt::format;
 use crate::app_ctx::AppCtx;
 use crate::database::repository::Repository;
 use crate::database::user::{AuthToken, PasswordHash, User, UserRole};
-use crate::routes::user::UserRoutes;
+use crate::require_connected_user;
+use crate::routes::user::{CreateReposData, UserRoutes};
 use crate::utils::enc_string::EncString;
 use crate::utils::server_error::ServerError;
 
@@ -57,6 +60,7 @@ impl RootRoutes {
             .route("/auth/login/", post(login).with_state(ctx.clone()))
             .route("/auth/logout/", post(logout).with_state(ctx.clone()))
             .route("/auth/tokens/", post(auth_tokens).with_state(ctx.clone()))
+            .route("/delete-user/", post(delete_user).with_state(ctx.clone()))
             .nest("/:display_user/", UserRoutes::create(ctx)?)
             .fallback(handler_404)
             .layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
@@ -76,15 +80,13 @@ struct CreateUserInfos {
     pub password: EncString,
 }
 async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateUserInfos>) -> Result<impl IntoResponse, ServerError> {
-    if payload.username.plain()? == "auth" {
+    let forbidden_usernames: HashSet<&str> = HashSet::from_iter(vec!["auth", "delete-user"]);
+
+    if forbidden_usernames.contains(payload.username.plain()?.as_str()) {
         Err(Error::msg("Forbidden username"))?
     }
 
-    let url_name = EncString::from(deunicode(payload.username.plain()?.as_str())
-        .replace(|c: char| !c.is_ascii_alphanumeric(), "/")
-        .split("/").collect::<Vec<&str>>().into_iter()
-        .filter(|item| !item.is_empty()).collect::<Vec<&str>>()
-        .join("-").to_lowercase());
+    let url_name = payload.username.url_formated()?;
 
     if User::from_url_name(&ctx.database, &url_name).await.is_ok() {
         return Ok((StatusCode::CONFLICT, "User already exists : duplicated url identifier !".to_string()));
@@ -109,6 +111,11 @@ async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateU
 }
 
 #[derive(Deserialize)]
+pub struct UserCredentials {
+    pub login: EncString,
+    pub password: EncString,
+}
+#[derive(Deserialize)]
 struct LoginInfos {
     pub login: EncString,
     pub password: EncString,
@@ -124,15 +131,9 @@ async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) 
 }
 
 #[axum::debug_handler]
-async fn auth_tokens(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<Json<Vec<AuthToken>>, ServerError> {
-    let req_ctx = request.extensions().get::<Arc<RequestContext>>().unwrap();
-
-    match &*req_ctx.connected_user().await {
-        None => { Err(Error::msg("User not connected"))? }
-        Some(user) => {
-            Ok(Json(AuthToken::from_user(&ctx.database, &user.id()).await?))
-        }
-    }
+async fn auth_tokens(State(_ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<Json<Vec<AuthToken>>, ServerError> {
+    let connected_user = require_connected_user!(request);
+    Ok(Json(AuthToken::from_user(&_ctx.database, connected_user.id()).await?))
 }
 
 async fn logout(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
@@ -146,12 +147,25 @@ async fn logout(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Resul
     }
 }
 
+async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
+    let connected_user = require_connected_user!(request);
+    let data = Json::<UserCredentials>::from_request(request, &ctx).await?;
+    let mut from_creds = User::from_credentials(&ctx.database, &data.login, &data.password).await?;
+
+    if connected_user.id() == from_creds.id() {
+        from_creds.delete(&ctx.database).await?;
+        Ok((StatusCode::OK, "Successfully deleted user"))
+    } else {
+        Err(ServerError::msg(StatusCode::NOT_FOUND, "Not found"))
+    }
+}
+
 #[derive(Deserialize, Debug)]
 struct PathData {
     display_user: Option<String>,
     display_repository: Option<String>,
 }
-async fn middleware_get_request_context(State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
+async fn middleware_get_request_context(State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: Request<Body>, next: Next) -> Result<Response, impl IntoResponse> {
     let mut context = RequestContext::default();
     match request.headers().get("authtoken") {
         None => {}
@@ -172,6 +186,8 @@ async fn middleware_get_request_context(State(ctx): State<Arc<AppCtx>>, Path(Pat
     if let Some(display_repository) = display_repository {
         if let Ok(display_repository) = Repository::from_url_name(&ctx.database, &EncString::from_url_path(display_repository.clone())).await {
             *context.display_repository.write().await = Some(display_repository);
+        } else {
+            return Err((StatusCode::NOT_FOUND, format!("Unknown repository '{}'", display_repository)));
         }
     }
 

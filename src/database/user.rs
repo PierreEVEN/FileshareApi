@@ -1,4 +1,4 @@
-use crate::database::item::Item;
+use crate::database::repository::Repository;
 use crate::database::{Database, DatabaseId, DatabaseIdTrait};
 use crate::utils::enc_string::EncString;
 use crate::{make_database_id, make_wrapped_db_type, query_fmt, query_object, query_objects};
@@ -62,7 +62,7 @@ impl postgres_types::ToSql for UserRole {
     to_sql_checked!();
 }
 
-#[derive(Serialize, Debug, Default, FromRow)]
+#[derive(Serialize, Debug, Default, FromRow, Clone)]
 pub struct User {
     id: UserId,
     pub email: EncString,
@@ -165,6 +165,9 @@ impl User {
     }
 
     pub async fn push(&mut self, db: &Database) -> Result<(), Error> {
+        if self.name.is_empty() {
+            return Err(Error::msg("Invalid name"));
+        }
         query_fmt!(db, "INSERT INTO SCHEMA_NAME.users
                         (id, email, password_hash, name, allow_contact, user_role, login) VALUES
                         ($1, $2, $3, $4, $5, $6, $7)
@@ -175,10 +178,14 @@ impl User {
     }
 
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
-        for mut item in Item::from_user(db, &self.id).await? {
+        for mut item in Repository::from_user(db, &self.id).await? {
             item.delete(db).await?;
         }
-        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.users WHERE id = $1;"#, *self.id);
+        for token in AuthToken::from_user(db, self.id()).await? {
+            token.delete(db).await?;
+        }
+        
+        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.users WHERE id = $1;"#, self.id);
         Ok(())
     }
 }

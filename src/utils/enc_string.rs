@@ -2,6 +2,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::ops::Deref;
 use anyhow::Error;
 use axum::http::HeaderValue;
+use deunicode::deunicode;
 use serde::{Deserialize, Serialize};
 use crate::make_wrapped_db_type;
 
@@ -11,18 +12,22 @@ impl EncString {
     pub fn plain(&self) -> Result<String, Error> {
         Ok(urlencoding::decode(self.0.as_str())?.to_string())
     }
-
     pub fn encoded(&self) -> &String {
         &self.0
     }
-
     pub fn is_empty(&self) -> bool { self.0.is_empty() }
-
     pub fn encode(string: &str) -> Self {
         Self(urlencoding::encode(string).to_string())
     }
     pub fn from_url_path(string: String) -> Self {
         Self(string)
+    }
+    pub fn url_formated(&self) -> Result<Self, Error> {
+        Ok(Self::encode(deunicode(self.plain()?.as_str())
+            .replace(|c: char| !c.is_ascii_alphanumeric(), "/")
+            .split("/").collect::<Vec<&str>>().into_iter()
+            .filter(|item| !item.is_empty()).collect::<Vec<&str>>()
+            .join("-").to_lowercase().as_str()))
     }
 }
 

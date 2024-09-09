@@ -90,8 +90,8 @@ impl Item {
         query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE id = $1", id).ok_or(Error::msg("Failed to find item from id"))
     }
 
-    pub async fn from_repos(db: &Database, id: &RepositoryId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE repos = $1", id))
+    pub async fn from_repository(db: &Database, id: &RepositoryId) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE repository = $1", id))
     }
 
     pub async fn from_user(db: &Database, id: &UserId) -> Result<Vec<Self>, Error> {

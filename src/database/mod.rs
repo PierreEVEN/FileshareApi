@@ -125,6 +125,12 @@ macro_rules! make_database_id {
                 &self.0
             }
         }
+        impl PartialEq<Self> for $T {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+        impl Eq for $T {}
     };
 }
 

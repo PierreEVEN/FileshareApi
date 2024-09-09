@@ -1,18 +1,23 @@
 use crate::app_ctx::AppCtx;
-use crate::routes::root::RequestContext;
+use crate::routes::root::{RequestContext, UserCredentials};
 use anyhow::Error;
-use axum::extract::Request;
+use axum::extract::{FromRequest, Request, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::get;
-use axum::Router;
+use axum::routing::{get, post};
+use axum::{Json, Router};
 use std::sync::Arc;
+use axum::body::Body;
+use crate::database::user::User;
+use crate::{require_connected_user, require_display_repository};
+use crate::utils::server_error::ServerError;
 
 pub struct RepositoryRoutes {}
 
 impl RepositoryRoutes {
-    pub fn create(_: &Arc<AppCtx>) -> Result<Router, Error> {
+    pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         let router = Router::new()
+            .route("/delete/", post(delete_repository).with_state(ctx.clone()))
             .route("/", get(handle_repos));
 
         Ok(router)
@@ -23,5 +28,18 @@ async fn handle_repos(request: Request) -> impl IntoResponse {
 
     let ctx = request.extensions().get::<Arc<RequestContext>>().unwrap();
 
-    (StatusCode::FOUND, format!("Display repository : {}", ctx.display_repository().await.as_ref().unwrap().display_name))
+    (StatusCode::FOUND, format!("Display repository : {:?}", ctx))
+}
+
+async fn delete_repository(State(ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<impl IntoResponse, ServerError> {
+    let connected_user = require_connected_user!(request);
+    let mut display_repository = require_display_repository!(request);
+    let data = Json::<UserCredentials>::from_request(request, &ctx).await?;
+    let from_creds = User::from_credentials(&ctx.database, &data.login, &data.password).await?;
+    if connected_user.id() == from_creds.id() {
+        display_repository.delete(&ctx.database).await?;
+        Ok((StatusCode::OK, "Successfully deleted repository"))
+    } else {
+        Err(ServerError::msg(StatusCode::NOT_FOUND, "Not found"))
+    }
 }

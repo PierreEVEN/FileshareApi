@@ -1,12 +1,17 @@
 use crate::app_ctx::AppCtx;
+use crate::database::repository::{Repository, RepositoryStatus};
 use crate::routes::repository::RepositoryRoutes;
 use crate::routes::root::RequestContext;
+use crate::utils::enc_string::EncString;
+use crate::utils::server_error::ServerError;
+use crate::require_connected_user;
 use anyhow::Error;
-use axum::extract::Request;
+use axum::extract::{FromRequest, Request, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::get;
-use axum::Router;
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use serde::Deserialize;
 use std::sync::Arc;
 
 pub struct UserRoutes {}
@@ -15,6 +20,7 @@ impl UserRoutes {
     pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         let router = Router::new()
             .route("/", get(handle_user))
+            .route("/create-repository/", post(create_repository).with_state(ctx.clone()))
             .nest("/:display_repository/", RepositoryRoutes::create(ctx)?);
 
         Ok(router)
@@ -26,4 +32,28 @@ async fn handle_user(request: Request) -> impl IntoResponse {
     let ctx = request.extensions().get::<Arc<RequestContext>>().unwrap();
 
     (StatusCode::FOUND, format!("Display user : {}", ctx.display_user().await.as_ref().unwrap().name))
+}
+
+
+#[derive(Deserialize, Debug)]
+pub struct CreateReposData {
+    name: EncString,
+    status: String
+}
+async fn create_repository(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let user = require_connected_user!(request);
+    let data = Json::<CreateReposData>::from_request(request, &ctx).await?;
+
+    if Repository::from_url_name(&ctx.database, &data.name.url_formated()?).await.is_ok() {
+        return Err(ServerError::msg(StatusCode::FORBIDDEN, "A repository with this name already exists"));
+    }
+    
+    let mut repository = Repository::default();
+    repository.url_name = data.name.url_formated()?;
+    repository.display_name = data.name.clone();
+    repository.status = RepositoryStatus::from(data.status.clone());
+    repository.owner = user.id().clone();
+    repository.push(&ctx.database).await?;
+
+    Ok(Json(repository.url_name))
 }
