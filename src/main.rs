@@ -3,16 +3,19 @@ pub mod config;
 pub mod database;
 mod app_ctx;
 pub mod utils;
+mod web_client;
 
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use anyhow::Error;
 use crate::routes::root::{RootRoutes};
 use axum_server::tls_rustls::RustlsConfig;
 use tracing::{error, info};
 use crate::app_ctx::AppCtx;
 use crate::config::Config;
 use crate::database::Database;
+use crate::web_client::WebClient;
 
 #[tokio::main]
 async fn main() {
@@ -32,6 +35,14 @@ async fn main() {
         Err(error) => {
             error!("{}", error);
             return;
+        }
+    };
+
+    let web_client = match WebClient::new(&config.web_client_config) {
+        Ok(web_client) => { Some(web_client) }
+        Err(error) => {
+            error!("Failed to start web client : {}", error);
+            None
         }
     };
 

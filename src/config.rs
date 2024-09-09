@@ -17,6 +17,12 @@ pub struct PostgresConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct WebClientConfig {
+    pub client_path: PathBuf,
+    pub debug: bool
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ServiceEmailConfig {
     pub host: String,
     pub smtp_port: String,
@@ -34,6 +40,7 @@ pub struct Config {
     pub port: u16,
     pub postgres_db_config: PostgresConfig,
     pub server_mail_server: ServiceEmailConfig,
+    pub web_client_config: WebClientConfig,
     pub tls_config: TlsConfig,
     pub use_tls: bool
 }
@@ -57,6 +64,10 @@ impl Default for Config {
                 host: "mail.fileshare.fr".to_string(),
                 smtp_port: "465".to_string(),
                 email_username: "noreply@fileshare.fr".to_string(),
+            },
+            web_client_config: WebClientConfig {
+                client_path: PathBuf::from("./web_client"),
+                debug: false,
             },
             tls_config: TlsConfig {
                 certificate: PathBuf::from("/Path/To/certificate.pem"),
