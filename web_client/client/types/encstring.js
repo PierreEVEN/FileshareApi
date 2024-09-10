@@ -1,0 +1,4 @@
+class EncString {
+}
+
+export {EncString}

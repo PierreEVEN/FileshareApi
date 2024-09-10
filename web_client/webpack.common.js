@@ -3,7 +3,7 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 module.exports = {
     entry: {
-        index: './client/layout/index.js',
+        index: './client/app.js',
         viewers: {
             import: './client/embed_viewers/index.js',
             dependOn: ['index'],

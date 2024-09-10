@@ -31,13 +31,20 @@ Handlebars.registerHelper("item_thumbnail", (item) => {
     }
 });
 
-/* ################## HELPER {CTX} ################## */
+/* ################## HELPER {TYPEICON} ################## */
 Handlebars.registerHelper("typeicon", function (options) {
     return new Handlebars.SafeString(`<img class='typeicon' alt='typeicon' src="${get_mime_icon_path(options)}">`);
 });
 
 /* ################## HELPER {CTX} ################## */
 Handlebars.registerHelper("ctx", function (options) {
+    if (!this['__handlebar_ctx_id'])
+        return console.error('This template was not instanced with a context');
+    return new Handlebars.SafeString("console.assert(document.__handlebar_custom_loader.__registered_ctx[" + this['__handlebar_ctx_id'] + "], 'no context provided for : " + options + " on object :', this, '\\n Available contexts :', document.__handlebar_custom_loader.__registered_ctx); document.__handlebar_custom_loader.__registered_ctx[" + this['__handlebar_ctx_id'] + "]." + options);
+});
+
+/* ################## HELPER {OBJ} ################## */
+Handlebars.registerHelper("object", function (options) {
     if (!this['__handlebar_ctx_id'])
         return console.error('This template was not instanced with a context');
     return new Handlebars.SafeString("console.assert(document.__handlebar_custom_loader.__registered_ctx[" + this['__handlebar_ctx_id'] + "], 'no context provided for : " + options + " on object :', this, '\\n Available contexts :', document.__handlebar_custom_loader.__registered_ctx); document.__handlebar_custom_loader.__registered_ctx[" + this['__handlebar_ctx_id'] + "]." + options);
