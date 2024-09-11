@@ -1,3 +1,5 @@
+import {EncString} from "./encstring";
+
 class RepositoryStatus {
     constructor(data) {
         switch (data) {
@@ -35,7 +37,7 @@ class Repository {
         /**
          * @type {EncString}
          */
-        this.url_name = data.url_name;
+        this.url_name = new EncString(data.url_name);
         /**
          * @type {number}
          */
@@ -43,7 +45,7 @@ class Repository {
         /**
          * @type {EncString}
          */
-        this.description = data.description;
+        this.description = new EncString(data.description);
         /**
          * @type {RepositoryStatus}
          */
@@ -51,7 +53,7 @@ class Repository {
         /**
          * @type {EncString}
          */
-        this.display_name = data.display_name;
+        this.display_name = new EncString(data.display_name);
         /**
          * @type {number}
          */

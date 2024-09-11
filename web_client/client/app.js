@@ -1,12 +1,14 @@
 
 import './layout/handlebars_helpers';
-import {GlobalHeader} from "./modules/global_header";
-
 //@FIX : don't importing this cause a weird issue when rendering pdf...
-require('./embed_viewers/custom_elements/pdf_viewer/pdf-viewer.hbs')
-require('./embed_viewers/custom_elements/document/code')
-require('./embed_viewers/custom_elements/document/markdown')
-require('./embed_viewers/custom_elements/pdf_viewer/pdf-viewer')
+require('./embed_viewers/custom_elements/pdf_viewer/pdf-viewer.hbs');
+require('./embed_viewers/custom_elements/document/code');
+require('./embed_viewers/custom_elements/document/markdown');
+require('./embed_viewers/custom_elements/pdf_viewer/pdf-viewer');
+require('./app.scss');
+
+import {GlobalHeader} from "./modules/global_header/global_header";
+import {SideBar} from "./modules/side_bar/side_bar";
 
 class FileshareApp {
     constructor() {
@@ -14,7 +16,7 @@ class FileshareApp {
          * @type {HTMLElement}
          * @private
          */
-        const layout = require('./layout.hbs')({}, {});
+        const layout = require('./app.hbs')({}, {});
         document.body.append(layout);
 
         /**
@@ -36,11 +38,10 @@ class FileshareApp {
         this._global_header = new GlobalHeader(this._elements.global_header);
 
         /**
-         * @type {RepositoryList}
+         * @type {SideBar}
          * @private
          */
-        this._repository_list = null;
-
+        this._side_bar = new SideBar(this._elements.side_bar);
     }
 
     set_display_repository(user, repository) {
@@ -59,12 +60,11 @@ class FileshareApp {
         this._global_header.set_connected_user(user);
 
         if (user) {
-            if (!this._repository_list) {
-                const {RepositoryList} = require("./modules/repository_list");
-                this._repository_list = new RepositoryList(this._elements.repo_menu);
+            if (!this._side_bar) {
+                this._side_bar = new SideBar(this._elements.side_bar);
             }
         }
-        this._repository_list.refresh(user);
+        this._side_bar.refresh(user);
     }
 }
 

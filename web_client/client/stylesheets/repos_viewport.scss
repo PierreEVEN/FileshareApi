@@ -1,4 +1,4 @@
-@import "common/colors";
+@import "colors";
 
 .file-view {
   position: relative;
@@ -114,7 +114,7 @@
 
     #directory-description {
       max-width: 30%;
-      background-color: $background_1;
+      background-color: $background;
       overflow: auto;
 
       img {

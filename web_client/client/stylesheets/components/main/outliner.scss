@@ -1,4 +1,4 @@
-@import "../../common/colors";
+@import "../../colors";
 
 
 .outliner {
@@ -8,7 +8,7 @@
   min-width: 200px;
   height: 100%;
   flex-direction: column;
-  background-color: $background_2;
+  background-color: $secondary;
   z-index: 2;
 
   .category {

@@ -33,18 +33,6 @@ async fn main() {
     // Instantiate router
     let mut router = Router::new();
 
-    // Start web client
-    let web_client = match WebClient::new(&config.web_client_config).await {
-        Ok(web_client) => { Some(web_client) }
-        Err(error) => {
-            error!("Failed to start web client : {}", error);
-            None
-        }
-    };
-    if let Some(web_client) = web_client {
-        router = router.nest("/", web_client.router().unwrap());
-    }
-
     // Start server api
     let database = match Database::new(&config.postgres_db_config).await {
         Ok(database) => { database }
@@ -56,6 +44,18 @@ async fn main() {
     let ctx = Arc::new(AppCtx::new(config.clone(), database));
     router = router.nest("/api/", RootRoutes::create(&ctx).unwrap());
 
+    // Start web client
+    let web_client = match WebClient::new(&config.web_client_config).await {
+        Ok(web_client) => { Some(web_client) }
+        Err(error) => {
+            error!("Failed to start web client : {}", error);
+            None
+        }
+    };
+    if let Some(web_client) = web_client {
+        router = router.nest("/", web_client.router(&ctx).unwrap());
+    }
+    
     let router = router.layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
     
     // Create http server

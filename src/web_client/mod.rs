@@ -6,17 +6,21 @@ use std::process::{Stdio};
 use std::sync::Arc;
 use anyhow::Error;
 use axum::body::Body;
-use axum::extract::Request;
-use axum::http::HeaderMap;
+use axum::extract::{Request, State};
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect};
 use axum::Router;
 use axum::routing::{get, post};
+use serde::Serialize;
 use tokio::fs::File;
 use tokio::process::{Child, Command};
 use tracing::{info};
 use which::which;
 use crate::app_ctx::AppCtx;
 use crate::config::WebClientConfig;
+use crate::database::repository::Repository;
+use crate::database::user::User;
+use crate::{get_connected_user, get_display_repository, get_display_user};
 use crate::utils::server_error::ServerError;
 use crate::web_client::static_file_server::StaticFileServer;
 
@@ -70,18 +74,45 @@ impl WebClient {
         Ok(Self { _subcommand: command })
     }
 
-    pub fn router(&self) -> Result<Router, Error> {
+    pub fn router(&self, ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         Ok(Router::new()
-            .route("/", get(get_index))
-            .route("/:display_user/", get(get_index))
-            .route("/:display_user/:display_repository/", get(get_index))
-            .route("/:display_user/:display_repository/*path", get(get_index))
+            .route("/", get(get_index).with_state(ctx.clone()))
+            .route("/:display_user/", get(get_index).with_state(ctx.clone()))
+            .route("/:display_user/:display_repository/", get(get_index).with_state(ctx.clone()))
+            .route("/:display_user/:display_repository/*path", get(get_index).with_state(ctx.clone()))
             .route("/favicon.ico", get(StaticFileServer::serve_file_from_path).with_state(PathBuf::from("web_client/public/images/icons/favicon.ico")))
             .nest("/public/", StaticFileServer::router(PathBuf::from("web_client/public")))
         )
     }
 }
 
-async fn get_index() -> Result<impl IntoResponse, ServerError> {
-    Ok(Html(fs::read_to_string("web_client/public/index.html")?))
+#[derive(Serialize, Default)]
+struct ClientAppConfig {
+    pub origin: String,
+    pub connected_user: Option<User>,
+    pub display_user: Option<User>,
+    pub display_repository: Option<Repository>,
+}
+
+async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let mut client_config = ClientAppConfig {
+        origin: format!("{}://{}", if ctx.config.use_tls { "https" } else { "http" }, request.headers().get("host").ok_or(ServerError::msg(StatusCode::INTERNAL_SERVER_ERROR, "invalid host in request headers"))?.to_str()?),
+        ..Default::default()
+    };
+
+
+    println!("TEQST : {:?} / {:?}", request, request.uri());
+    get_connected_user!(request, user, {
+        client_config.connected_user = Some(user.clone());
+    });
+    get_display_user!(request, user, {
+        client_config.display_user = Some(user.clone());
+    });
+    get_display_repository!(request, repository, {
+        client_config.display_repository = Some(repository.clone());
+    });
+
+    let index_data = fs::read_to_string("web_client/public/index.html")?;
+    let index_data = index_data.replace(r#"data-app_config='{}'"#, format!(r##"data-app_config='{}'"##, serde_json::to_string(&client_config)?).as_str());
+    Ok(Html(index_data))
 }

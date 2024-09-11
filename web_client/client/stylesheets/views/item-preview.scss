@@ -1,4 +1,4 @@
-@import "../common/colors";
+@import "../colors";
 
 document-code {
     display: flex;
@@ -160,7 +160,7 @@ document-code {
 
 @keyframes item-grow {
     100% {
-        background-color: $background_2;
+        background-color: $secondary;
         width: 100vw;
         height: 100dvh;
         top: 0;

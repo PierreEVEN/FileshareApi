@@ -7,7 +7,7 @@ pub mod repository;
 #[macro_export]
 macro_rules! get_connected_user {
     ($request:expr, $prop:ident, $body:expr, $or_else:expr) => {{
-        let req_ctx = $request.extensions().get::<Arc<RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.connected_user().await.as_ref() {
             {$body}
         } else {
@@ -16,7 +16,7 @@ macro_rules! get_connected_user {
     }};
 
     ($request:expr, $prop:ident, $body:expr) => (
-        let req_ctx = $request.extensions().get::<Arc<RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.connected_user().await.as_ref() {
             $body
         }
@@ -38,7 +38,7 @@ macro_rules! require_connected_user {
 #[macro_export]
 macro_rules! get_display_repository {
     ($request:expr, $prop:ident, $body:expr, $or_else:expr) => {{
-        let req_ctx = $request.extensions().get::<Arc<RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.display_repository().await.as_ref() {
             {$body}
         } else {
@@ -47,8 +47,27 @@ macro_rules! get_display_repository {
     }};
 
     ($request:expr, $prop:ident, $body:expr) => (
-        let req_ctx = $request.extensions().get::<Arc<RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.display_repository().await.as_ref() {
+            $body
+        }
+    );
+}
+
+#[macro_export]
+macro_rules! get_display_user {
+    ($request:expr, $prop:ident, $body:expr, $or_else:expr) => {{
+        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
+        if let Some($prop) = req_ctx.display_user().await.as_ref() {
+            {$body}
+        } else {
+            $or_else
+        }
+    }};
+
+    ($request:expr, $prop:ident, $body:expr) => (
+        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
+        if let Some($prop) = req_ctx.display_user().await.as_ref() {
             $body
         }
     );

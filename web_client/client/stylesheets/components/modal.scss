@@ -1,4 +1,4 @@
-@import "../common/colors";
+@import "../colors";
 
 .modal-container {
   position: absolute;
@@ -34,7 +34,7 @@
   }
 
   .modal-box {
-    background-color: $background_1;
+    background-color: $background;
     position: absolute;
     left: 50%;
     top: 50%;

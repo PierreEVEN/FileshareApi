@@ -1,3 +1,5 @@
+import {EncString} from "./encstring";
+
 class UserRole {
     constructor(data) {
         switch (data) {
@@ -35,15 +37,15 @@ class User {
         /**
          * @type {EncString}
          */
-        this.email = data.email;
+        this.email = new EncString(data.email);
         /**
          * @type {EncString}
          */
-        this.name = data.name;
+        this.name = new EncString(data.name);
         /**
          * @type {EncString}
          */
-        this.login = data.login;
+        this.login = new EncString(data.login);
         /**
          * @type {bool}
          */

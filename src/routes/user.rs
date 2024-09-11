@@ -4,7 +4,7 @@ use crate::routes::repository::RepositoryRoutes;
 use crate::routes::root::RequestContext;
 use crate::utils::enc_string::EncString;
 use crate::utils::server_error::ServerError;
-use crate::require_connected_user;
+use crate::{get_connected_user, require_connected_user};
 use anyhow::Error;
 use axum::extract::{FromRequest, Request, State};
 use axum::http::StatusCode;
@@ -19,7 +19,8 @@ pub struct UserRoutes {}
 impl UserRoutes {
     pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         let router = Router::new()
-            .route("/", get(handle_user))
+            .route("/repositories/", get(get_repositories).with_state(ctx.clone()))
+            .route("/repositories/shared/", get(get_shared_repositories).with_state(ctx.clone()))
             .route("/create-repository/", post(create_repository).with_state(ctx.clone()))
             .nest("/:display_repository/", RepositoryRoutes::create(ctx)?);
 
@@ -27,13 +28,17 @@ impl UserRoutes {
     }
 }
 
-async fn handle_user(request: Request) -> impl IntoResponse {
-
-    let ctx = request.extensions().get::<Arc<RequestContext>>().unwrap();
-
-    (StatusCode::FOUND, format!("Display user : {}", ctx.display_user().await.as_ref().unwrap().name))
+async fn get_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> impl IntoResponse {
+    let user = require_connected_user!(request);
+    let repositories = Repository::from_user(&ctx.database, user.id()).await?;
+    Ok(Json(repositories))
 }
 
+async fn get_shared_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> impl IntoResponse {
+    let user = require_connected_user!(request);
+    let repositories = Repository::from_user(&ctx.database, user.id()).await?;
+    Ok(Json(repositories))
+}
 
 #[derive(Deserialize, Debug)]
 pub struct CreateReposData {
