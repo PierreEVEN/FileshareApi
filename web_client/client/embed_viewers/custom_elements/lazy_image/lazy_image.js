@@ -25,7 +25,6 @@ class LazyImage extends HTMLElement {
             this.append(image);
         }
     }
-
 }
 
 customElements.define("lazy-img", LazyImage);

@@ -45,9 +45,12 @@ Handlebars.registerHelper("ctx", function (options) {
 
 /* ################## HELPER {OBJECT} ################## */
 Handlebars.registerHelper("object", function (options) {
-    console.log("DEBUG TEST", this, options)
-    this.test_val = 5;
-    return new Handlebars.SafeString('test_val="function() {console.log("haha")}"');
+    if (!this['__registered_objects_container_id'])
+       return console.error('This template was not instanced with an object container id');
+
+    let name = '__object_id_' + this.__registered_objects_container_id + "_" + options + "__";
+    document.__handlebar_custom_loader.__registered_objects_container[this.__registered_objects_container_id].set(options, name);
+    return new Handlebars.SafeString('__custom-id="' + name + '"');
 });
 
 /* ################## HELPER {MARKDOWN} ################## */
