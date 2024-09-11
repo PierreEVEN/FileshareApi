@@ -1,3 +1,13 @@
+
+import './layout/handlebars_helpers';
+
+//@FIX : don't importing this cause a weird issue when rendering pdf...
+require('./embed_viewers/custom_elements/pdf_viewer/pdf-viewer.hbs')
+require('./embed_viewers/custom_elements/document/code')
+require('./embed_viewers/custom_elements/document/markdown')
+require('./embed_viewers/custom_elements/pdf_viewer/pdf-viewer')
+
+
 class FileshareApp {
     constructor() {
         /**
@@ -24,11 +34,7 @@ class FileshareApp {
          */
         this._layout = require('./layout.hbs')({}, {});
 
-        //this._layout.parse(["test"], this)
-        console.log(this._layout, this._layout.parse);
-        if (this._layout.parse)
-            this._layout.parse(["test"], this);
-        console.log(this._layout, this._layout.parse, this);
+        console.log(this._layout, this._layout.getAttribute('test_val'))
 
     }
 

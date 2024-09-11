@@ -43,11 +43,11 @@ Handlebars.registerHelper("ctx", function (options) {
     return new Handlebars.SafeString("console.assert(document.__handlebar_custom_loader.__registered_ctx[" + this['__handlebar_ctx_id'] + "], 'no context provided for : " + options + " on object :', this, '\\n Available contexts :', document.__handlebar_custom_loader.__registered_ctx); document.__handlebar_custom_loader.__registered_ctx[" + this['__handlebar_ctx_id'] + "]." + options);
 });
 
-/* ################## HELPER {OBJ} ################## */
+/* ################## HELPER {OBJECT} ################## */
 Handlebars.registerHelper("object", function (options) {
-    if (!this['__handlebar_ctx_id'])
-        return console.error('This template was not instanced with a context');
-    return new Handlebars.SafeString("console.assert(document.__handlebar_custom_loader.__registered_ctx[" + this['__handlebar_ctx_id'] + "], 'no context provided for : " + options + " on object :', this, '\\n Available contexts :', document.__handlebar_custom_loader.__registered_ctx); document.__handlebar_custom_loader.__registered_ctx[" + this['__handlebar_ctx_id'] + "]." + options);
+    console.log("DEBUG TEST", this, options)
+    this.test_val = 5;
+    return new Handlebars.SafeString('test_val="function() {console.log("haha")}"');
 });
 
 /* ################## HELPER {MARKDOWN} ################## */
