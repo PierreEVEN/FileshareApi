@@ -1,6 +1,6 @@
 import {print_message} from "../../layout/widgets/components/message_box.js";
 import {REPOS_BUILDER} from "../../layout/widgets/viewport/repos_builder"
-import {FilesystemObject} from "./filesystem_v2";
+import {FilesystemObject} from "../../types/filesystem_v2";
 import {PAGE_CONTEXT} from "./utils";
 
 class TransferStats {

@@ -1,4 +1,5 @@
 import {EncString} from "./encstring";
+import {Filesystem} from "./filesystem";
 
 class RepositoryStatus {
     constructor(data) {
@@ -66,6 +67,11 @@ class Repository {
          * @type {number}
          */
         this.allow_visitor_upload = data.allow_visitor_upload;
+
+        /**
+         * @type {Filesystem}
+         */
+        this.content = new Filesystem(this.id)
     }
 
     /**

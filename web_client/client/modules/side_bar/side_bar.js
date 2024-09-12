@@ -44,7 +44,7 @@ class SideBar {
             this._elements.div_my_repositories.classList.add('expand');
             const my_repos = await fetch_api('repositories/');
             for (const repository of my_repos) {
-                const tree = require('./repository_tree.hbs')(new Repository(repository.repository).display_data(),{
+                const tree = require('./repository_tree/repository_tree.hbs')(new Repository(repository.repository).display_data(),{
                     select: () => {
                         APP_CONFIG.set_display_repository(new User(repository.user), new Repository(repository.repository));
                     }
@@ -70,7 +70,7 @@ class SideBar {
             this._elements.div_shared.classList.add('expand');
             const my_repos = await fetch_api('repositories/shared/');
             for (const repos of my_repos) {
-                const tree = require('./repository_tree.hbs')(new Repository(repos).display_data(),{});
+                const tree = require('./repository_tree/repository_tree.hbs')(new Repository(repos).display_data(),{});
                 this._elements.shared.append(tree);
             }
         }

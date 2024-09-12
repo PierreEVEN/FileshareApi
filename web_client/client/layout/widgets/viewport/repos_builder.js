@@ -1,5 +1,5 @@
 import {parse_fetch_result, print_message} from "../components/message_box.js";
-import {Filesystem, FilesystemObject} from "../../../common/tools/filesystem_v2.js";
+import {Filesystem, FilesystemObject} from "../../../types/filesystem_v2.js";
 import {Navigator} from "../../../common/tools/navigator.js";
 import {PAGE_CONTEXT, permissions} from "../../../common/tools/utils";
 import {LOCAL_USER} from "../../../common/tools/user";

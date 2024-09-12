@@ -4,7 +4,7 @@ import {parse_fetch_result, print_message} from "../components/message_box.js";
 import {REPOS_BUILDER} from "./repos_builder";
 import {PAGE_CONTEXT, permissions} from "../../../common/tools/utils";
 import {ClientString} from "../../../common/tools/client_string";
-import {FilesystemObject} from "../../../common/tools/filesystem_v2";
+import {FilesystemObject} from "../../../types/filesystem_v2";
 
 const edit_dir_hbs = require('./menus/edit_directory.hbs')
 const edit_file_hbs = require('./menus/edit_file.hbs')

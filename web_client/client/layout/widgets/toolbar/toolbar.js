@@ -4,7 +4,7 @@ const {PAGE_CONTEXT, humanFileSize, permissions} = require("../../../common/tool
 const {spawn_context_action} = require("../components/context_action");
 const {ClientString} = require("../../../common/tools/client_string");
 const {open_modal, close_modal} = require("../../../modules/modal/modal");
-const {FilesystemObject} = require("../../../common/tools/filesystem_v2");
+const {FilesystemObject} = require("../../../types/filesystem_v2");
 
 const edit_dir_hbs = require('../viewport/menus/edit_directory.hbs')
 
