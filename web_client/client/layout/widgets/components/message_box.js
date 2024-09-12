@@ -5,6 +5,8 @@ let message_timeout = null;
 
 function print_message(severity, title, message) {
     console.warn(`Message [${severity}] : ${title}\n${message}`)
+    if (!message_box)
+        return;
     message_box.classList.add('message-box-open');
     message_box.classList.remove('message-box-close');
     message_box.querySelector('h1').innerText = title;

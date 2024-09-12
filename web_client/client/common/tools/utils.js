@@ -86,7 +86,7 @@ class PageContext {
             this.display_repos.description = new ClientString(data.display_repos.description)
             this.display_repos.display_name = new ClientString(data.display_repos.display_name)
         }
-        this.request_path = ClientString.FromClient(decodeURI(data.request_path));
+        this.request_path = ClientString.FromClient(decodeURIComponent(data.request_path));
     }
 
     user_path() {

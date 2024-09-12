@@ -34,7 +34,6 @@ pub struct CreateReposData {
 async fn create_repository(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let user = require_connected_user!(request);
     let data = Json::<CreateReposData>::from_request(request, &ctx).await?;
-
     if Repository::from_url_name(&ctx.database, &data.name.url_formated()?).await.is_ok() {
         return Err(ServerError::msg(StatusCode::FORBIDDEN, "A repository with this name already exists"));
     }

@@ -18,7 +18,13 @@ async function fetch_api(path, method = 'GET', body = null) {
         await Authentication.login();
     } else {
         if (result.status.toString().startsWith("2")) {
-            return await result.json();
+            let text = await result.text();
+            try {
+                return JSON.parse(text);
+            }
+            catch (err) {
+                return text;
+            }
         }
     }
     throw {message: `${await result.text()}`, code:result.status}

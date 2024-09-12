@@ -69,6 +69,17 @@ class Repository {
     }
 
     /**
+     * @return {Repository}
+     */
+    display_data() {
+        const result = JSON.parse(JSON.stringify(this));
+        result.url_name = this.url_name.plain()
+        result.description = this.description.plain()
+        result.display_name = this.display_name.plain()
+        return result
+    }
+
+    /**
      * @param id {number}
      * @returns {Repository}
      */

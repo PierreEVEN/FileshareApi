@@ -3,6 +3,7 @@ import {fetch_api} from "../../utilities/request";
 import {EncString} from "../../types/encstring";
 import {APP_COOKIES} from "../../utilities/cookies";
 import {APP_CONFIG} from "../../types/app_config";
+import {print_message} from "../../layout/widgets/components/message_box";
 
 const Authentication = {
     login: async () => {
@@ -53,7 +54,8 @@ const Authentication = {
             });
         });
     },
-    logout: () => {
+    logout: async () => {
+        await fetch_api('auth/logout/', 'POST').catch(error => print_message(`Failed to log out : ${error.message}`));
         APP_COOKIES.logout();
         APP_CONFIG.set_connected_user(null);
     }

@@ -45,6 +45,14 @@ body {
       min-width: 200px;
       height: 100%;
 
+      .category {
+        display: flex;
+        flex-direction: column;
+
+        .content {
+          margin-left: 15px;
+        }
+      }
 
       @media (orientation: portrait) {
         & {

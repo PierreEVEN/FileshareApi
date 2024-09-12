@@ -11,10 +11,28 @@
     margin: 0;
     background-color: transparent;
 
+    p {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     img {
       width: 20px;
       margin-right: 10px;
       margin-left: 2px;
+    }
+
+    .arrow {
+      transition-duration: 0.2s;
+    }
+  }
+
+  .expand {
+    > button {
+      > p.arrow {
+        rotate: 90deg;
+      }
     }
   }
 }

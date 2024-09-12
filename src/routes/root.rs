@@ -153,9 +153,9 @@ async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) 
         user: User,
     }
 
-    Ok(Json(LoginResult{
+    Ok(Json(LoginResult {
         user,
-        token: auth_token
+        token: auth_token,
     }))
 }
 
@@ -165,11 +165,16 @@ async fn auth_tokens(State(_ctx): State<Arc<AppCtx>>, request: Request<Body>) ->
     Ok(Json(AuthToken::from_user(&_ctx.database, connected_user.id()).await?))
 }
 
-async fn logout(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
-    match request.headers().get("authtoken") {
-        None => { Err(Error::msg("No token provided in headers".to_string()))? }
+async fn logout(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
+    let token = match jar.get("authtoken") {
+        None => { request.headers().get("content-authtoken").map(EncString::try_from) }
+        Some(token) => { Some(EncString::from_url_path(token.value().to_string())) }
+    };
+
+    match token {
+        None => { Err(Error::msg("No token provided".to_string()))? }
         Some(authentication_token) => {
-            let token = AuthToken::find(&ctx.database, &EncString::from(authentication_token)).await?;
+            let token = AuthToken::find(&ctx.database, &authentication_token?).await?;
             token.delete(&ctx.database).await?;
             Ok((StatusCode::ACCEPTED, "Successfully disconnected user".to_string()))
         }
@@ -194,34 +199,34 @@ pub struct PathData {
     display_user: Option<String>,
     display_repository: Option<String>,
 }
-pub async fn middleware_get_request_context(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: Request<Body>, next: Next) -> Result<Response, impl IntoResponse> {
+pub async fn middleware_get_request_context(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: Request<Body>, next: Next) -> Result<Response, ServerError> {
     let mut context = RequestContext::default();
 
     let token = match jar.get("authtoken") {
-        None => { request.headers().get("content-authtoken").map(EncString::from) }
+        None => { request.headers().get("content-authtoken").map(EncString::try_from) }
         Some(token) => { Some(EncString::from_url_path(token.value().to_string())) }
     };
 
     if let Some(token) = token {
-        context.connected_user = tokio::sync::RwLock::new(match User::from_auth_token(&ctx.database, &token).await {
+        context.connected_user = tokio::sync::RwLock::new(match User::from_auth_token(&ctx.database, &token?).await {
             Ok(connected_user) => { Some(connected_user) }
             Err(_) => { None }
         })
     }
 
     if let Some(display_user) = display_user {
-        if let Ok(display_user) = User::from_url_name(&ctx.database, &EncString::from_url_path(display_user.clone())).await {
+        if let Ok(display_user) = User::from_url_name(&ctx.database, &EncString::from_url_path(display_user.clone())?).await {
             *context.display_user.write().await = Some(display_user);
         } else {
-            return Err((StatusCode::NOT_FOUND, format!("Unknown user '{}'", display_user)));
+            return Err(ServerError::msg(StatusCode::NOT_FOUND, format!("Unknown user '{}'", display_user)));
         }
     }
 
     if let Some(display_repository) = display_repository {
-        if let Ok(display_repository) = Repository::from_url_name(&ctx.database, &EncString::from_url_path(display_repository.clone())).await {
+        if let Ok(display_repository) = Repository::from_url_name(&ctx.database, &EncString::from_url_path(display_repository.clone())?).await {
             *context.display_repository.write().await = Some(display_repository);
         } else {
-            return Err((StatusCode::NOT_FOUND, format!("Unknown repository '{}'", display_repository)));
+            return Err(ServerError::msg(StatusCode::NOT_FOUND, format!("Unknown repository '{}'", display_repository)));
         }
     }
 

@@ -1,5 +1,6 @@
 import {fetch_api, fetch_user} from "../../utilities/request";
 import {APP_CONFIG} from "../../types/app_config";
+import {Repository} from "../../types/repository";
 
 require('./side_bar.scss')
 
@@ -34,15 +35,35 @@ class SideBar {
     }
 
     async expand_my_repos(expanded) {
-        this._elements.shared.innerHTML = '';
+        this._elements.my_repos.innerHTML = '';
         this._my_repos_expanded = expanded;
-        console.log(await fetch_api('repositories/'))
+        if (expanded) {
+            this._elements.div_my_repositories.classList.add('expand');
+            const my_repos = await fetch_api('repositories/');
+            for (const repos of my_repos) {
+                const tree = require('./repository_tree.hbs')(new Repository(repos).display_data(),{});
+                this._elements.my_repos.append(tree);
+            }
+        }
+        else {
+            this._elements.div_my_repositories.classList.remove('expand');
+        }
     }
 
     async expand_shared(expanded) {
         this._elements.shared.innerHTML = '';
         this._shared_expanded = expanded;
-        console.log(await fetch_api('repositories/shared/'))
+        if (expanded) {
+            this._elements.div_shared.classList.add('expand');
+            const my_repos = await fetch_api('repositories/shared/');
+            for (const repos of my_repos) {
+                const tree = require('./repository_tree.hbs')(new Repository(repos).display_data(),{});
+                this._elements.shared.append(tree);
+            }
+        }
+        else {
+            this._elements.div_shared.classList.remove('expand');
+        }
     }
 
     expand_recent(expanded) {
