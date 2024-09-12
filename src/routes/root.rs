@@ -72,18 +72,51 @@ impl RootRoutes {
 
 async fn get_repositories(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> impl IntoResponse {
     let user = require_connected_user!(request);
-    let repositories = Repository::from_user(&ctx.database, user.id()).await?;
+    #[derive(Serialize)]
+    pub struct Response {
+        user: User,
+        repository: Repository
+    }
+    let mut repositories = vec![];
+    for repository in Repository::from_user(&ctx.database, user.id()).await? {
+        repositories.push(Response {
+            user: User::from_id(&ctx.database, &repository.owner).await?,
+            repository,
+        })
+    }
     Ok(Json(repositories))
 }
 
 async fn get_shared_repositories(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> impl IntoResponse {
     let user = require_connected_user!(request);
-    let repositories = Repository::from_user(&ctx.database, user.id()).await?;
+    #[derive(Serialize)]
+    pub struct Response {
+        user: User,
+        repository: Repository
+    }
+    let mut repositories = vec![];
+    for repository in Repository::from_user(&ctx.database, user.id()).await? {
+        repositories.push(Response {
+            user: User::from_id(&ctx.database, &repository.owner).await?,
+            repository,
+        })
+    }
     Ok(Json(repositories))
 }
 
 async fn get_public_repositories(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> Result<impl IntoResponse, ServerError> {
-    let repositories = Repository::public(&ctx.database).await?;
+    #[derive(Serialize)]
+    pub struct Response {
+        user: User,
+        repository: Repository
+    }
+    let mut repositories = vec![];
+    for repository in Repository::public(&ctx.database).await? {
+        repositories.push(Response {
+            user: User::from_id(&ctx.database, &repository.owner).await?,
+            repository,
+        })
+    }
     Ok(Json(repositories))
 }
 

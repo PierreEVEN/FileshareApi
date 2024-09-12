@@ -3,6 +3,12 @@ import {APP_COOKIES} from "./cookies";
 import {Authentication} from "../modules/authentication/authentication";
 import {EncString} from "../types/encstring";
 
+/**
+ * @param path
+ * @param method
+ * @param body
+ * @returns {Promise<object|object[]|any>}
+ */
 async function fetch_api(path, method = 'GET', body = null) {
     const headers = new Headers();
     if (body)

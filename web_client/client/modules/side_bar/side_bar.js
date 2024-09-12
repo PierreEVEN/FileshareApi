@@ -1,6 +1,9 @@
 import {fetch_api, fetch_user} from "../../utilities/request";
 import {APP_CONFIG} from "../../types/app_config";
 import {Repository} from "../../types/repository";
+import {APP} from "../../app";
+import {APP_COOKIES} from "../../utilities/cookies";
+import {User} from "../../types/user";
 
 require('./side_bar.scss')
 
@@ -40,10 +43,20 @@ class SideBar {
         if (expanded) {
             this._elements.div_my_repositories.classList.add('expand');
             const my_repos = await fetch_api('repositories/');
-            for (const repos of my_repos) {
-                const tree = require('./repository_tree.hbs')(new Repository(repos).display_data(),{});
+            for (const repository of my_repos) {
+                const tree = require('./repository_tree.hbs')(new Repository(repository.repository).display_data(),{
+                    select: () => {
+                        APP_CONFIG.set_display_repository(new User(repository.user), new Repository(repository.repository));
+                    }
+                });
                 this._elements.my_repos.append(tree);
             }
+            /*
+            let create_repository = document.createElement('a');
+            create_repository.innerText = 'Nouveau dépôt'
+            create_repository.onclick = () => {console.log("hahaa")}
+            this._elements.my_repos.append(create_repository);
+             */
         }
         else {
             this._elements.div_my_repositories.classList.remove('expand');

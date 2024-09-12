@@ -37,9 +37,9 @@ class App_config {
 
     set_display_repository(display_user, display_repository) {
         this._display_user = display_user;
-        this._display_repository = display_repository;
+        this._display_repository = display_user ? display_repository : null;
         document.dispatchEvent(new CustomEvent('on_display_user_changed', {'detail': display_user}));
-        document.dispatchEvent(new CustomEvent('on_display_repository_changed', {'detail': display_repository}));
+        document.dispatchEvent(new CustomEvent('on_display_repository_changed', {'detail': this._display_repository}));
     }
 
     set_display_user(new_user) {
