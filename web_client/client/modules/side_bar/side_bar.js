@@ -9,7 +9,7 @@ class SideBar {
          * @type {User}
          * @private
          */
-        this._connected_user = null;
+        this._connected_user = undefined;
 
         const div = require('./side_bar.hbs')({}, {
             switch_my_repos: () => {
@@ -27,22 +27,22 @@ class SideBar {
         this._elements = div['elements'];
         container.append(div);
 
-        document.addEventListener('on_connected_user_changed', async (new_user) => {
-            console.log("new_user callback : ", new_user)
-            await this.expand_my_repos(true)
+        document.addEventListener('on_connected_user_changed', async (data) => {
+            this.refresh(data.detail);
         });
+        this.refresh(APP_CONFIG.connected_user());
     }
 
     async expand_my_repos(expanded) {
         this._elements.shared.innerHTML = '';
         this._my_repos_expanded = expanded;
-        console.log(await fetch_user('repositories/'))
+        console.log(await fetch_api('repositories/'))
     }
 
     async expand_shared(expanded) {
         this._elements.shared.innerHTML = '';
         this._shared_expanded = expanded;
-        console.log(await fetch_user('repositories/shared/'))
+        console.log(await fetch_api('repositories/shared/'))
     }
 
     expand_recent(expanded) {
@@ -54,7 +54,18 @@ class SideBar {
      * @param connected_user {User}
      */
     refresh(connected_user) {
-        this._connected_user = connected_user;
+        if (this._connected_user !== connected_user) {
+            this._connected_user = connected_user;
+
+            if (connected_user) {
+                this._elements.div_my_repositories.style.display = 'flex';
+                this._elements.div_shared.style.display = 'flex';
+            }
+            else {
+                this._elements.div_my_repositories.style.display = 'none';
+                this._elements.div_shared.style.display = 'none';
+            }
+        }
     }
 }
 

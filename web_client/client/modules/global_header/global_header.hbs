@@ -11,12 +11,12 @@
             <img src="/public/images/icons/icons8-search-100.png">
         </label>
     </div>
-    <div class="signin">
-        <button>Connexion</button>
-        <button>Nouveau compte</button>
+    <div class="signin" {{object "signin"}}>
+        <button onclick="{{ctx 'signup()'}}">Nouveau compte</button>
+        <button onclick="{{ctx 'login()'}}">Connexion</button>
     </div>
-    <div class="user">
-        <button>Déconnexion</button>
+    <div class="user" {{object "user"}}>
+        <button onclick="{{ctx 'logout()'}}">Déconnexion</button>
         <button class="user-button">Pi</button>
     </div>
 </div>

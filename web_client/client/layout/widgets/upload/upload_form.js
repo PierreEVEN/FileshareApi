@@ -1,4 +1,4 @@
-import {close_modal, is_modal_open, open_modal} from '../components/modal.js'
+import {close_modal, is_modal_open, open_modal} from '../../../modules/modal/modal.js'
 import {PAGE_CONTEXT, humanFileSize, seconds_to_str} from "../../../common/tools/utils.js";
 import {print_message} from "../components/message_box.js";
 import {Filesystem} from "../../../common/tools/filesystem.js";

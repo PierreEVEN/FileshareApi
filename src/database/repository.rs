@@ -76,6 +76,9 @@ impl Repository {
             Some(repository) => { Ok(repository) }
         }
     }
+    pub async fn public(db: &Database) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.repository WHERE status = 'public'"))
+    }
 
     pub async fn push(&mut self, db: &Database) -> Result<(), Error> {
         if self.url_name.is_empty() {

@@ -14,6 +14,6 @@
     <input type="submit" value="Se connecter">
     <a id="forgot-password" onclick="{{ctx 'reset_password()'}}">mot de passe oublié</a>
     <div class='footer'>
-        <p>Pas encore de compte ?</p> <a href="javascript:window.auth.open_modal_signup();">Créer un compte</a>
+        <p>Pas encore de compte ?</p> <a href="javascript:{{ctx "signup()"}}">Créer un compte</a>
     </div>
 </form>

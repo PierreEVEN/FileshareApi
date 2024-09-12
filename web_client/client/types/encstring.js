@@ -31,11 +31,11 @@ class EncString {
      * @returns {*}
      */
     static from_client(raw_string) {
-        return new EncString(encodeURI(raw_string))
+        return new EncString(raw_string ? encodeURI(raw_string) : '')
     }
 
     toJSON() {
-        return self.__encoded
+        return this.__encoded
     }
 }
 

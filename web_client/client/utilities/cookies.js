@@ -114,9 +114,8 @@ class AppCookies {
 
     /**
      * @param authentication_token {Object}
-     * @return {Promise<void>}
      */
-    async login(authentication_token) {
+    login(authentication_token) {
         if (authentication_token.token) {
             this._authtoken = authentication_token.token;
             this._authtoken_exp = authentication_token.expiration_date;
@@ -124,7 +123,7 @@ class AppCookies {
         }
     }
 
-    async logout() {
+    logout() {
         delete this._authtoken;
         delete this._authtoken_exp;
         this.save_cookies();

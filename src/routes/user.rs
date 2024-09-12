@@ -19,25 +19,11 @@ pub struct UserRoutes {}
 impl UserRoutes {
     pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         let router = Router::new()
-            .route("/repositories/", get(get_repositories).with_state(ctx.clone()))
-            .route("/repositories/shared/", get(get_shared_repositories).with_state(ctx.clone()))
             .route("/create-repository/", post(create_repository).with_state(ctx.clone()))
             .nest("/:display_repository/", RepositoryRoutes::create(ctx)?);
 
         Ok(router)
     }
-}
-
-async fn get_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> impl IntoResponse {
-    let user = require_connected_user!(request);
-    let repositories = Repository::from_user(&ctx.database, user.id()).await?;
-    Ok(Json(repositories))
-}
-
-async fn get_shared_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> impl IntoResponse {
-    let user = require_connected_user!(request);
-    let repositories = Repository::from_user(&ctx.database, user.id()).await?;
-    Ok(Json(repositories))
 }
 
 #[derive(Deserialize, Debug)]

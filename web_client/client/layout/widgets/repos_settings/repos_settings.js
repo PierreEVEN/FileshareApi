@@ -2,7 +2,7 @@ import {humanFileSize, PAGE_CONTEXT} from "../../../common/tools/utils";
 import {ClientString} from "../../../common/tools/client_string";
 import {edit_repos} from "../edit_repos/edit_repos_form";
 import {parse_fetch_result, print_message} from "../components/message_box";
-import {close_modal, open_modal} from "../components/modal";
+import {close_modal, open_modal} from "../../../modules/modal/modal";
 import {LOCAL_USER} from "../../../common/tools/user";
 import {FilesystemObject} from "../../../common/tools/filesystem_v2";
 

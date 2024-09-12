@@ -100,8 +100,6 @@ async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<i
         ..Default::default()
     };
 
-
-    println!("TEQST : {:?} / {:?}", request, request.uri());
     get_connected_user!(request, user, {
         client_config.connected_user = Some(user.clone());
     });

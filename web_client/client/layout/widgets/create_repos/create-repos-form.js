@@ -1,4 +1,4 @@
-import {open_modal} from "../components/modal.js";
+import {open_modal} from "../../../modules/modal/modal.js";
 
 require('./create-repos.scss')
 

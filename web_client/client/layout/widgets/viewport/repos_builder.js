@@ -3,7 +3,7 @@ import {Filesystem, FilesystemObject} from "../../../common/tools/filesystem_v2.
 import {Navigator} from "../../../common/tools/navigator.js";
 import {PAGE_CONTEXT, permissions} from "../../../common/tools/utils";
 import {LOCAL_USER} from "../../../common/tools/user";
-import {close_modal, is_modal_open} from "../components/modal";
+import {close_modal, is_modal_open} from "../../../modules/modal/modal";
 import {DirectoryContent} from "./directory_content";
 import {Toolbar} from "../toolbar/toolbar";
 

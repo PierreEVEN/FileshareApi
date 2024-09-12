@@ -5,18 +5,17 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
-use axum::{middleware, Json, Router};
+use axum::{Json, Router};
 use axum::extract::{FromRequest, Path, State};
 use axum::routing::{get, post};
-use deunicode::deunicode;
-use serde::Deserialize;
+use axum_extra::extract::CookieJar;
+use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
-use tracing_subscriber::fmt::format;
 use crate::app_ctx::AppCtx;
 use crate::database::repository::Repository;
 use crate::database::user::{AuthToken, PasswordHash, User, UserRole};
-use crate::require_connected_user;
-use crate::routes::user::{CreateReposData, UserRoutes};
+use crate::{require_connected_user};
+use crate::routes::user::{UserRoutes};
 use crate::utils::enc_string::EncString;
 use crate::utils::server_error::ServerError;
 
@@ -61,11 +60,31 @@ impl RootRoutes {
             .route("/auth/logout/", post(logout).with_state(ctx.clone()))
             .route("/auth/tokens/", get(auth_tokens).with_state(ctx.clone()))
             .route("/delete-user/", post(delete_user).with_state(ctx.clone()))
+            .route("/repositories/", get(get_repositories).with_state(ctx.clone()))
+            .route("/repositories/shared/", get(get_shared_repositories).with_state(ctx.clone()))
+            .route("/repositories/public/", get(get_public_repositories).with_state(ctx.clone()))
             .nest("/:display_user/", UserRoutes::create(ctx)?)
             .fallback(handler_404)
-            ;//.layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
+            ; //.layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
         Ok(router)
     }
+}
+
+async fn get_repositories(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> impl IntoResponse {
+    let user = require_connected_user!(request);
+    let repositories = Repository::from_user(&ctx.database, user.id()).await?;
+    Ok(Json(repositories))
+}
+
+async fn get_shared_repositories(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> impl IntoResponse {
+    let user = require_connected_user!(request);
+    let repositories = Repository::from_user(&ctx.database, user.id()).await?;
+    Ok(Json(repositories))
+}
+
+async fn get_public_repositories(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> Result<impl IntoResponse, ServerError> {
+    let repositories = Repository::public(&ctx.database).await?;
+    Ok(Json(repositories))
 }
 
 async fn handler_404(_: Request<Body>) -> impl IntoResponse {
@@ -80,7 +99,7 @@ struct CreateUserInfos {
     pub password: EncString,
 }
 async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateUserInfos>) -> Result<impl IntoResponse, ServerError> {
-    let forbidden_usernames: HashSet<&str> = HashSet::from_iter(vec!["auth", "delete-user", "api", "public"]);
+    let forbidden_usernames: HashSet<&str> = HashSet::from_iter(vec!["auth", "delete-user", "api", "public", "repositories"]);
 
     if forbidden_usernames.contains(payload.username.plain()?.as_str()) {
         Err(Error::msg("Forbidden username"))?
@@ -121,13 +140,23 @@ struct LoginInfos {
     pub password: EncString,
     pub device: Option<EncString>,
 }
-async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) -> Result<Json<AuthToken>, ServerError> {
-    let auth_token = User::from_credentials(&ctx.database, &payload.login, &payload.password).await?.generate_auth_token(&ctx.database, &match payload.device {
+async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) -> Result<impl IntoResponse, ServerError> {
+    let user = User::from_credentials(&ctx.database, &payload.login, &payload.password).await?;
+    let auth_token = user.generate_auth_token(&ctx.database, &match payload.device {
         None => { EncString::from("Unknown device") }
         Some(device) => { device }
     }).await?;
 
-    Ok(Json(auth_token))
+    #[derive(Serialize)]
+    struct LoginResult {
+        token: AuthToken,
+        user: User,
+    }
+
+    Ok(Json(LoginResult{
+        user,
+        token: auth_token
+    }))
 }
 
 #[axum::debug_handler]
@@ -165,16 +194,19 @@ pub struct PathData {
     display_user: Option<String>,
     display_repository: Option<String>,
 }
-pub async fn middleware_get_request_context(State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: Request<Body>, next: Next) -> Result<Response, impl IntoResponse> {
+pub async fn middleware_get_request_context(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: Request<Body>, next: Next) -> Result<Response, impl IntoResponse> {
     let mut context = RequestContext::default();
-    match request.headers().get("authtoken") {
-        None => {}
-        Some(authentication_token) => {
-            context.connected_user = tokio::sync::RwLock::new(match User::from_auth_token(&ctx.database, &EncString::from(authentication_token)).await {
-                Ok(connected_user) => { Some(connected_user) }
-                Err(_) => { None }
-            })
-        }
+
+    let token = match jar.get("authtoken") {
+        None => { request.headers().get("content-authtoken").map(EncString::from) }
+        Some(token) => { Some(EncString::from_url_path(token.value().to_string())) }
+    };
+
+    if let Some(token) = token {
+        context.connected_user = tokio::sync::RwLock::new(match User::from_auth_token(&ctx.database, &token).await {
+            Ok(connected_user) => { Some(connected_user) }
+            Err(_) => { None }
+        })
     }
 
     if let Some(display_user) = display_user {

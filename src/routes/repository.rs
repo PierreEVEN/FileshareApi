@@ -17,18 +17,9 @@ pub struct RepositoryRoutes {}
 impl RepositoryRoutes {
     pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         let router = Router::new()
-            .route("/delete/", post(delete_repository).with_state(ctx.clone()))
-            .route("/", get(handle_repos));
-
+            .route("/delete/", post(delete_repository).with_state(ctx.clone()));
         Ok(router)
     }
-}
-
-async fn handle_repos(request: Request) -> impl IntoResponse {
-
-    let ctx = request.extensions().get::<Arc<RequestContext>>().unwrap();
-
-    (StatusCode::FOUND, format!("Display repository : {:?}", ctx))
 }
 
 async fn delete_repository(State(ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<impl IntoResponse, ServerError> {

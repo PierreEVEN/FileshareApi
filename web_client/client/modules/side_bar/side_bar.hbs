@@ -1,21 +1,21 @@
 <div class="side-bar">
-    <div class="field">
+    <div {{object "div_my_repositories"}}>
         <button onclick="{{ctx "switch_my_repos()"}}">
-            <p>▸</p><img src="/public/images/icons/icons8-folder-96.png">
+            <p class="arrow">▸</p><img src="/public/images/icons/icons8-folder-96.png">
             <p>Mes dépôts</p>
         </button>
         <div {{object "my_repos"}}></div>
     </div>
-    <div>
+    <div {{object "div_shared"}}>
         <button class="field" onclick="{{ctx "switch_shared()"}}">
-            <p>▸</p><img src="/public/images/icons/icons8-public-96.png">
+            <p class="arrow">▸</p><img src="/public/images/icons/icons8-public-96.png">
             <p>Partagés avec moi</p>
         </button>
         <div {{object "shared"}}></div>
     </div>
-    <div>
+    <div {{object "div_recent"}}>
         <button class="field" onclick="{{ctx "switch_recent()"}}">
-            <p>▸</p><img src="/public/images/icons/icons8-clock-96.png">
+            <p class="arrow">▸</p><img src="/public/images/icons/icons8-clock-96.png">
             <p>Récents</p>
         </button>
         <div {{object "recent"}}></div>

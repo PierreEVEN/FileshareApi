@@ -68,5 +68,6 @@ module.exports = (data, ctx) => {
         body.children[i].elements = elements;
         children.push(body.children[i]);
     }
+    children.elements = elements;
     return children;
 }

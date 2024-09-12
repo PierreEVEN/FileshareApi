@@ -1,5 +1,7 @@
 import {APP_CONFIG} from "../types/app_config";
 import {APP_COOKIES} from "./cookies";
+import {Authentication} from "../modules/authentication/authentication";
+import {EncString} from "../types/encstring";
 
 async function fetch_api(path, method = 'GET', body = null) {
     const headers = new Headers();
@@ -7,20 +9,19 @@ async function fetch_api(path, method = 'GET', body = null) {
         headers.append('Content-Type', 'application/json');
     headers.append('Accept', 'application/json');
     headers.append('content-authtoken', APP_COOKIES.get_token());
-
     const result = await fetch(`${APP_CONFIG.origin()}/api/${path}`, {
         method: method,
         body: body ? JSON.stringify(body) : null,
         headers: headers
     });
     if (result.status === 401) {
-        console.error("TODO : ask for connection here");
+        await Authentication.login();
     } else {
         if (result.status.toString().startsWith("2")) {
             return await result.json();
         }
     }
-    return null;
+    throw {message: `${await result.text()}`, code:result.status}
 }
 
 async function fetch_user(path, method = 'GET', body = null) {

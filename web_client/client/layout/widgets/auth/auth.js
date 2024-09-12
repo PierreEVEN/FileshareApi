@@ -1,4 +1,4 @@
-import {close_modal, open_modal} from "../components/modal.js";
+import {close_modal, open_modal} from "../../../modules/modal/modal.js";
 import {parse_fetch_result, print_message} from "../components/message_box.js";
 
 require('./auth.scss')
