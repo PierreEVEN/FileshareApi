@@ -18,10 +18,11 @@ use std::sync::Arc;
 pub struct UserRoutes {}
 
 impl UserRoutes {
-    pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
+    pub fn router(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         let router = Router::new()
             .route("/find/", post(find_users).with_state(ctx.clone()))
-            .route("/login/", post(delete_user).with_state(ctx.clone()))
+            .route("/login/", post(login).with_state(ctx.clone()))
+            .route("/delete/", post(delete_user).with_state(ctx.clone()))
             .route("/logout/", post(logout).with_state(ctx.clone()))
             .route("/tokens/", post(auth_tokens).with_state(ctx.clone()))
             .route("/create/", post(create_user).with_state(ctx.clone()));

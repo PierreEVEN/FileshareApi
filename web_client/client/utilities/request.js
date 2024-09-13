@@ -36,12 +36,4 @@ async function fetch_api(path, method = 'GET', body = null) {
     throw {message: `${await result.text()}`, code:result.status}
 }
 
-async function fetch_user(path, method = 'GET', body = null) {
-    return await fetch_api(`${APP_CONFIG.display_user().name.plain()}/${path}`, method, body)
-}
-
-async function fetch_repository(path, method = 'GET', body = null) {
-    return await fetch_user(`${APP_CONFIG.display_repository().url_name.plain()}/${path}`, method, body)
-}
-
-export {fetch_api, fetch_user, fetch_repository}
+export {fetch_api}

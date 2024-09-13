@@ -1,6 +1,5 @@
 const {EncString} = require("./encstring");
 const {fetch_user, fetch_api} = require("../utilities/request");
-const {Repository} = require("./repository");
 const {User} = require("./user");
 
 class Item {
@@ -60,21 +59,21 @@ class Item {
 
 class FilesystemStream {
     /**
-     * @param repository_id {number}
+     * @param repository {Repository}
      */
-    constructor(repository_id) {
+    constructor(repository) {
         /**
-         * @type {Promise<Repository>}
+         * @type {Repository}
          * @private
          */
-        this._repository = Repository.find(repository_id);
+        this._repository = repository;
 
         /**
          * @type {Promise<User>}
          * @private
          */
         this._user = new Promise(async (ok) => {
-            ok(await User.find((await this._repository).id));
+            ok(await User.find(this._repository.id));
         });
 
         /**
@@ -131,7 +130,7 @@ class FilesystemStream {
     async root_content() {
         if (!this._roots) {
             this._roots = new Set();
-            for (const item of await fetch_user(`${this._repository_name.encoded()}/root-content/`, 'POST')) {
+            for (const item of await fetch_api(`repository/root-content/`, 'POST', [this._repository.id])) {
                 await this._set_or_update_item(new Item(item));
             }
         }

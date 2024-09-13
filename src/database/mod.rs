@@ -131,6 +131,12 @@ macro_rules! make_database_id {
             }
         }
         impl Eq for $T {}
+        
+        impl std::hash::Hash for $T {
+            fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+                self.0.hash(state)
+            }
+        }
     };
 }
 

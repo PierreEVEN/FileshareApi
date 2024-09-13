@@ -11,6 +11,7 @@ use crate::database::user::User;
 use crate::routes::route_item::ItemRoutes;
 use crate::routes::route_repository::RepositoryRoutes;
 use crate::routes::route_user::UserRoutes;
+use crate::utils::permissions::Permissions;
 
 mod route_repository;
 mod route_item;
@@ -101,7 +102,7 @@ macro_rules! require_display_repository {
 pub struct RequestContext {
     pub connected_user: tokio::sync::RwLock<Option<User>>,
     pub display_user: tokio::sync::RwLock<Option<User>>,
-    pub display_repository: tokio::sync::RwLock<Option<Repository>>,
+    pub display_repository: tokio::sync::RwLock<Option<Repository>>
 }
 
 impl RequestContext {
@@ -134,7 +135,7 @@ impl RootRoutes {
     pub fn create(ctx: &Arc<AppCtx>) -> Result<Router<>, Error> {
         let router = Router::new()
             .nest("/repository/", RepositoryRoutes::create(ctx)?)
-            .nest("/user/", UserRoutes::create(ctx)?)
+            .nest("/user/", UserRoutes::router(ctx)?)
             .nest("/item/", ItemRoutes::create(ctx)?)
             .fallback(handler_404);
         Ok(router)

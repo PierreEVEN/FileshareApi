@@ -16,7 +16,7 @@ class RepositoryStatus {
         }
     }
 
-    to_string() {
+    toString() {
         return this._role;
     }
 }
@@ -71,7 +71,7 @@ class Repository {
         /**
          * @type {FilesystemStream}
          */
-        this.content = new FilesystemStream(this.url_name)
+        this.content = new FilesystemStream(this)
     }
 
     /**
@@ -94,6 +94,15 @@ class Repository {
         if (local)
             return local;
         return local;
+    }
+
+    toJSON() {
+        const data = {};
+        for (const [key, value] of Object.entries(this)) {
+            if (key !== 'content')
+                data[key] = value;
+        }
+        return data;
     }
 }
 

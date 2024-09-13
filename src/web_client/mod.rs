@@ -97,8 +97,8 @@ pub struct PathData {
     display_repository: Option<String>,
 }
 
-pub async fn middleware_get_path_context(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, mut request: axum::http::Request<Body>, next: Next) -> Result<Response, ServerError> {
-    let mut context = request.extensions_mut().get_mut::<RequestContext>().unwrap();
+pub async fn middleware_get_path_context(State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, request: axum::http::Request<Body>, next: Next) -> Result<Response, ServerError> {
+    let context = request.extensions().get::<Arc<RequestContext>>().unwrap();
     if let Some(display_user) = display_user {
         if let Ok(display_user) = User::from_url_name(&ctx.database, &EncString::from_url_path(display_user.clone())?).await {
             *context.display_user.write().await = Some(display_user);

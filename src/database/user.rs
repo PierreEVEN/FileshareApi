@@ -191,4 +191,11 @@ impl User {
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.users WHERE id = $1;"#, self.id);
         Ok(())
     }
+
+    pub fn can_create_repository(&self) -> bool {
+        match self.user_role {
+            UserRole::Vip | UserRole::Admin => { true }
+            _ => { false }
+        }
+    }
 }

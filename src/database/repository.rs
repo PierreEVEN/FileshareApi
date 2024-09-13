@@ -1,17 +1,17 @@
+use crate::database::item::Item;
+use crate::database::subscription::Subscription;
 use crate::database::user::UserId;
 use crate::database::{Database, DatabaseIdTrait};
 use crate::utils::enc_string::EncString;
-use crate::{make_wrapped_db_type, query_fmt, query_object, query_objects};
+use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;
 use postgres_from_row::FromRow;
 use postgres_types::private::BytesMut;
 use postgres_types::{to_sql_checked, IsNull, Type};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use crate::database::item::Item;
-use crate::database::subscription::Subscription;
 
-make_wrapped_db_type!(RepositoryId, crate::database::DatabaseId, serde::Serialize, serde::Deserialize, Default, std::fmt::Debug, Clone);
+make_database_id!(RepositoryId);
 
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum RepositoryStatus {
@@ -70,6 +70,9 @@ impl Repository {
     }
     pub async fn from_user(db: &Database, user: &UserId) -> Result<Vec<Self>, Error> {
         Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.repository WHERE owner = $1", user))
+    }
+    pub async fn shared_with(db: &Database, user: &UserId) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.repository WHERE id IN (SELECT repository FROM SCHEMA_NAME.subscriptions WHERE owner = $1);", user))
     }
     pub async fn from_url_name(db: &Database, name: &EncString) -> Result<Self, Error> {
         match query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.repository WHERE url_name = lower($1)", name) {

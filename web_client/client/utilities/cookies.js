@@ -71,16 +71,7 @@ class AppCookies {
      * @returns {Promise<[]>}
      */
     async get_last_repositories() {
-        const repos = this._last_repos.split('.').filter(Boolean);
-        return await parse_fetch_result(await fetch('/api/repos-data',
-            {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(repos)
-            }));
+        this._last_repos.split('.').filter(Boolean);
     }
 
     /**

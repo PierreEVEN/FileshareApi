@@ -43,7 +43,7 @@ class RepositoryTree {
         this.repository = repository;
         this._expanded = false;
 
-        const root_div = require('./repository_tree_root.hbs')(repository, {
+        const root_div = require('./repository_tree_root.hbs')(repository.display_data(), {
             expand: async () => {
                 await this.expand_node(!this._expanded)
             }

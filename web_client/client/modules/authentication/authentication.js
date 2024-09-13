@@ -11,7 +11,7 @@ const Authentication = {
             let login_div = require('./login.hbs')({}, {
                 login: async (event) => {
                     event.preventDefault();
-                    let result = await fetch_api('auth/login/', 'POST', {
+                    let result = await fetch_api('user/login/', 'POST', {
                         login: EncString.from_client(login_div.elements.login.value),
                         password: EncString.from_client(login_div.elements.password.value),
                         device: EncString.from_client(navigator.userAgent)
@@ -55,7 +55,7 @@ const Authentication = {
         });
     },
     logout: async () => {
-        await fetch_api('auth/logout/', 'POST').catch(error => print_message(`Failed to log out : ${error.message}`));
+        await fetch_api('user/logout/', 'POST').catch(error => print_message(`Failed to log out : ${error.message}`));
         APP_COOKIES.logout();
         APP_CONFIG.set_connected_user(null);
     }

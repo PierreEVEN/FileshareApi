@@ -23,6 +23,7 @@ use crate::database::Database;
 use crate::database::user::User;
 use crate::routes::{RequestContext, RootRoutes};
 use crate::utils::enc_string::EncString;
+use crate::utils::permissions::Permissions;
 use crate::utils::server_error::ServerError;
 use crate::web_client::WebClient;
 
@@ -88,7 +89,7 @@ async fn main() {
 
 pub async fn middleware_get_request_context(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, mut request: Request<Body>, next: Next) -> Result<Response, ServerError> {
     let mut context = RequestContext::default();
-
+    
     let token = match jar.get("authtoken") {
         None => { request.headers().get("content-authtoken").map(EncString::try_from) }
         Some(token) => { Some(EncString::from_url_path(token.value().to_string())) }

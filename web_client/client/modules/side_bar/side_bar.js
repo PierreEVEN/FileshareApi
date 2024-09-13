@@ -43,16 +43,10 @@ class SideBar {
         this._my_repos_expanded = expanded;
         if (expanded) {
             this._elements.div_my_repositories.classList.add('expand');
-            const my_repos = await fetch_api('repositories/');
+            const my_repos = await fetch_api('repository/owned/');
             for (const repository of my_repos) {
                 new RepositoryTree(this._elements.my_repositories, new Repository(repository));
             }
-            /*
-            let create_repository = document.createElement('a');
-            create_repository.innerText = 'Nouveau dépôt'
-            create_repository.onclick = () => {console.log("hahaa")}
-            this._elements.my_repos.append(create_repository);
-             */
         }
         else {
             this._elements.div_my_repositories.classList.remove('expand');
@@ -64,7 +58,7 @@ class SideBar {
         this._shared_expanded = expanded;
         if (expanded) {
             this._elements.div_shared.classList.add('expand');
-            const my_repos = await fetch_api('repositories/shared/');
+            const my_repos = await fetch_api('repository/shared/');
             for (const repos of my_repos) {
                 new RepositoryTree(this._elements.shared, new Repository(repos));
             }
