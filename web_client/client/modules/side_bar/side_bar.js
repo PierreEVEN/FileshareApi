@@ -4,6 +4,7 @@ import {Repository} from "../../types/repository";
 import {APP} from "../../app";
 import {APP_COOKIES} from "../../utilities/cookies";
 import {User} from "../../types/user";
+import {RepositoryTree} from "./repository_tree/repository_tree";
 
 require('./side_bar.scss')
 
@@ -16,8 +17,8 @@ class SideBar {
         this._connected_user = undefined;
 
         const div = require('./side_bar.hbs')({}, {
-            switch_my_repos: () => {
-                this.expand_my_repos(!this._my_repos_expanded);
+            expand_my_repositories: () => {
+                this.expand_my_repositories(!this._my_repos_expanded);
             },
             switch_shared: () => {
                 this.expand_shared(!this._shared_expanded);
@@ -37,19 +38,14 @@ class SideBar {
         this.refresh(APP_CONFIG.connected_user());
     }
 
-    async expand_my_repos(expanded) {
-        this._elements.my_repos.innerHTML = '';
+    async expand_my_repositories(expanded) {
+        this._elements.my_repositories.innerHTML = '';
         this._my_repos_expanded = expanded;
         if (expanded) {
             this._elements.div_my_repositories.classList.add('expand');
             const my_repos = await fetch_api('repositories/');
             for (const repository of my_repos) {
-                const tree = require('./repository_tree/repository_tree.hbs')(new Repository(repository.repository).display_data(),{
-                    select: () => {
-                        APP_CONFIG.set_display_repository(new User(repository.user), new Repository(repository.repository));
-                    }
-                });
-                this._elements.my_repos.append(tree);
+                new RepositoryTree(this._elements.my_repositories, new Repository(repository));
             }
             /*
             let create_repository = document.createElement('a');
@@ -70,8 +66,7 @@ class SideBar {
             this._elements.div_shared.classList.add('expand');
             const my_repos = await fetch_api('repositories/shared/');
             for (const repos of my_repos) {
-                const tree = require('./repository_tree/repository_tree.hbs')(new Repository(repos).display_data(),{});
-                this._elements.shared.append(tree);
+                new RepositoryTree(this._elements.shared, new Repository(repos));
             }
         }
         else {

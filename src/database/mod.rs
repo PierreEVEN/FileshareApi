@@ -12,6 +12,7 @@ pub mod item;
 pub mod object;
 pub mod repository;
 pub mod user;
+pub mod subscription;
 
 pub struct Database {
     db: Client,
@@ -28,7 +29,6 @@ async fn connect_raw(s: &str) -> Result<(Client, Connection<TcpStream, NoTlsStre
 
 async fn connect(s: &str) -> Result<Client, Error> {
     let (client, connection) = connect_raw(s).await?;
-    //let connection = connection.map(|r| r.unwrap());
     tokio::spawn(connection);
     Ok(client)
 }

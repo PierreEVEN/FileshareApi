@@ -1,88 +1,136 @@
 use crate::database::object::ObjectId;
 use crate::database::repository::RepositoryId;
 use crate::database::user::UserId;
-use crate::database::{Database, DatabaseIdTrait};
+use crate::database::Database;
 use crate::utils::enc_path::EncPath;
 use crate::utils::enc_string::EncString;
 use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;
 use postgres_from_row::FromRow;
+use serde::{Serialize, Serializer};
+use serde::ser::{SerializeStruct};
+use tokio_postgres::Row;
 
 make_database_id!(ItemId);
 
-
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Serialize)]
 pub struct FileData {
-    id: ItemId,
     pub size: i64,
     pub mimetype: EncString,
     pub timestamp: i64,
-    pub object: Option<ObjectId>,
+    pub object: ObjectId,
 }
 
-impl FileData {
-    pub async fn from_item(db: &Database, id: &ItemId) -> Result<Self, Error> {
-        query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.files WHERE id = $1", id).ok_or(Error::msg("Failed to find file from id"))
-    }
-    pub async fn from_object(db: &Database, id: &ObjectId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.files WHERE object = $1", id))
-    }
-    pub async fn push(&mut self, db: &Database) -> Result<(), Error> {
-        assert!(self.id.is_valid());
-        query_fmt!(db, "INSERT INTO SCHEMA_NAME.files
-                        (id, size, mimetype, timestamp, object) VALUES
-                        ($1, $2, $3, $4, $5)
-                        ON CONFLICT(id) DO UPDATE SET
-                        id = $1, size = $2, mimetype = $3, timestamp = $4, object = $5;",
-            self.id, self.size, self.mimetype, self.timestamp, self.object);
-        Ok(())
-    }
-
-    pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
-        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.files WHERE id = $1;"#, *self.id);
-        if let Some(object) = &self.object {
-            // If no files use this object : delete the object
-            if FileData::from_object(db, object).await?.is_empty() {
-                query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.object WHERE id = $1;"#, object);
-            }
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Serialize)]
 pub struct DirectoryData {
-    id: ItemId,
     pub open_upload: bool,
 }
 
-impl DirectoryData {
-    pub async fn from_item(db: &Database, id: &ItemId) -> Result<Self, Error> {
-        query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.files WHERE id = $1", id).ok_or(Error::msg("Failed to find file from id"))
-    }
-    pub async fn push(&mut self, db: &Database) -> Result<(), Error> {
-        assert!(self.id.is_valid());
-        query_fmt!(db, "INSERT INTO SCHEMA_NAME.files
-                        (id, open_upload) VALUES
-                        ($1, $2)
-                        ON CONFLICT(id) DO UPDATE SET
-                        id = $1, open_upload = $2;",
-            self.id, self.open_upload);
-        Ok(())
-    }
-}
-
-#[derive(Debug, FromRow)]
+#[derive(Debug)]
 pub struct Item {
     id: ItemId,
     pub repository_id: RepositoryId,
     pub owner: UserId,
     pub name: EncString,
-    pub is_regular_file: bool,
     pub description: EncString,
     pub parent_item: Option<ItemId>,
     pub absolute_path: EncPath,
     pub in_trash: bool,
+    pub directory: Option<DirectoryData>,
+    pub file: Option<FileData>,
+}
+
+impl FromRow for Item {
+    fn from_row(row: &Row) -> Self {
+        let mut item = Self {
+            id: row.get::<&str, ItemId>("id"),
+            repository_id: row.get::<&str, RepositoryId>("repository_id"),
+            owner: row.get::<&str, UserId>("owner"),
+            name: row.get::<&str, EncString>("name"),
+            description: row.get::<&str, EncString>("description"),
+            parent_item: row.get::<&str, Option<ItemId>>("parent_item"),
+            absolute_path: row.get::<&str, EncPath>("absolute_path"),
+            in_trash: row.get::<&str, bool>("in_trash"),
+            directory: None,
+            file: None,
+        };
+        if let Ok(size) = row.try_get::<&str, i64>("size") {
+            item.file = Some(FileData {
+                size,
+                mimetype: row.get::<&str, EncString>("mimetype"),
+                timestamp: row.get::<&str, i64>("mimetype"),
+                object: row.get::<&str, ObjectId>("mimetype"),
+            })
+        } else if let Ok(open_upload) = row.try_get::<&str, bool>("open_upload") {
+            item.directory = Some(DirectoryData {
+                open_upload
+            })
+        } else {
+            panic!("Parsed item is neither a file or a directory : missing data");
+        }
+        item
+    }
+
+    fn try_from_row(row: &Row) -> Result<Self, tokio_postgres::Error> {
+        let mut item = Self {
+            id: row.try_get::<&str, ItemId>("id")?,
+            repository_id: row.try_get::<&str, RepositoryId>("repository_id")?,
+            owner: row.try_get::<&str, UserId>("owner")?,
+            name: row.try_get::<&str, EncString>("name")?,
+            description: row.try_get::<&str, EncString>("description")?,
+            parent_item: row.try_get::<&str, Option<ItemId>>("parent_item")?,
+            absolute_path: row.try_get::<&str, EncPath>("absolute_path")?,
+            in_trash: row.try_get::<&str, bool>("in_trash")?,
+            directory: None,
+            file: None,
+        };
+
+        if let Ok(size) = row.try_get::<&str, i64>("size") {
+            item.file = Some(FileData {
+                size,
+                mimetype: row.get::<&str, EncString>("mimetype"),
+                timestamp: row.get::<&str, i64>("mimetype"),
+                object: row.get::<&str, ObjectId>("mimetype"),
+            })
+        } else {
+            item.directory = Some(DirectoryData {
+                open_upload: row.try_get::<&str, bool>("open_upload")?
+            })
+        }
+        Ok(item)
+    }
+}
+
+impl Serialize for Item {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer
+    {
+        let mut state = serializer.serialize_struct("Item", 3)?;
+
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("repository_id", &self.repository_id)?;
+        state.serialize_field("owner", &self.owner)?;
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("description", &self.description)?;
+        state.serialize_field("parent_item", &self.parent_item)?;
+        state.serialize_field("absolute_path", &self.absolute_path)?;
+        state.serialize_field("in_trash", &self.in_trash)?;
+        if let Some(directory) = &self.directory {
+            state.serialize_field("directory", &directory)?;
+        }
+        else {
+            match &self.file {
+                None => {
+                    return Err(serde::ser::Error::custom("Missing file data : this item is neither a file or a directory."))
+                }
+                Some(file) => {
+                    state.serialize_field("file", &file)?;
+                }
+            };
+        }
+        state.end()
+    }
 }
 
 impl Item {
@@ -102,12 +150,21 @@ impl Item {
         Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE id = IN (SELECT id FROM SCHEMA_NAME.files WHERE object = $1)", id))
     }
 
+    pub async fn from_parent(db: &Database, parent_directory: &ItemId) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE parent_item = $1", parent_directory))
+    }
+
+    pub async fn repository_root(db: &Database, repository: &RepositoryId) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE parent_item IS NULL and repository = $1", repository))
+    }
+
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
-        if self.is_regular_file {
-            FileData::from_item(db, &self.id).await?.delete(db).await?;
+        if self.file.is_some() {
+            query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.files WHERE id = $1;"#, *self.id);
         } else {
             query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.directories WHERE id = $1;"#, *self.id);
         }
+
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.items WHERE id = $1;"#, *self.id);
         Ok(())
     }

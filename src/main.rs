@@ -9,12 +9,21 @@ use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use axum::{middleware, Router};
-use crate::routes::root::{middleware_get_request_context, RootRoutes};
+use axum::body::Body;
+use axum::extract::State;
+use axum::http::Request;
+use axum::middleware::Next;
+use axum::response::Response;
+use axum_extra::extract::CookieJar;
 use axum_server::tls_rustls::RustlsConfig;
 use tracing::{error, info};
 use crate::app_ctx::AppCtx;
 use crate::config::Config;
 use crate::database::Database;
+use crate::database::user::User;
+use crate::routes::{RequestContext, RootRoutes};
+use crate::utils::enc_string::EncString;
+use crate::utils::server_error::ServerError;
 use crate::web_client::WebClient;
 
 #[tokio::main]
@@ -75,4 +84,28 @@ async fn main() {
         axum::serve(listener, router).await.unwrap();
     }
     info!("Server closed !");
+}
+
+pub async fn middleware_get_request_context(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, mut request: Request<Body>, next: Next) -> Result<Response, ServerError> {
+    let mut context = RequestContext::default();
+
+    let token = match jar.get("authtoken") {
+        None => { request.headers().get("content-authtoken").map(EncString::try_from) }
+        Some(token) => { Some(EncString::from_url_path(token.value().to_string())) }
+    };
+
+    if let Some(token) = token {
+        context.connected_user = tokio::sync::RwLock::new(match User::from_auth_token(&ctx.database, &token?).await {
+            Ok(connected_user) => { Some(connected_user) }
+            Err(_) => { None }
+        })
+    }
+
+    let uri = request.uri().clone();
+    let user_string = if let Some(user) = &*context.connected_user().await {
+        format!("#{}", user.name)
+    } else { String::from("{?}") };
+    info!("[{}] {} | {}", request.method(), user_string, uri);
+    request.extensions_mut().insert(Arc::new(context));
+    Ok(next.run(request).await)
 }

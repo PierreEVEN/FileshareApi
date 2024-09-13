@@ -9,6 +9,7 @@ use postgres_types::{to_sql_checked, IsNull, Type};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use crate::database::item::Item;
+use crate::database::subscription::Subscription;
 
 make_wrapped_db_type!(RepositoryId, crate::database::DatabaseId, serde::Serialize, serde::Deserialize, Default, std::fmt::Debug, Clone);
 
@@ -107,7 +108,15 @@ impl Repository {
         for mut item in Item::from_repository(db, &self.id).await? {
             item.delete(db).await?;
         }
+        for subscriptions in Subscription::from_repository(db, &self.id).await? {
+            subscriptions.delete(db).await?
+        }
+        
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.repository WHERE id = $1;"#, self.id);
         Ok(())
+    }
+    
+    pub fn id(&self) -> &RepositoryId {
+        &self.id
     }
 }

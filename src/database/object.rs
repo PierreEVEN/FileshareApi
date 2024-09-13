@@ -1,11 +1,11 @@
-use std::fs;
-use std::path::{Path, PathBuf};
+use crate::database::item::{Item, ItemId};
+use crate::database::repository::RepositoryId;
+use crate::database::Database;
+use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;
 use postgres_from_row::FromRow;
-use crate::{make_database_id, query_fmt, query_object, query_objects};
-use crate::database::Database;
-use crate::database::item::{FileData, ItemId};
-use crate::database::repository::RepositoryId;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 make_database_id!(ObjectId);
 
@@ -43,11 +43,10 @@ impl Object {
 
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
         // Dereference from files
-        for mut file in FileData::from_object(db, &self.id).await? {
-            file.object = None;
-            file.push(db).await?;
+        for mut item in Item::from_object(db, &self.id).await? {
+            item.delete(db).await?
         }
-        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.items WHERE id = $1;"#, *self.id);
+        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.objects WHERE id = $1;"#, *self.id);
         Ok(())
     }
 

@@ -1,5 +1,5 @@
 import {EncString} from "./encstring";
-import {Filesystem} from "./filesystem";
+import {FilesystemStream} from "./filesystem_stream";
 
 class RepositoryStatus {
     constructor(data) {
@@ -69,9 +69,9 @@ class Repository {
         this.allow_visitor_upload = data.allow_visitor_upload;
 
         /**
-         * @type {Filesystem}
+         * @type {FilesystemStream}
          */
-        this.content = new Filesystem(this.id)
+        this.content = new FilesystemStream(this.url_name)
     }
 
     /**
@@ -87,10 +87,13 @@ class Repository {
 
     /**
      * @param id {number}
-     * @returns {Repository}
+     * @returns {Promise<Repository>}
      */
-    find(id) {
-        return Repository._LOCAL_CACHE.get(id);
+    static async find(id) {
+        const local = Repository._LOCAL_CACHE.get(id);
+        if (local)
+            return local;
+        return local;
     }
 }
 

@@ -1,13 +1,25 @@
-pub mod root;
-pub mod user;
-pub mod repository;
+use std::sync::Arc;
+use anyhow::Error;
+use axum::body::Body;
+use axum::http::{Request, StatusCode};
+use axum::response::IntoResponse;
+use axum::Router;
+use tracing::warn;
+use crate::app_ctx::AppCtx;
+use crate::database::repository::Repository;
+use crate::database::user::User;
+use crate::routes::route_item::ItemRoutes;
+use crate::routes::route_repository::RepositoryRoutes;
+use crate::routes::route_user::UserRoutes;
 
-
+mod route_repository;
+mod route_item;
+mod route_user;
 
 #[macro_export]
 macro_rules! get_connected_user {
     ($request:expr, $prop:ident, $body:expr, $or_else:expr) => {{
-        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<std::sync::Arc<crate::routes::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.connected_user().await.as_ref() {
             {$body}
         } else {
@@ -16,7 +28,7 @@ macro_rules! get_connected_user {
     }};
 
     ($request:expr, $prop:ident, $body:expr) => (
-        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<std::sync::Arc<crate::routes::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.connected_user().await.as_ref() {
             $body
         }
@@ -38,7 +50,7 @@ macro_rules! require_connected_user {
 #[macro_export]
 macro_rules! get_display_repository {
     ($request:expr, $prop:ident, $body:expr, $or_else:expr) => {{
-        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<std::sync::Arc<crate::routes::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.display_repository().await.as_ref() {
             {$body}
         } else {
@@ -47,7 +59,7 @@ macro_rules! get_display_repository {
     }};
 
     ($request:expr, $prop:ident, $body:expr) => (
-        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<std::sync::Arc<crate::routes::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.display_repository().await.as_ref() {
             $body
         }
@@ -57,7 +69,7 @@ macro_rules! get_display_repository {
 #[macro_export]
 macro_rules! get_display_user {
     ($request:expr, $prop:ident, $body:expr, $or_else:expr) => {{
-        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<std::sync::Arc<crate::routes::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.display_user().await.as_ref() {
             {$body}
         } else {
@@ -66,7 +78,7 @@ macro_rules! get_display_user {
     }};
 
     ($request:expr, $prop:ident, $body:expr) => (
-        let req_ctx = $request.extensions().get::<Arc<crate::routes::root::RequestContext>>().unwrap();
+        let req_ctx = $request.extensions().get::<std::sync::Arc<crate::routes::RequestContext>>().unwrap();
         if let Some($prop) = req_ctx.display_user().await.as_ref() {
             $body
         }
@@ -82,4 +94,54 @@ macro_rules! require_display_repository {
             return Err(ServerError::msg(StatusCode::UNAUTHORIZED, "Invalid repository"))
         })
     }};
+}
+
+
+#[derive(Default, Debug)]
+pub struct RequestContext {
+    pub connected_user: tokio::sync::RwLock<Option<User>>,
+    pub display_user: tokio::sync::RwLock<Option<User>>,
+    pub display_repository: tokio::sync::RwLock<Option<Repository>>,
+}
+
+impl RequestContext {
+    pub async fn connected_user(&self) -> tokio::sync::RwLockReadGuard<Option<User>> {
+        self.connected_user.read().await
+    }
+
+    pub async fn connected_user_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<User>> {
+        self.connected_user.write().await
+    }
+    pub async fn display_user(&self) -> tokio::sync::RwLockReadGuard<Option<User>> {
+        self.display_user.read().await
+    }
+
+    pub async fn display_user_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<User>> {
+        self.display_user.write().await
+    }
+    pub async fn display_repository(&self) -> tokio::sync::RwLockReadGuard<Option<Repository>> {
+        self.display_repository.read().await
+    }
+
+    pub async fn display_repository_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<Repository>> {
+        self.display_repository.write().await
+    }
+}
+
+pub struct RootRoutes {}
+
+impl RootRoutes {
+    pub fn create(ctx: &Arc<AppCtx>) -> Result<Router<>, Error> {
+        let router = Router::new()
+            .nest("/repository/", RepositoryRoutes::create(ctx)?)
+            .nest("/user/", UserRoutes::create(ctx)?)
+            .nest("/item/", ItemRoutes::create(ctx)?)
+            .fallback(handler_404);
+        Ok(router)
+    }
+}
+
+async fn handler_404(_: Request<Body>) -> impl IntoResponse {
+    warn!("\t\t'-> 404 : NOT FOUND");
+    (StatusCode::NOT_FOUND, "Not found !")
 }

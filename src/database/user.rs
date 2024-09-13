@@ -12,6 +12,7 @@ use rand::random;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::time::{SystemTime, UNIX_EPOCH};
+use crate::database::subscription::Subscription;
 
 make_database_id!(UserId);
 
@@ -184,7 +185,9 @@ impl User {
         for token in AuthToken::from_user(db, self.id()).await? {
             token.delete(db).await?;
         }
-        
+        for subscriptions in Subscription::from_user(db, &self.id).await? {
+            subscriptions.delete(db).await?
+        }
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.users WHERE id = $1;"#, self.id);
         Ok(())
     }

@@ -62,9 +62,9 @@ class User {
 
     /**
      * @param id {number}
-     * @returns {User}
+     * @returns {Promise<User>}
      */
-    find(id) {
+    static async find(id) {
         return User._LOCAL_CACHE.get(id);
     }
 }
