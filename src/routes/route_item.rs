@@ -38,7 +38,7 @@ async fn directory_content(State(ctx): State<Arc<AppCtx>>, request: Request) -> 
     let mut items = vec![];
     for directory in json.0 {
         if permissions.view_item(&ctx.database, &directory).await?.granted() {
-            items.push(Item::from_parent(&ctx.database, &directory).await?);
+            items.append(&mut Item::from_parent(&ctx.database, &directory).await?);
         }
     }
     Ok(Json(items))

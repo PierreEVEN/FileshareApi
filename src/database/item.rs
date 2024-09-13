@@ -29,10 +29,10 @@ pub struct DirectoryData {
 #[derive(Debug)]
 pub struct Item {
     id: ItemId,
-    pub repository_id: RepositoryId,
+    pub repository: RepositoryId,
     pub owner: UserId,
     pub name: EncString,
-    pub description: EncString,
+    pub description: Option<EncString>,
     pub parent_item: Option<ItemId>,
     pub absolute_path: EncPath,
     pub in_trash: bool,
@@ -44,11 +44,11 @@ impl FromRow for Item {
     fn from_row(row: &Row) -> Self {
         let mut item = Self {
             id: row.get::<&str, ItemId>("id"),
-            repository_id: row.get::<&str, RepositoryId>("repository_id"),
+            repository: row.get::<&str, RepositoryId>("repository"),
             owner: row.get::<&str, UserId>("owner"),
             name: row.get::<&str, EncString>("name"),
-            description: row.get::<&str, EncString>("description"),
-            parent_item: row.get::<&str, Option<ItemId>>("parent_item"),
+            description: if let Ok(description) = row.try_get::<&str, EncString>("description") { Some(description) } else { None },
+            parent_item: if let Ok(parent_item) = row.try_get::<&str, ItemId>("parent_item") { Some(parent_item) } else { None },
             absolute_path: row.get::<&str, EncPath>("absolute_path"),
             in_trash: row.get::<&str, bool>("in_trash"),
             directory: None,
@@ -74,11 +74,11 @@ impl FromRow for Item {
     fn try_from_row(row: &Row) -> Result<Self, tokio_postgres::Error> {
         let mut item = Self {
             id: row.try_get::<&str, ItemId>("id")?,
-            repository_id: row.try_get::<&str, RepositoryId>("repository_id")?,
+            repository: row.try_get::<&str, RepositoryId>("repository")?,
             owner: row.try_get::<&str, UserId>("owner")?,
             name: row.try_get::<&str, EncString>("name")?,
-            description: row.try_get::<&str, EncString>("description")?,
-            parent_item: row.try_get::<&str, Option<ItemId>>("parent_item")?,
+            description: if let Ok(description) = row.try_get::<&str, EncString>("description") { Some(description) } else { None },
+            parent_item: if let Ok(parent_item) = row.try_get::<&str, ItemId>("parent_item") { Some(parent_item) } else { None },
             absolute_path: row.try_get::<&str, EncPath>("absolute_path")?,
             in_trash: row.try_get::<&str, bool>("in_trash")?,
             directory: None,
@@ -104,22 +104,25 @@ impl FromRow for Item {
 impl Serialize for Item {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer
+        S: Serializer,
     {
         let mut state = serializer.serialize_struct("Item", 3)?;
 
         state.serialize_field("id", &self.id)?;
-        state.serialize_field("repository_id", &self.repository_id)?;
+        state.serialize_field("repository", &self.repository)?;
         state.serialize_field("owner", &self.owner)?;
         state.serialize_field("name", &self.name)?;
-        state.serialize_field("description", &self.description)?;
-        state.serialize_field("parent_item", &self.parent_item)?;
+        if let Some(description) = &self.description {
+            state.serialize_field("description", description)?;
+        }
+        if let Some(parent_item) = &self.parent_item {
+            state.serialize_field("parent_item", parent_item)?;
+        }
         state.serialize_field("absolute_path", &self.absolute_path)?;
         state.serialize_field("in_trash", &self.in_trash)?;
         if let Some(directory) = &self.directory {
             state.serialize_field("directory", &directory)?;
-        }
-        else {
+        } else {
             match &self.file {
                 None => {
                     return Err(serde::ser::Error::custom("Missing file data : this item is neither a file or a directory."))
@@ -135,27 +138,27 @@ impl Serialize for Item {
 
 impl Item {
     pub async fn from_id(db: &Database, id: &ItemId) -> Result<Self, Error> {
-        query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE id = $1", id).ok_or(Error::msg("Failed to find item from id"))
+        query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE id = $1", id).ok_or(Error::msg("Failed to find item from id"))
     }
 
     pub async fn from_repository(db: &Database, id: &RepositoryId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE repository = $1", id))
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE repository = $1", id))
     }
 
     pub async fn from_user(db: &Database, id: &UserId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE owner = $1", id))
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE owner = $1", id))
     }
 
     pub async fn from_object(db: &Database, id: &ObjectId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE id = IN (SELECT id FROM SCHEMA_NAME.files WHERE object = $1)", id))
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE id = IN (SELECT id FROM SCHEMA_NAME.files WHERE object = $1)", id))
     }
 
     pub async fn from_parent(db: &Database, parent_directory: &ItemId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE parent_item = $1", parent_directory))
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE parent_item = $1", parent_directory))
     }
 
     pub async fn repository_root(db: &Database, repository: &RepositoryId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.items WHERE parent_item IS NULL and repository = $1", repository))
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE parent_item IS NULL and repository = $1", repository))
     }
 
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {

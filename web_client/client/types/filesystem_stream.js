@@ -53,7 +53,17 @@ class Item {
          * @type {null|Set<number>}
          */
         this.children = null;
+    }
 
+    /**
+     * @return {Repository}
+     */
+    display_data() {
+        const result = JSON.parse(JSON.stringify(this));
+        result.name = this.name.plain()
+        result.description = this.description.plain()
+        result.absolute_path = this.absolute_path.plain()
+        return result
     }
 }
 
@@ -98,7 +108,7 @@ class FilesystemStream {
         if (existing) {
             return existing;
         }
-        for (const item of await fetch_api(`${(await this._user).name.encoded()}/${(await this._repository).url_name.encoded()}/item/`, 'POST', {items: [item_id]})) {
+        for (const item of await fetch_api(`item/find/`, 'POST', [item_id])) {
             await this._set_or_update_item(new Item(item));
         }
         return this._items.get(item_id);
@@ -106,19 +116,17 @@ class FilesystemStream {
 
     /**
      * @param item_id {number}
-     * @return {Promise<Map<number, Item>>}
+     * @return {Promise<Set<number>>}
      */
     async directory_content(item_id) {
         const existing = await this.fetch_item(item_id);
         if (!existing)
-            return new Map();
+            return new Set();
         if (existing.children) {
             return existing.children;
         }
-        existing.children = new Map();
-        for (const item of await fetch_user(`${this._repository_name.encoded()}/directory-content/`, 'POST', {
-            directories: [item_id]
-        })) {
+        existing.children = new Set();
+        for (const item of await fetch_api(`item/directory-content/`, 'POST', [item_id])) {
             await this._set_or_update_item(new Item(item));
         }
         return existing.children;
@@ -143,10 +151,10 @@ class FilesystemStream {
      */
     async _set_or_update_item(item) {
         this._items.set(item.id, item);
-        if (item.parent_item) {
+        if (item.parent_item !== undefined) {
             const parent = await this.fetch_item(item.parent_item);
             if (!parent.children)
-                parent.children = {};
+                parent.children = new Set();
             parent.children.add(item.id);
         } else if (this._roots) {
             this._roots.add(item.id);

@@ -9,7 +9,7 @@ class RepositoryNode {
         this._id = id;
         this._expanded = false;
         repository.content.fetch_item(id).then(data => {
-            const div = require('./repository_tree.hbs')({}, {
+            const div = require('./repository_tree.hbs')(data.display_data(), {
                 expand: async () => {
                     await this.expand_node(!this._expanded);
                 }
@@ -24,8 +24,10 @@ class RepositoryNode {
      */
     async expand_node(expanded) {
         this._expanded = expanded;
+        this._elements.content.innerHTML = '';
         const content = await this._repository.content.directory_content(this._id);
-        for (const [id, item] of content) {
+        for (const id of content) {
+            const item = await this._repository.content.fetch_item(id);
             if (!item.is_regular_file) {
                 new RepositoryNode(this._repository, this._elements.content, id);
             }

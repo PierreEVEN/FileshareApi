@@ -23,7 +23,6 @@ use crate::database::Database;
 use crate::database::user::User;
 use crate::routes::{RequestContext, RootRoutes};
 use crate::utils::enc_string::EncString;
-use crate::utils::permissions::Permissions;
 use crate::utils::server_error::ServerError;
 use crate::web_client::WebClient;
 

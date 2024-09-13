@@ -11,7 +11,6 @@ use crate::database::user::User;
 use crate::routes::route_item::ItemRoutes;
 use crate::routes::route_repository::RepositoryRoutes;
 use crate::routes::route_user::UserRoutes;
-use crate::utils::permissions::Permissions;
 
 mod route_repository;
 mod route_item;
