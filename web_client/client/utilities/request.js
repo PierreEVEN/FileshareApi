@@ -1,6 +1,6 @@
 import {APP_CONFIG} from "../types/app_config";
 import {APP_COOKIES} from "./cookies";
-import {Authentication} from "../modules/authentication/authentication";
+import {Authentication} from "../modules/tools/authentication/authentication";
 import {EncString} from "../types/encstring";
 
 /**

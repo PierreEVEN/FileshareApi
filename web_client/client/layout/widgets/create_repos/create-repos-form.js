@@ -1,8 +1,8 @@
 import {open_modal} from "../../../modules/modal/modal.js";
 
-require('./create-repos.scss')
+require('../../../modules/tools/create_repository/create-repos.scss')
 
-const create_repos = require('./create_repos.hbs')
+const create_repos = require('../../../modules/tools/create_repository/create_repository.hbs')
 
 function open_create_repos_modal() {
     open_modal(create_repos(), '500px', '350px', 'create-repos');

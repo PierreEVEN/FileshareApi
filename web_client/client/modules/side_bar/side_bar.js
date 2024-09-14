@@ -5,6 +5,7 @@ import {APP} from "../../app";
 import {APP_COOKIES} from "../../utilities/cookies";
 import {User} from "../../types/user";
 import {RepositoryTree} from "./repository_tree/repository_tree";
+import {context_menu_my_repositories} from "../context_menu/contexts/context_my_repositories";
 
 require('./side_bar.scss')
 
@@ -26,7 +27,10 @@ class SideBar {
             },
             switch_recent: () => {
                 this.expand_recent(!this._recent_expanded);
-
+            },
+            context_my_repositories: (e) => {
+                context_menu_my_repositories();
+                e.preventDefault();
             }
         });
         this._elements = div['elements'];

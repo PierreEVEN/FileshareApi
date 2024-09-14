@@ -212,4 +212,8 @@ impl Item {
         }
         Ok(())
     }
+    
+    pub fn id(&self) -> &ItemId {
+        &self.id
+    }
 }

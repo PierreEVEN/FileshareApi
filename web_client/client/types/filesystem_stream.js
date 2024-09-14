@@ -1,10 +1,16 @@
 const {EncString} = require("./encstring");
 const {User} = require("./user");
 const {ContextMenu, MenuAction} = require("../modules/context_menu/context_menu");
-const {create_directory} = require("../modules/tools/create_directory/create_directory");
 const {fetch_api} = require("../utilities/request");
+const {EVENT_MANAGER} = require("./event_manager");
 
-class Item {
+/**
+ * @type {Map<number, FilesystemStream>}
+ * @private
+ */
+const _LOCAL_STORAGE = new Map();
+
+class FilesystemItem {
     constructor(data) {
         /**
          * @type {number}
@@ -57,6 +63,14 @@ class Item {
         this.children = null;
     }
 
+    static async new(data) {
+        const item = new FilesystemItem(data);
+        const filesystem = _LOCAL_STORAGE.get(item.repository)
+        if (filesystem) {
+            await filesystem.set_or_update_item(item);
+        }
+    }
+
     /**
      * @return {Repository}
      */
@@ -68,26 +82,27 @@ class Item {
         return result
     }
 
-    open_context_menu() {
-        const ctx = new ContextMenu();
-        ctx.add_action(new MenuAction("Nouveau Dossier", "public/images/icons/icons8-add-folder-48.png", async () => {
-            create_directory(this.repository, this.id);
-        }, false))
-        ctx.add_action(new MenuAction("Supprimer", "public/images/icons/icons8-trash-96.png", () => {
-            this.move_to_trash()
-        }, false));
+    async refresh() {
+        const storage = this.filesystem();
+        if (storage)
+            await storage.set_or_update_item(this);
     }
 
-    add_subdirectory() {
-
+    /**
+     * @return {FilesystemStream|null}
+     */
+    filesystem() {
+        return _LOCAL_STORAGE.get(this.id);
     }
 
-    move_to_trash() {
-
+    async remove() {
+        const fs = this.filesystem();
+        await fs.remove_item(this);
     }
 }
 
 class FilesystemStream {
+
     /**
      * @param repository {Repository}
      */
@@ -98,6 +113,8 @@ class FilesystemStream {
          */
         this._repository = repository;
 
+        _LOCAL_STORAGE.set(this._repository.id, this);
+
         /**
          * @type {Promise<User>}
          * @private
@@ -107,7 +124,7 @@ class FilesystemStream {
         });
 
         /**
-         * @type {Map<number, Item>}
+         * @type {Map<number, FilesystemItem>}
          * @private
          */
         this._items = new Map();
@@ -121,7 +138,7 @@ class FilesystemStream {
 
     /**
      * @param item_id {number}
-     * @returns {Promise<Item>}
+     * @returns {Promise<FilesystemItem>}
      */
     async fetch_item(item_id) {
         const existing = this._items.get(item_id);
@@ -129,8 +146,12 @@ class FilesystemStream {
             return existing;
         }
         for (const item of await fetch_api(`item/find/`, 'POST', [item_id])) {
-            await this._set_or_update_item(new Item(item));
+            await this.set_or_update_item(new FilesystemItem(item));
         }
+        return this._items.get(item_id);
+    }
+
+    find(item_id) {
         return this._items.get(item_id);
     }
 
@@ -147,7 +168,7 @@ class FilesystemStream {
         }
         existing.children = new Set();
         for (const item of await fetch_api(`item/directory-content/`, 'POST', [item_id])) {
-            await this._set_or_update_item(new Item(item));
+            await this.set_or_update_item(new FilesystemItem(item));
         }
         return existing.children;
     }
@@ -159,17 +180,19 @@ class FilesystemStream {
         if (!this._roots) {
             this._roots = new Set();
             for (const item of await fetch_api(`repository/root-content/`, 'POST', [this._repository.id])) {
-                await this.set_or_update_item(new Item(item));
+                await this.set_or_update_item(new FilesystemItem(item));
             }
         }
         return this._roots
     }
 
     /**
-     * @param item {Item}
-     * @private
+     * @param item {FilesystemItem}
      */
     async set_or_update_item(item) {
+        if (this._items.has(item.id)) {
+            await this.remove_item(item);
+        }
         this._items.set(item.id, item);
         if (item.parent_item !== undefined) {
             const parent = await this.fetch_item(item.parent_item);
@@ -179,8 +202,23 @@ class FilesystemStream {
         } else if (this._roots) {
             this._roots.add(item.id);
         }
+        EVENT_MANAGER.broadcast('add_item', item);
+    }
+
+    /**
+     * @param item {FilesystemItem}
+     * @return {Promise<void>}
+     */
+    async remove_item(item) {
+        if (item.parent_item) {
+            const parent = await this.fetch_item(item.parent_item);
+            parent.children.delete(item.id);
+        } else {
+            this._roots.delete(item.id);
+        }
+        EVENT_MANAGER.broadcast('remove_item', item);
     }
 }
 
 
-module.exports = {FilesystemStream, Item}
+module.exports = {FilesystemStream, Item: FilesystemItem}

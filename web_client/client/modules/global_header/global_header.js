@@ -1,5 +1,5 @@
 import {MODAL} from "../modal/modal";
-import {Authentication} from "../authentication/authentication";
+import {Authentication} from "../tools/authentication/authentication";
 import {APP_CONFIG} from "../../types/app_config";
 
 require('./global_header.scss')

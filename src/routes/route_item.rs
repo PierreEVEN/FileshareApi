@@ -21,6 +21,8 @@ impl ItemRoutes {
     pub fn create(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         Ok(Router::new()
             .route("/find/", post(find_items).with_state(ctx.clone()))
+            .route("/move-to-trash/", post(move_to_trash).with_state(ctx.clone()))
+            .route("/delete/", post(delete).with_state(ctx.clone()))
             .route("/new-directory/", post(new_directory).with_state(ctx.clone()))
             .route("/directory-content/", post(directory_content).with_state(ctx.clone()))
         )
@@ -87,6 +89,55 @@ async fn new_directory(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
         item.push(&ctx.database).await?;
         
         items.push(item);
+    }
+    Ok(Json(items))
+}
+
+
+async fn move_to_trash(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let permissions = Permissions::new(&request)?;
+    let json = Json::<Vec<ItemId>>::from_request(request, &ctx).await?;
+    let mut items = vec![];
+    for item in json.0 {
+        if permissions.edit_item(&ctx.database, &item).await?.granted() {
+            let mut item = Item::from_id(&ctx.database, &item).await?;
+            if item.in_trash {
+                continue;
+            }
+            item.in_trash = true;
+            item.push(&ctx.database).await?;
+            items.push(item.id().clone());
+        }
+    }
+    Ok(Json(items))
+}
+
+async fn restore(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let permissions = Permissions::new(&request)?;
+    let json = Json::<Vec<ItemId>>::from_request(request, &ctx).await?;
+    let mut items = vec![];
+    for item in json.0 {
+        if permissions.edit_item(&ctx.database, &item).await?.granted() {
+            let mut item = Item::from_id(&ctx.database, &item).await?;
+            if !item.in_trash {
+                continue;
+            }
+            item.in_trash = false;
+            item.push(&ctx.database).await?;
+            items.push(item.id().clone());
+        }
+    }
+    Ok(Json(items))
+}
+
+async fn delete(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let permissions = Permissions::new(&request)?;
+    let json = Json::<Vec<ItemId>>::from_request(request, &ctx).await?;
+    let mut items = vec![];
+    for directory in json.0 {
+        if permissions.view_item(&ctx.database, &directory).await?.granted() {
+            items.append(&mut Item::from_parent(&ctx.database, &directory).await?);
+        }
     }
     Ok(Json(items))
 }

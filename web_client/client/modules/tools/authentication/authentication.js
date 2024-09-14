@@ -1,9 +1,9 @@
-import {MODAL} from "../modal/modal";
-import {fetch_api} from "../../utilities/request";
-import {EncString} from "../../types/encstring";
-import {APP_COOKIES} from "../../utilities/cookies";
-import {APP_CONFIG} from "../../types/app_config";
-import {print_message} from "../../layout/widgets/components/message_box";
+import {MODAL} from "../../modal/modal";
+import {fetch_api} from "../../../utilities/request";
+import {EncString} from "../../../types/encstring";
+import {APP_COOKIES} from "../../../utilities/cookies";
+import {APP_CONFIG} from "../../../types/app_config";
+import {print_message} from "../../../layout/widgets/components/message_box";
 
 const Authentication = {
     login: async () => {

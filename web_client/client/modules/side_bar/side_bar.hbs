@@ -1,5 +1,5 @@
 <div class="side-bar">
-    <div {{object "div_my_repositories"}} class="category">
+    <div {{object "div_my_repositories"}} class="category"  oncontextmenu="{{ctx "context_my_repositories(event)"}}">
         <button onclick="{{ctx "expand_my_repositories()"}}">
             <p class="arrow">▸</p><img src="/public/images/icons/icons8-folder-96.png">
             <p class="title">Mes dépôts</p>

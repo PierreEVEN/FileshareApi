@@ -57,18 +57,21 @@ async fn create_repository(State(ctx): State<Arc<AppCtx>>, request: Request) -> 
         name: EncString,
         status: String,
     }
-    let data = Json::<CreateReposData>::from_request(request, &ctx).await?;
-    if Repository::from_url_name(&ctx.database, &data.name.url_formated()?).await.is_ok() {
-        return Err(ServerError::msg(StatusCode::FORBIDDEN, "A repository with this name already exists"));
+    let repository_data = Json::<Vec<CreateReposData>>::from_request(request, &ctx).await?;
+    let mut repositories = vec![];
+    for data in repository_data.0 {
+        if Repository::from_url_name(&ctx.database, &data.name.url_formated()?).await.is_ok() {
+            return Err(ServerError::msg(StatusCode::FORBIDDEN, "A repository with this name already exists"));
+        }
+        let mut repository = Repository::default();
+        repository.url_name = data.name.url_formated()?;
+        repository.display_name = data.name.clone();
+        repository.status = RepositoryStatus::from(data.status.clone());
+        repository.owner = user.id().clone();
+        repository.push(&ctx.database).await?;
+        repositories.push(repository);
     }
-    let mut repository = Repository::default();
-    repository.url_name = data.name.url_formated()?;
-    repository.display_name = data.name.clone();
-    repository.status = RepositoryStatus::from(data.status.clone());
-    repository.owner = user.id().clone();
-    repository.push(&ctx.database).await?;
-
-    Ok(Json(repository.url_name))
+    Ok(Json(repositories))
 }
 
 async fn get_owned_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> impl IntoResponse {

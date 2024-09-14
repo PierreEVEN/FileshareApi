@@ -1,8 +1,7 @@
 import {EncString} from "./encstring";
 import {FilesystemStream} from "./filesystem_stream";
-import {ContextMenu, MenuAction} from "../modules/context_menu/context_menu";
-import {create_directory} from "../modules/tools/create_directory/create_directory";
 import {fetch_api} from "../utilities/request";
+import {EVENT_MANAGER} from "./event_manager";
 
 class RepositoryStatus {
     constructor(data) {
@@ -77,6 +76,8 @@ class Repository {
         this.content = new FilesystemStream(this)
 
         Repository._LOCAL_CACHE.set(this.id, this);
+
+        EVENT_MANAGER.broadcast('add_repository', this);
     }
 
     /**
@@ -106,6 +107,11 @@ class Repository {
         return Repository._LOCAL_CACHE.get(id);
     }
 
+    remove() {
+        Repository._LOCAL_CACHE.delete(this.id);
+        EVENT_MANAGER.broadcast('remove_repository', this);
+    }
+
     toJSON() {
         const data = {};
         for (const [key, value] of Object.entries(this)) {
@@ -113,24 +119,6 @@ class Repository {
                 data[key] = value;
         }
         return data;
-    }
-
-    open_context_menu() {
-        const ctx = new ContextMenu();
-        ctx.add_action(new MenuAction("Nouveau Dossier", "public/images/icons/icons8-add-folder-48.png", async () => {
-            create_directory(this.id);
-        }, false))
-        ctx.add_action(new MenuAction("Supprimer", "public/images/icons/icons8-trash-96.png", () => {
-            this.delete_repository()
-        }, false))
-    }
-
-    add_root_directory() {
-
-    }
-
-    delete_repository() {
-
     }
 }
 
