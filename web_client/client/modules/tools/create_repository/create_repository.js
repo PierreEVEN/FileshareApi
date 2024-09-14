@@ -10,7 +10,7 @@ async function create_repository() {
             const repositories = await fetch_api('repository/create/', 'POST',
                 [{
                     name: EncString.from_client(document.getElementById('repository-name').value),
-                    status: document.getElementById('repository-type')
+                    status: document.getElementById('repository-type').value
                 }]
             );
 

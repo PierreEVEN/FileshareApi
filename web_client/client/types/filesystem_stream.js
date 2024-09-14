@@ -92,7 +92,7 @@ class FilesystemItem {
      * @return {FilesystemStream|null}
      */
     filesystem() {
-        return _LOCAL_STORAGE.get(this.id);
+        return _LOCAL_STORAGE.get(this.repository);
     }
 
     async remove() {
@@ -221,4 +221,4 @@ class FilesystemStream {
 }
 
 
-module.exports = {FilesystemStream, Item: FilesystemItem}
+module.exports = {FilesystemStream, FilesystemItem}

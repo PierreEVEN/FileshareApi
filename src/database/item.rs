@@ -14,7 +14,7 @@ use tokio_postgres::Row;
 make_database_id!(ItemId);
 
 
-#[derive(Debug, FromRow, Serialize)]
+#[derive(Debug, FromRow, Serialize, Clone)]
 pub struct FileData {
     pub size: i64,
     pub mimetype: EncString,
@@ -22,12 +22,12 @@ pub struct FileData {
     pub object: ObjectId,
 }
 
-#[derive(Debug, FromRow, Serialize)]
+#[derive(Debug, FromRow, Serialize, Clone)]
 pub struct DirectoryData {
     pub open_upload: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Item {
     id: ItemId,
     pub repository: RepositoryId,
@@ -93,9 +93,9 @@ impl FromRow for Item {
                 timestamp: row.get::<&str, i64>("mimetype"),
                 object: row.get::<&str, ObjectId>("mimetype"),
             })
-        } else {
+        } else if let Ok(open_upload) = row.try_get::<&str, bool>("open_upload") {
             item.directory = Some(DirectoryData {
-                open_upload: row.try_get::<&str, bool>("open_upload")?
+                open_upload
             })
         }
         Ok(item)
@@ -162,14 +162,21 @@ impl Item {
         Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE parent_item IS NULL and repository = $1", repository))
     }
 
-    pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
-        if self.file.is_some() {
-            query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.files WHERE id = $1;"#, *self.id);
-        } else {
-            query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.directories WHERE id = $1;"#, *self.id);
+    pub async fn delete(&self, db: &Database) -> Result<(), Error> {
+        let mut items_to_delete = vec![self.clone()];
+        for i in 0..items_to_delete.len() {
+            items_to_delete.append(&mut Item::from_parent(db, &items_to_delete.get(i).unwrap().id).await?);
         }
 
-        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.items WHERE id = $1;"#, *self.id);
+        while let Some(item) = items_to_delete.pop() {
+            if self.file.is_some() {
+                query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.files WHERE id = $1;"#, *item.id);
+            } else {
+                query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.directory_data WHERE id = $1;"#, *item.id);
+            }
+            query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.items WHERE id = $1;"#, *item.id);
+        }
+
         Ok(())
     }
 
@@ -212,7 +219,7 @@ impl Item {
         }
         Ok(())
     }
-    
+
     pub fn id(&self) -> &ItemId {
         &self.id
     }

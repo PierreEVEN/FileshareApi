@@ -1,4 +1,5 @@
 import {fetch_api} from "../../../utilities/request";
+import {FilesystemItem} from "../../../types/filesystem_stream";
 
 /**
  * @param item {FilesystemItem}
@@ -6,12 +7,13 @@ import {fetch_api} from "../../../utilities/request";
  * @return {Promise<void>}
  */
 async function delete_item(item, move_to_trash) {
+    const fs = item.filesystem();
     const items = await fetch_api(`item/${move_to_trash ? 'move-to-trash' : 'delete'}/`, 'POST',
         [item.id]
     );
     if (move_to_trash)
         for (const item_id of items) {
-            set_item_to_trash(item_id, true);
+            set_item_to_trash(fs.find(item_id), true);
             await item.refresh();
         }
     else

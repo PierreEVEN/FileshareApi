@@ -15,10 +15,19 @@ async function delete_repository(repository) {
             if (widget.elements.repository.value !== repository.display_name.plain())
                 return;
 
+
+            console.log(
+                {
+                    credentials: {
+                        login: EncString.from_client(widget.elements.login.value),
+                        password: EncString.from_client(widget.elements.password.value),
+                    },
+                    repositories: [repository.id]
+                })
             const repositories = await fetch_api(`repository/delete/`, 'POST',
                 {
                     credentials: {
-                        login: EncString.from_client(widget.elements.login),
+                        login: EncString.from_client(widget.elements.login.value),
                         password: EncString.from_client(widget.elements.password.value),
                     },
                     repositories: [repository.id]

@@ -75,6 +75,9 @@ class Repository {
          */
         this.content = new FilesystemStream(this)
 
+        if (Repository._LOCAL_CACHE.has(this.id))
+            this.remove();
+
         Repository._LOCAL_CACHE.set(this.id, this);
 
         EVENT_MANAGER.broadcast('add_repository', this);

@@ -75,11 +75,13 @@ class RepositoryTree {
                 await this.expand_node(!this._expanded)
             },
             context: (e) => {
+                console.log(e.target)
                 context_menu_repository(repository);
                 e.preventDefault();
             }
         });
         this._elements = root_div.elements;
+        this.root = root_div;
         container.append(root_div);
     }
 
