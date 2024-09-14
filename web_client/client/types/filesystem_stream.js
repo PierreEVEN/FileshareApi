@@ -159,7 +159,7 @@ class FilesystemStream {
         if (!this._roots) {
             this._roots = new Set();
             for (const item of await fetch_api(`repository/root-content/`, 'POST', [this._repository.id])) {
-                await this._set_or_update_item(new Item(item));
+                await this.set_or_update_item(new Item(item));
             }
         }
         return this._roots
@@ -169,7 +169,7 @@ class FilesystemStream {
      * @param item {Item}
      * @private
      */
-    async _set_or_update_item(item) {
+    async set_or_update_item(item) {
         this._items.set(item.id, item);
         if (item.parent_item !== undefined) {
             const parent = await this.fetch_item(item.parent_item);
@@ -183,4 +183,4 @@ class FilesystemStream {
 }
 
 
-module.exports = {FilesystemStream}
+module.exports = {FilesystemStream, Item}

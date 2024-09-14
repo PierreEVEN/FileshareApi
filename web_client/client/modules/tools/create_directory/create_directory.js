@@ -1,6 +1,8 @@
 import {fetch_api} from "../../../utilities/request";
 import {EncString} from "../../../types/encstring";
+
 const {MODAL} = require("../../modal/modal");
+import {Item} from "../../../types/filesystem_stream"
 
 /**
  * @param repository {number}
@@ -15,7 +17,7 @@ function create_directory(repository, parent_item = null) {
                 repository: repository,
                 parent_item: parent_item
             })
-            await fetch_api('item/new-directory/', 'POST',
+            const directories = await fetch_api('item/new-directory/', 'POST',
                 [{
                     name: EncString.from_client(document.getElementById('name').value),
                     repository: repository,
@@ -23,6 +25,10 @@ function create_directory(repository, parent_item = null) {
                 }]
             );
 
+            for (const item in directories) {
+                console.assert("false", "TODOOOOO");
+                new Item(item)
+            }
 
             MODAL.close();
         }
