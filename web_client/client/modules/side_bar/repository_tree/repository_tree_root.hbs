@@ -1,7 +1,7 @@
-<div>
-    <button class="field" onclick="{{ctx "expand()"}}">
+<div {{object "category"}}>
+    <button class="field" onclick="{{ctx "expand()"}}" oncontextmenu="{{ctx "context(event)"}}">
         <p class="arrow">▸</p><img src="/public/images/icons/icons8-storage-96.png">
-        <p>{{display_name}}</p>
+        <p class="title">{{display_name}}</p>
     </button>
     <div {{object "content"}} class="content"></div>
 </div>

@@ -1,4 +1,4 @@
-import {spawn_context_action} from "../components/context_action.js";
+import {spawn_context_action} from "../../../modules/context_menu/context_menu.js";
 import {close_modal, open_modal} from "../../../modules/modal/modal.js";
 import {parse_fetch_result, print_message} from "../components/message_box.js";
 import {REPOS_BUILDER} from "./repos_builder";

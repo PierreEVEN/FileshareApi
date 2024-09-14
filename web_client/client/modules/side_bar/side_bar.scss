@@ -9,9 +9,8 @@
     display: flex;
     flex-direction: row;
     margin: 0;
-    background-color: transparent;
 
-    p {
+    .title {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;

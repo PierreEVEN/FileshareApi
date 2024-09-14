@@ -1,6 +1,8 @@
 const {EncString} = require("./encstring");
-const {fetch_user, fetch_api} = require("../utilities/request");
 const {User} = require("./user");
+const {ContextMenu, MenuAction} = require("../modules/context_menu/context_menu");
+const {create_directory} = require("../modules/tools/create_directory/create_directory");
+const {fetch_api} = require("../utilities/request");
 
 class Item {
     constructor(data) {
@@ -12,7 +14,7 @@ class Item {
         /**
          * @type {number}
          */
-        this.repository_id = data.repository_id;
+        this.repository = data.repository;
 
         /**
          * @type {number}
@@ -64,6 +66,24 @@ class Item {
         result.description = this.description.plain()
         result.absolute_path = this.absolute_path.plain()
         return result
+    }
+
+    open_context_menu() {
+        const ctx = new ContextMenu();
+        ctx.add_action(new MenuAction("Nouveau Dossier", "public/images/icons/icons8-add-folder-48.png", async () => {
+            create_directory(this.repository, this.id);
+        }, false))
+        ctx.add_action(new MenuAction("Supprimer", "public/images/icons/icons8-trash-96.png", () => {
+            this.move_to_trash()
+        }, false));
+    }
+
+    add_subdirectory() {
+
+    }
+
+    move_to_trash() {
+
     }
 }
 

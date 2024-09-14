@@ -88,7 +88,7 @@ impl Repository {
         if self.url_name.is_empty() {
             return Err(Error::msg("Invalid name"));
         }
-        if self.id.0.is_valid() {
+        if self.id.is_valid() {
             query_fmt!(db, "INSERT INTO SCHEMA_NAME.repository
                         (id, url_name, owner, description, status, display_name, max_file_size, visitor_file_lifetime, allow_visitor_upload) VALUES
                         ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -96,12 +96,12 @@ impl Repository {
                         id = $1, url_name = $2, owner = $3, description = $4, status = $5, display_name = $6, max_file_size = $7, visitor_file_lifetime = $8, allow_visitor_upload = $9;",
                 self.id, self.url_name, self.owner, self.description, self.status, self.display_name, self.max_file_size, self.visitor_file_lifetime, self.allow_visitor_upload);
         } else {
-            let res = query_object!(db, Repository, "INSERT INTO SCHEMA_NAME.repository
+            let res = query_object!(db, RepositoryId, "INSERT INTO SCHEMA_NAME.repository
                         (url_name, owner, description, status, display_name, max_file_size, visitor_file_lifetime, allow_visitor_upload) VALUES
-                        ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
+                        ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
                 self.url_name, self.owner, self.description, self.status, self.display_name, self.max_file_size, self.visitor_file_lifetime, self.allow_visitor_upload);
             if let Some(res) =  res {
-                self.id = res.id.clone();
+                self.id = res;
             }
         }
         Ok(())
@@ -114,7 +114,7 @@ impl Repository {
         for subscriptions in Subscription::from_repository(db, &self.id).await? {
             subscriptions.delete(db).await?
         }
-        
+
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.repository WHERE id = $1;"#, self.id);
         Ok(())
     }

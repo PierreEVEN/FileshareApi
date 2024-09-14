@@ -1,7 +1,7 @@
 const toolbar_menu_hbs = require('./toolbar_menu.hbs')
 const {print_message, parse_fetch_result} = require("../components/message_box");
 const {PAGE_CONTEXT, humanFileSize, permissions} = require("../../../common/tools/utils");
-const {spawn_context_action} = require("../components/context_action");
+const {spawn_context_action} = require("../../../modules/context_menu/context_menu");
 const {ClientString} = require("../../../common/tools/client_string");
 const {open_modal, close_modal} = require("../../../modules/modal/modal");
 const {FilesystemObject} = require("../../../types/filesystem_v2");

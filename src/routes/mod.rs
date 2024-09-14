@@ -41,7 +41,7 @@ macro_rules! require_connected_user {
         crate::get_connected_user!($request, connected_user, {
             connected_user.clone()
         }, {
-            return Err(ServerError::msg(StatusCode::UNAUTHORIZED, "Not connected"))
+            return Err(ServerError::msg(axum::http::StatusCode::UNAUTHORIZED, "Not connected"))
         })
     }};
 }

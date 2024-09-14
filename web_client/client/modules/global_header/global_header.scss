@@ -102,8 +102,9 @@
 
     :first-child {
       margin-left: auto;
-
-      background-color: transparent;
+    }
+    :nth-child(2):not(:hover) {
+      background-color: rgba(255, 255, 255, 0.2);
     }
   }
 }

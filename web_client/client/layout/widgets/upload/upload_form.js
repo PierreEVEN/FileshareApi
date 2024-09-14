@@ -6,7 +6,7 @@ import {FilesystemUpload} from "../../../common/tools/filesystem_upload.js";
 import upload_hbs from "./upload_form.hbs";
 import file_hbs from "./file.hbs";
 import directory_hbs from "./directory.hbs";
-import {spawn_context_action} from "../components/context_action";
+import {spawn_context_action} from "../../../modules/context_menu/context_menu";
 import {FilesystemObject} from "../../../types/filesystem_v2";
 import {REPOS_BUILDER} from "../viewport/repos_builder"
 

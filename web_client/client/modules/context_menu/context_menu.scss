@@ -1,4 +1,4 @@
-@import "../colors";
+@import "../../stylesheets/palette";
 
 .context-action-box {
   position: absolute;
@@ -6,8 +6,10 @@
   flex-direction: column;
   background-color: $secondary;
   z-index: 100000;
-  border-radius: 5px;
   padding: 10px;
+  box-shadow: 10px 5px 15px black;
+  border: 1px solid black;
+  border-radius: 20px;
 
   p {
     width: 100%;
@@ -21,21 +23,10 @@
   }
 
   button {
-    background-color: rgba(0, 0, 0, 0);
     transition-duration: 0.15s;
     display: flex;
     flex-direction: row;
     align-items: center;
-    border-bottom: 1px $border-default dotted;
 
-    &:hover {
-      background-color: rgba(143, 139, 139, 0.35);
-      border-bottom: 1px #5cc1f8 solid;
-    }
-
-    &.context-checked {
-      background-color: $button_1;
-
-    }
   }
 }

@@ -4,13 +4,13 @@ import {LexicographicFilter} from "./filter/filter_lex";
 import {SizeFilter} from "./filter/filter_size";
 import {DateFilter} from "./filter/filter_date";
 
-const make_directory_hbs = require("./menus/make_directory.hbs");
+const make_directory_hbs = require("../../../modules/tools/create_directory/create_directory.hbs");
 const {print_message, parse_fetch_result} = require("../components/message_box");
 const {PAGE_CONTEXT} = require("../../../common/tools/utils");
 const {ClientString} = require("../../../common/tools/client_string");
 const {FilesystemObject} = require("../../../types/filesystem_v2");
 const {close_modal, open_modal} = require("../../../modules/modal/modal");
-const {spawn_context_action} = require("../components/context_action");
+const {spawn_context_action} = require("../../../modules/context_menu/context_menu");
 const directory_hbs = require("./directory.hbs");
 const {spawn_item_context_action} = require("./item_context_action");
 const file_hbs = require("./file.hbs");

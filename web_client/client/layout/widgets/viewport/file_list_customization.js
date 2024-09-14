@@ -1,7 +1,7 @@
 import {LOCAL_USER} from "../../../common/tools/user";
 import {ClientString} from "../../../common/tools/client_string";
 import {PAGE_CONTEXT, permissions} from "../../../common/tools/utils";
-import {spawn_context_action} from "../components/context_action";
+import {spawn_context_action} from "../../../modules/context_menu/context_menu";
 import {edit_repos} from "../edit_repos/edit_repos_form";
 import {parse_fetch_result} from "../components/message_box";
 import {REPOS_BUILDER} from "./repos_builder";

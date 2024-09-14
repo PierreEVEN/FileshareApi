@@ -1,7 +1,7 @@
 use crate::database::object::ObjectId;
 use crate::database::repository::RepositoryId;
 use crate::database::user::UserId;
-use crate::database::Database;
+use crate::database::{Database, DatabaseIdTrait};
 use crate::utils::enc_path::EncPath;
 use crate::utils::enc_string::EncString;
 use crate::{make_database_id, query_fmt, query_object, query_objects};
@@ -12,6 +12,7 @@ use serde::ser::{SerializeStruct};
 use tokio_postgres::Row;
 
 make_database_id!(ItemId);
+
 
 #[derive(Debug, FromRow, Serialize)]
 pub struct FileData {
@@ -26,7 +27,7 @@ pub struct DirectoryData {
     pub open_upload: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Item {
     id: ItemId,
     pub repository: RepositoryId,
@@ -169,6 +170,46 @@ impl Item {
         }
 
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.items WHERE id = $1;"#, *self.id);
+        Ok(())
+    }
+
+    pub async fn push(&mut self, db: &Database) -> Result<(), Error> {
+        if self.directory.is_none() && self.file.is_none() {
+            return Err(Error::msg("Cannot push : neither a file or a directory"));
+        }
+
+        if self.id.is_valid() {
+            query_fmt!(db, "INSERT INTO SCHEMA_NAME.items
+                        (id, repository, owner, name, is_regular_file, description, parent_item, absolute_path, in_trash) VALUES
+                        ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                        ON CONFLICT(id) DO UPDATE SET
+                        id = $1, repository = $2, owner = $3, name = $4, is_regular_file = $5, description = $6, parent_item = $7, absolute_path = $8, in_trash = $9;",
+                self.id, self.repository, self.owner, self.name, self.file.is_some(), self.description, self.parent_item, self.absolute_path, self.in_trash);
+        } else {
+            let res = query_object!(db, ItemId, "INSERT INTO SCHEMA_NAME.items
+                        (repository, owner, name, is_regular_file, description, parent_item, absolute_path, in_trash) VALUES
+                        ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+                self.repository, self.owner, self.name, self.file.is_some(), self.description, self.parent_item, self.absolute_path, self.in_trash);
+            if let Some(res) = res {
+                self.id = res;
+            }
+        }
+
+        if let Some(file) = &self.file {
+            query_fmt!(db, "INSERT INTO SCHEMA_NAME.file
+                        (id, size, mimetype, timestamp, object) VALUES
+                        ($1, $2, $3, $4, $5)
+                        ON CONFLICT(id) DO UPDATE SET
+                        id = $1, size = $2, mimetype = $3, timestamp = $4, object = $5;",
+                self.id, file.size, file.mimetype, file.timestamp, file.object);
+        } else if let Some(directory) = &self.directory {
+            query_fmt!(db, "INSERT INTO SCHEMA_NAME.directory_data
+                        (id, open_upload) VALUES
+                        ($1, $2)
+                        ON CONFLICT(id) DO UPDATE SET
+                        id = $1, open_upload = $2;",
+                self.id, directory.open_upload);
+        }
         Ok(())
     }
 }

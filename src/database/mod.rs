@@ -131,10 +131,20 @@ macro_rules! make_database_id {
             }
         }
         impl Eq for $T {}
-        
+
         impl std::hash::Hash for $T {
             fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
                 self.0.hash(state)
+            }
+        }
+
+        impl postgres_from_row::FromRow for $T {
+            fn from_row(row: &tokio_postgres::Row) -> Self {
+                Self(row.get::<&str, crate::database::DatabaseId>("id"))
+            }
+
+            fn try_from_row(row: &tokio_postgres::Row) -> Result<Self, tokio_postgres::Error> {
+                Ok(Self(row.try_get::<&str, crate::database::DatabaseId>("id")?))
             }
         }
     };
