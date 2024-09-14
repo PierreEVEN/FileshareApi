@@ -1,0 +1,18 @@
+
+CREATE OR REPLACE FUNCTION SCHEMA_NAME.trigger_drop_item() RETURNS TRIGGER AS $$
+	BEGIN
+	    DELETE FROM SCHEMA_NAME.items WHERE parent_item = OLD.id;
+
+		IF OLD.is_regular_file THEN
+			DELETE FROM SCHEMA_NAME.file WHERE id = OLD.id;
+		ELSE
+			DELETE FROM SCHEMA_NAME.directory_data WHERE id = OLD.id;
+		END IF;
+
+	    RETURN OLD;
+	END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE TRIGGER trigger_before_drop_item BEFORE DELETE ON SCHEMA_NAME.items
+FOR EACH ROW EXECUTE FUNCTION SCHEMA_NAME.trigger_drop_item();

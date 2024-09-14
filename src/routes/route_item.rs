@@ -1,5 +1,5 @@
 use crate::app_ctx::AppCtx;
-use crate::database::item::{DirectoryData, Item, ItemId};
+use crate::database::item::{DirectoryData, Item, ItemId, Trash};
 use crate::utils::server_error::ServerError;
 use anyhow::Error;
 use axum::extract::{FromRequest, Request, State};
@@ -35,7 +35,7 @@ async fn find_items(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<
     let mut items = vec![];
     for item_id in json.0 {
         if permissions.view_item(&ctx.database, &item_id).await?.granted() {
-            items.push(Item::from_id(&ctx.database, &item_id).await?)
+            items.push(Item::from_id(&ctx.database, &item_id, Trash::Both).await?)
         }
     }
     Ok(Json(items))
@@ -47,7 +47,7 @@ async fn directory_content(State(ctx): State<Arc<AppCtx>>, request: Request) -> 
     let mut items = vec![];
     for directory in json.0 {
         if permissions.view_item(&ctx.database, &directory).await?.granted() {
-            items.append(&mut Item::from_parent(&ctx.database, &directory).await?);
+            items.append(&mut Item::from_parent(&ctx.database, &directory, Trash::Both).await?);
         }
     }
     Ok(Json(items))
@@ -75,11 +75,11 @@ async fn new_directory(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
 
         let re = Regex::new(r#"[<>:"/\\|?*\x00-\x1F]|^(?:aux|con|clock\$|nul|prn|com[1-9]|lpt[1-9])$"#)?;
         if re.is_match(item.name.plain()?.as_str()) {
-            return Err(ServerError::msg(StatusCode::NOT_ACCEPTABLE, format!("Invalid directory name '${}'", item.name.plain()?)))
+            return Err(ServerError::msg(StatusCode::NOT_ACCEPTABLE, format!("Invalid directory name '${}'", item.name.plain()?)));
         }
 
         item.name = params.name;
-        item.repository = if let Some(parent) = &params.parent_item { Item::from_id(&ctx.database, parent).await?.repository } else { params.repository };
+        item.repository = if let Some(parent) = &params.parent_item { Item::from_id(&ctx.database, parent, Trash::Both).await?.repository } else { params.repository };
         item.parent_item = params.parent_item;
         item.owner = user.id().clone();
         item.directory = Some(DirectoryData {
@@ -87,7 +87,7 @@ async fn new_directory(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
         });
 
         item.push(&ctx.database).await?;
-        
+
         items.push(item);
     }
     Ok(Json(items))
@@ -100,13 +100,12 @@ async fn move_to_trash(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
     let mut items = vec![];
     for item in json.0 {
         if permissions.edit_item(&ctx.database, &item).await?.granted() {
-            let mut item = Item::from_id(&ctx.database, &item).await?;
-            if item.in_trash {
-                continue;
+            if let Ok(mut item) = Item::from_id(&ctx.database, &item, Trash::No).await
+            {
+                item.in_trash = true;
+                item.push(&ctx.database).await?;
+                items.push(item.id().clone());
             }
-            item.in_trash = true;
-            item.push(&ctx.database).await?;
-            items.push(item.id().clone());
         }
     }
     Ok(Json(items))
@@ -118,13 +117,11 @@ async fn restore(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<imp
     let mut items = vec![];
     for item in json.0 {
         if permissions.edit_item(&ctx.database, &item).await?.granted() {
-            let mut item = Item::from_id(&ctx.database, &item).await?;
-            if !item.in_trash {
-                continue;
+            if let Ok(mut item) = Item::from_id(&ctx.database, &item, Trash::Yes).await {
+                item.in_trash = false;
+                item.push(&ctx.database).await?;
+                items.push(item.id().clone());
             }
-            item.in_trash = false;
-            item.push(&ctx.database).await?;
-            items.push(item.id().clone());
         }
     }
     Ok(Json(items))
@@ -136,7 +133,7 @@ async fn delete(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl
     let mut items = vec![];
     for directory in json.0 {
         if permissions.view_item(&ctx.database, &directory).await?.granted() {
-            items.append(&mut Item::from_parent(&ctx.database, &directory).await?);
+            items.append(&mut Item::from_parent(&ctx.database, &directory, Trash::Both).await?);
         }
     }
     Ok(Json(items))

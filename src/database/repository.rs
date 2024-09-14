@@ -10,6 +10,7 @@ use postgres_types::private::BytesMut;
 use postgres_types::{to_sql_checked, IsNull, Type};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use crate::database::item::Trash::Both;
 
 make_database_id!(RepositoryId);
 
@@ -108,7 +109,7 @@ impl Repository {
     }
 
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
-        for mut item in Item::from_repository(db, &self.id).await? {
+        for mut item in Item::from_repository(db, &self.id, Both).await? {
             item.delete(db).await?;
         }
         for subscriptions in Subscription::from_repository(db, &self.id).await? {

@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use crate::database::object::ObjectId;
 use crate::database::repository::RepositoryId;
 use crate::database::user::UserId;
@@ -10,6 +11,7 @@ use postgres_from_row::FromRow;
 use serde::{Serialize, Serializer};
 use serde::ser::{SerializeStruct};
 use tokio_postgres::Row;
+use tracing::info;
 
 make_database_id!(ItemId);
 
@@ -137,46 +139,49 @@ impl Serialize for Item {
     }
 }
 
+pub enum Trash {
+    Yes,
+    No,
+    Both
+}
+
+impl Display for Trash {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Trash::Yes => {"AND in_trash"}
+            Trash::No => {"AND NOT in_trash"}
+            Trash::Both => {""}
+        })
+    }
+}
+
 impl Item {
-    pub async fn from_id(db: &Database, id: &ItemId) -> Result<Self, Error> {
-        query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE id = $1", id).ok_or(Error::msg("Failed to find item from id"))
+    pub async fn from_id(db: &Database, id: &ItemId, filter: Trash) -> Result<Self, Error> {
+        query_object!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE id = $1 {filter}"), id).ok_or(Error::msg("Failed to find item from id"))
     }
 
-    pub async fn from_repository(db: &Database, id: &RepositoryId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE repository = $1", id))
+    pub async fn from_repository(db: &Database, id: &RepositoryId, filter: Trash) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE repository = $1 {filter}"), id))
     }
 
-    pub async fn from_user(db: &Database, id: &UserId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE owner = $1", id))
+    pub async fn from_user(db: &Database, id: &UserId, filter: Trash) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE owner = $1 {filter}"), id))
     }
 
-    pub async fn from_object(db: &Database, id: &ObjectId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE id = IN (SELECT id FROM SCHEMA_NAME.files WHERE object = $1)", id))
+    pub async fn from_object(db: &Database, id: &ObjectId, filter: Trash) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE id IN (SELECT id FROM SCHEMA_NAME.files WHERE object = $1) {filter}"), id))
     }
 
-    pub async fn from_parent(db: &Database, parent_directory: &ItemId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE parent_item = $1", parent_directory))
+    pub async fn from_parent(db: &Database, parent_directory: &ItemId, filter: Trash) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE parent_item = $1 {filter}"), parent_directory))
     }
 
-    pub async fn repository_root(db: &Database, repository: &RepositoryId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE parent_item IS NULL and repository = $1", repository))
+    pub async fn repository_root(db: &Database, repository: &RepositoryId, filter: Trash) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE parent_item IS NULL and repository = $1 {filter}"), repository))
     }
 
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
-        let mut items_to_delete = vec![self.clone()];
-        for i in 0..items_to_delete.len() {
-            items_to_delete.append(&mut Item::from_parent(db, &items_to_delete.get(i).unwrap().id).await?);
-        }
-
-        while let Some(item) = items_to_delete.pop() {
-            if self.file.is_some() {
-                query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.files WHERE id = $1;"#, *item.id);
-            } else {
-                query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.directory_data WHERE id = $1;"#, *item.id);
-            }
-            query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.items WHERE id = $1;"#, *item.id);
-        }
-
+        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.items WHERE id = $1;"#, self.id);
         Ok(())
     }
 

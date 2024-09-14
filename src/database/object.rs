@@ -1,4 +1,4 @@
-use crate::database::item::{Item, ItemId};
+use crate::database::item::{Item, ItemId, Trash};
 use crate::database::repository::RepositoryId;
 use crate::database::Database;
 use crate::{make_database_id, query_fmt, query_object, query_objects};
@@ -43,7 +43,7 @@ impl Object {
 
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
         // Dereference from files
-        for mut item in Item::from_object(db, &self.id).await? {
+        for mut item in Item::from_object(db, &self.id, Trash::Both).await? {
             item.delete(db).await?
         }
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.objects WHERE id = $1;"#, *self.id);

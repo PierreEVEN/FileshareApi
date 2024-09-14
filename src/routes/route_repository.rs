@@ -1,5 +1,5 @@
 use crate::app_ctx::AppCtx;
-use crate::database::item::Item;
+use crate::database::item::{Item, Trash};
 use crate::database::repository::{Repository, RepositoryId, RepositoryStatus};
 use crate::database::user::User;
 use crate::require_connected_user;
@@ -121,7 +121,7 @@ pub async fn root_content(State(ctx): State<Arc<AppCtx>>, request: axum::http::R
     let mut result = vec![];
     for repository in data.0 {
         permission.view_repository(&ctx.database, &repository).await?.require()?;
-        result.append(&mut Item::repository_root(&ctx.database, &repository).await?);
+        result.append(&mut Item::repository_root(&ctx.database, &repository, Trash::No).await?);
     }
     Ok(Json(result))
 }

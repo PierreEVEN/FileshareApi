@@ -1,4 +1,4 @@
-use crate::database::item::{Item, ItemId};
+use crate::database::item::{Item, ItemId, Trash};
 use crate::database::repository::{Repository, RepositoryId, RepositoryStatus};
 use crate::database::subscription::{Subscription, SubscriptionAccessType};
 use crate::database::Database;
@@ -103,12 +103,12 @@ impl Permissions {
     }
 
     pub async fn view_item(&self, db: &Database, item_id: &ItemId) -> Result<PermissionResult, ServerError> {
-        let item = Item::from_id(db, item_id).await?;
+        let item = Item::from_id(db, item_id, Trash::Both).await?;
         self.view_repository(db, &item.repository).await
     }
 
     pub async fn edit_item(&self, db: &Database, item_id: &ItemId) -> Result<PermissionResult, ServerError> {
-        let item = Item::from_id(db, item_id).await?;
+        let item = Item::from_id(db, item_id, Trash::Both).await?;
         self.edit_repository(db, &item.repository).await?.require()?;
         Ok(if let Some(user) = &*self.request_context.connected_user().await {
             if item.owner == *user.id() {
@@ -122,7 +122,7 @@ impl Permissions {
     }
 
     pub async fn upload_to_directory(&self, db: &Database, item_id: &ItemId) -> Result<PermissionResult, ServerError> {
-        let item = Item::from_id(db, item_id).await?;
+        let item = Item::from_id(db, item_id, Trash::Both).await?;
         self.upload_to_repository(db, &item.repository).await?.require()?;
         Ok(if let Some(user) = &*self.request_context.connected_user().await {
             if item.owner == *user.id() {

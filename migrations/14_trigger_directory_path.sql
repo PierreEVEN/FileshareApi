@@ -33,10 +33,15 @@ CREATE OR REPLACE FUNCTION SCHEMA_NAME.make_item_path_up_to_date() RETURNS TRIGG
 	DECLARE
 	BEGIN
 		IF OLD IS NULL OR NEW.parent_item != OLD.parent_item OR NEW.name != OLD.name OR
-		(NEW.parent_item    IS NULL AND NOT OLD.parent_item IS NULL) OR
+		(NEW.parent_item IS NULL AND NOT OLD.parent_item IS NULL) OR
 		(OLD.parent_item IS NULL AND NOT NEW.parent_item IS NULL) THEN
 			CALL SCHEMA_NAME.regenerate_item_path_with_children(NEW.id);
 		END IF;
+
+		IF NOT OLD.in_trash = NEW.in_trash THEN
+			UPDATE SCHEMA_NAME.items SET in_trash = NEW.in_trash WHERE parent_item = NEW.id;
+		END IF;
+
 		RETURN NEW;
 	END;
 	$$ LANGUAGE plpgsql;

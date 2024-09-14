@@ -1,6 +1,6 @@
 import {fetch_api} from "../../../utilities/request";
 import {EncString} from "../../../types/encstring";
-import {Item} from "../../../types/filesystem_stream";
+import {FilesystemItem} from "../../../types/filesystem_stream";
 
 const {MODAL} = require("../../modal/modal");
 
@@ -21,7 +21,7 @@ function create_directory(repository, parent_item = null) {
             );
 
             for (const item of directories) {
-                await Item.new(item);
+                await FilesystemItem.new(item);
             }
 
             MODAL.close();

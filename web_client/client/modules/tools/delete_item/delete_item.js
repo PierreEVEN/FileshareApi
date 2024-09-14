@@ -39,8 +39,9 @@ async function restore_item(item) {
  */
 function set_item_to_trash(item, in_trash) {
     item.in_trash = in_trash;
-    for (const child of item.children)
-        set_item_to_trash(item.filesystem.find(child), in_trash);
+    if (item.children)
+        for (const child of item.children)
+            set_item_to_trash(item.filesystem.find(child), in_trash);
 }
 
 export {delete_item, restore_item}
