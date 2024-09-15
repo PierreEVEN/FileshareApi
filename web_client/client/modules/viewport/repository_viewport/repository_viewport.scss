@@ -1,0 +1,63 @@
+@import "../../../stylesheets/palette";
+
+.repository-viewport {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+
+  .repository-toolbar {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 45px;
+    background-color: $toolbar;
+  }
+
+  .repository-content {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    flex-grow: 1;
+
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      position: relative;
+
+      .content {
+        height: 100%;
+        overflow: scroll;
+      }
+      .footer {
+        color: $border-default;
+        display: flex;
+        justify-content: right;
+        font-size: small;
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+      }
+    }
+    .current-description {
+      display: flex;
+      flex-direction: column;
+      max-width: 25%;
+      width: 200px;
+      height: 100%;
+      background-color: $secondary;
+    }
+
+    @media (orientation: portrait) {
+      flex-direction: column-reverse;
+      .current-description {
+        max-height: 25%;
+        width: 100%;
+        max-width: unset;
+        height: 200px;
+      }
+    }
+  }
+}

@@ -141,6 +141,8 @@ class FilesystemStream {
      * @returns {Promise<FilesystemItem>}
      */
     async fetch_item(item_id) {
+        if (!item_id)
+            return null;
         const existing = this._items.get(item_id);
         if (existing) {
             return existing;
@@ -151,6 +153,10 @@ class FilesystemStream {
         return this._items.get(item_id);
     }
 
+    /**
+     * @param item_id {number}
+     * @return {FilesystemItem}
+     */
     find(item_id) {
         return this._items.get(item_id);
     }
@@ -217,6 +223,30 @@ class FilesystemStream {
             this._roots.delete(item.id);
         }
         EVENT_MANAGER.broadcast('remove_item', item);
+    }
+
+    /**
+     *
+     * @param child_name {string}
+     * @param parent_item {FilesystemItem|null}
+     * @return {Promise<*|null>}
+     */
+    async find_child(child_name, parent_item) {
+        const children = parent_item ? await this.directory_content(parent_item.id) : await this.root_content();
+        for (const child of children) {
+            const child_data = this.find(child);
+            if (child_data.name.plain() === child_name)
+                return child_data;
+        }
+        return null;
+    }
+
+    /**
+     * @param id {number}
+     * @return {FilesystemStream}
+     */
+    static find(id) {
+        return _LOCAL_STORAGE.get(id)
     }
 }
 

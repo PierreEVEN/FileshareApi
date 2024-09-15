@@ -57,6 +57,8 @@ class SideBar {
                 this._my_repos_loaded.delete(repository.id);
             }
         });
+
+        this.expand_my_repositories(true);
     }
 
     async expand_my_repositories(expanded) {
@@ -69,8 +71,7 @@ class SideBar {
             for (const repository of my_repos) {
                 new Repository(repository);
             }
-        }
-        else {
+        } else {
             this._elements.div_my_repositories.classList.remove('expand');
         }
     }
@@ -84,8 +85,7 @@ class SideBar {
             for (const repos of my_repos) {
                 new RepositoryTree(this._elements.shared, new Repository(repos));
             }
-        }
-        else {
+        } else {
             this._elements.div_shared.classList.remove('expand');
         }
     }
@@ -105,12 +105,20 @@ class SideBar {
             if (connected_user) {
                 this._elements.div_my_repositories.style.display = 'flex';
                 this._elements.div_shared.style.display = 'flex';
-            }
-            else {
+            } else {
                 this._elements.div_my_repositories.style.display = 'none';
                 this._elements.div_shared.style.display = 'none';
             }
         }
+    }
+
+    remove() {
+        if (this._add_repository)
+            this._add_repository.remove();
+        if (this._remove_repository)
+            this._remove_repository.remove();
+        delete this._remove_repository;
+        delete this._add_repository;
     }
 }
 

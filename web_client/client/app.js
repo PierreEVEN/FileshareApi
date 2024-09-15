@@ -9,6 +9,7 @@ require('./app.scss');
 
 import {GlobalHeader} from "./modules/global_header/global_header";
 import {SideBar} from "./modules/side_bar/side_bar";
+import {EVENT_MANAGER} from "./types/event_manager";
 
 class FileshareApp {
     constructor() {
@@ -42,9 +43,13 @@ class FileshareApp {
          * @private
          */
         this._side_bar = new SideBar(this._elements.side_bar);
+
+        EVENT_MANAGER.add('add_repository', (repository) => {
+            this.set_display_repository(repository);
+        })
     }
 
-    set_display_repository(user, repository) {
+    set_display_repository(repository) {
         if (repository) {
             const {Viewport} = require("./modules/viewport/viewport");
             if (!this._viewport)

@@ -26,8 +26,10 @@ class RepositoryNode {
                 e.preventDefault();
             }
         });
+        this._div = div;
         this._elements = div.elements;
         this._container.append(div);
+        return this;
     }
 
     /**
@@ -37,24 +39,43 @@ class RepositoryNode {
         this._expanded = expanded;
         this._elements.content.innerHTML = '';
         if (expanded) {
-            if (!this._listener)
-                this._listener = EVENT_MANAGER.add('add_item', async (item) => {
-                    if (item.parent_item === this._id) {
-                        await new RepositoryNode(this._repository, this._elements.content, item.id).init();
+
+            this._items = new Map();
+
+            const add_item = async (item_id) => {
+                if (!this._items.has(item_id))
+                    this._items.set(item_id, await new RepositoryNode(this._repository, this._elements.content, item_id).init());
+            }
+            if (!this._listener_add)
+                this._listener_add = EVENT_MANAGER.add('add_item', async (item) => {
+                    if (item.parent_item === this._id && !item.in_trash) {
+                        await add_item(item.id);
                     }
                 })
+            if (!this._listener_remove)
+                this._listener_remove = EVENT_MANAGER.add('remove_item', async (item) => {
+                    const item_node = this._items.get(item.id);
+                    if (item_node) {
+                        item_node._div.remove();
+                        this._items.delete(item.id);
+                    }
+                })
+
             const content = await this._repository.content.directory_content(this._id);
             for (const id of content) {
                 const item = await this._repository.content.fetch_item(id);
-                if (!item.is_regular_file) {
-                    await new RepositoryNode(this._repository, this._elements.content, id).init();
+                if (!item.is_regular_file && !item.in_trash) {
+                    await add_item(id);
                 }
             }
             this._elements.category.classList.add('expand');
         } else {
-            if (this._listener)
-                this._listener.remove();
-            delete this._listener;
+            if (this._listener_add)
+                this._listener_add.remove();
+            delete this._listener_add;
+            if (this._listener_remove)
+                this._listener_remove.remove();
+            delete this._listener_remove;
             this._elements.category.classList.remove('expand');
         }
     }
@@ -75,7 +96,6 @@ class RepositoryTree {
                 await this.expand_node(!this._expanded)
             },
             context: (e) => {
-                console.log(e.target)
                 context_menu_repository(repository);
                 e.preventDefault();
             }
@@ -93,16 +113,33 @@ class RepositoryTree {
         this._elements.content.innerHTML = '';
         if (expanded) {
 
-            if (!this._listener)
-                this._listener = EVENT_MANAGER.add('add_item', async (item) => {
-                    if (!item.parent_item && item.repository === this.repository.id) {
-                        await new RepositoryNode(this.repository, this._elements.content, item.id).init();
+            this._items = new Map();
+
+            const add_item = async (item_id) => {
+                if (!this._items.has(item_id))
+                    this._items.set(item_id, await new RepositoryNode(this.repository, this._elements.content, item_id).init());
+            }
+
+            if (!this._listener_add)
+                this._listener_add = EVENT_MANAGER.add('add_item', async (item) => {
+                    if (!item.parent_item && item.repository === this.repository.id && !item.in_trash) {
+                        await add_item(item.id);
+                    }
+                })
+            if (!this._listener_remove)
+                this._listener_remove = EVENT_MANAGER.add('remove_item', async (item) => {
+                    const item_node = this._items.get(item.id);
+                    if (item_node) {
+                        item_node._div.remove();
+                        this._items.delete(item.id);
                     }
                 })
 
             const content = await this.repository.content.root_content();
             for (const item_id of content) {
-                await new RepositoryNode(this.repository, this._elements.content, item_id).init();
+                const item = await this.repository.content.fetch_item(item_id);
+                if (!item.is_regular_file && !item.in_trash)
+                    await add_item(item.id);
             }
 
             const trash_div = document.createElement('button');
@@ -115,9 +152,12 @@ class RepositoryTree {
             this._elements.content.append(trash_div);
             this._elements.category.classList.add('expand');
         } else {
-            if (this._listener)
-                this._listener.remove();
-            delete this._listener;
+            if (this._listener_add)
+                this._listener_add.remove();
+            delete this._listener_add;
+            if (this._listener_remove)
+                this._listener_remove.remove();
+            delete this._listener_remove;
             this._elements.category.classList.remove('expand');
         }
     }
