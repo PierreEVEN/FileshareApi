@@ -9,7 +9,7 @@ require('./app.scss');
 
 import {GlobalHeader} from "./modules/global_header/global_header";
 import {SideBar} from "./modules/side_bar/side_bar";
-import {EVENT_MANAGER} from "./types/event_manager";
+import {GLOBAL_EVENTS} from "./types/event_manager";
 
 class FileshareApp {
     constructor() {
@@ -44,7 +44,7 @@ class FileshareApp {
          */
         this._side_bar = new SideBar(this._elements.side_bar);
 
-        EVENT_MANAGER.add('add_repository', (repository) => {
+        GLOBAL_EVENTS.add('add_repository', (repository) => {
             this.set_display_repository(repository);
         })
     }

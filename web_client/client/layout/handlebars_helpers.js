@@ -27,7 +27,7 @@ Handlebars.registerHelper("item_thumbnail", (item) => {
     }
     // CASE : IS DIRECTORY
     else {
-        return new Handlebars.SafeString(`<img src="/images/icons/icons8-folder-96.png" alt="dossier: ${item.name}">`)
+        return new Handlebars.SafeString(`<img src="/public/images/icons/icons8-folder-96.png" alt="dossier: ${item.name}">`)
     }
 });
 

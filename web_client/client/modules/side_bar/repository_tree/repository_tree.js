@@ -1,4 +1,4 @@
-import {EVENT_MANAGER} from "../../../types/event_manager";
+import {GLOBAL_EVENTS} from "../../../types/event_manager";
 import {context_menu_item} from "../../context_menu/contexts/context_item";
 import {context_menu_repository} from "../../context_menu/contexts/context_repository";
 
@@ -47,13 +47,13 @@ class RepositoryNode {
                     this._items.set(item_id, await new RepositoryNode(this._repository, this._elements.content, item_id).init());
             }
             if (!this._listener_add)
-                this._listener_add = EVENT_MANAGER.add('add_item', async (item) => {
+                this._listener_add = GLOBAL_EVENTS.add('add_item', async (item) => {
                     if (item.parent_item === this._id && !item.in_trash) {
                         await add_item(item.id);
                     }
                 })
             if (!this._listener_remove)
-                this._listener_remove = EVENT_MANAGER.add('remove_item', async (item) => {
+                this._listener_remove = GLOBAL_EVENTS.add('remove_item', async (item) => {
                     const item_node = this._items.get(item.id);
                     if (item_node) {
                         item_node._div.remove();
@@ -121,13 +121,13 @@ class RepositoryTree {
             }
 
             if (!this._listener_add)
-                this._listener_add = EVENT_MANAGER.add('add_item', async (item) => {
-                    if (!item.parent_item && item.repository === this.repository.id && !item.in_trash) {
+                this._listener_add = GLOBAL_EVENTS.add('add_item', async (item) => {
+                    if (item.parent_item === null && item.repository === this.repository.id && !item.in_trash) {
                         await add_item(item.id);
                     }
                 })
             if (!this._listener_remove)
-                this._listener_remove = EVENT_MANAGER.add('remove_item', async (item) => {
+                this._listener_remove = GLOBAL_EVENTS.add('remove_item', async (item) => {
                     const item_node = this._items.get(item.id);
                     if (item_node) {
                         item_node._div.remove();

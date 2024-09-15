@@ -11,9 +11,9 @@ const {ClientString} = require("../../../common/tools/client_string");
 const {FilesystemObject} = require("../../../types/filesystem_v2");
 const {close_modal, open_modal} = require("../../../modules/modal/modal");
 const {spawn_context_action} = require("../../../modules/context_menu/context_menu");
-const directory_hbs = require("./directory.hbs");
+const directory_hbs = require("../../../modules/viewport/repository_viewport/content/directory.hbs");
 const {spawn_item_context_action} = require("./item_context_action");
-const file_hbs = require("./file.hbs");
+const file_hbs = require("../../../modules/viewport/repository_viewport/content/file.hbs");
 const {Carousel} = require("../components/carousel/carousel");
 const {CarouselList} = require("../components/carousel/list/carousel_list");
 

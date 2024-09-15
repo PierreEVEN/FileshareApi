@@ -6,7 +6,7 @@ import {APP_COOKIES} from "../../utilities/cookies";
 import {User} from "../../types/user";
 import {RepositoryTree} from "./repository_tree/repository_tree";
 import {context_menu_my_repositories} from "../context_menu/contexts/context_my_repositories";
-import {EVENT_MANAGER} from "../../types/event_manager";
+import {GLOBAL_EVENTS} from "../../types/event_manager";
 
 require('./side_bar.scss')
 
@@ -44,13 +44,13 @@ class SideBar {
 
         this._my_repos_loaded = new Map();
 
-        this._add_repository = EVENT_MANAGER.add('add_repository', async (repository) => {
+        this._add_repository = GLOBAL_EVENTS.add('add_repository', async (repository) => {
             if (!this._my_repos_loaded.has(repository.id)) {
                 this._my_repos_loaded.set(repository.id, new RepositoryTree(this._elements.my_repositories, repository));
             }
         });
 
-        this._remove_repository = EVENT_MANAGER.add('remove_repository', async (repository) => {
+        this._remove_repository = GLOBAL_EVENTS.add('remove_repository', async (repository) => {
             const my_repos_loaded = this._my_repos_loaded.get(repository.id);
             if (my_repos_loaded) {
                 my_repos_loaded.root.remove();

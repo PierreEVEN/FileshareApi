@@ -32,7 +32,7 @@ class Viewport {
     }
 
     clear() {
-
+        this._container.innerHTML = null;
     }
 }
 

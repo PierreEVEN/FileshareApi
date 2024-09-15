@@ -1,7 +1,7 @@
 import {EncString} from "./encstring";
 import {FilesystemStream} from "./filesystem_stream";
 import {fetch_api} from "../utilities/request";
-import {EVENT_MANAGER} from "./event_manager";
+import {GLOBAL_EVENTS} from "./event_manager";
 
 class RepositoryStatus {
     constructor(data) {
@@ -80,7 +80,7 @@ class Repository {
 
         Repository._LOCAL_CACHE.set(this.id, this);
 
-        EVENT_MANAGER.broadcast('add_repository', this);
+        GLOBAL_EVENTS.broadcast('add_repository', this);
     }
 
     /**
@@ -112,7 +112,7 @@ class Repository {
 
     remove() {
         Repository._LOCAL_CACHE.delete(this.id);
-        EVENT_MANAGER.broadcast('remove_repository', this);
+        GLOBAL_EVENTS.broadcast('remove_repository', this);
     }
 
     toJSON() {

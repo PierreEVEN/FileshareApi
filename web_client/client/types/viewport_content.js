@@ -1,5 +1,0 @@
-class ViewportContent {
-
-}
-
-export {ViewportContent}

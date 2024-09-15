@@ -57,6 +57,6 @@ class EventManager {
     }
 }
 
-const EVENT_MANAGER = new EventManager();
+const GLOBAL_EVENTS = new EventManager();
 
-export {EVENT_MANAGER}
+export {GLOBAL_EVENTS, EventManager}

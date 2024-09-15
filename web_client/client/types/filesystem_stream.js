@@ -2,7 +2,7 @@ const {EncString} = require("./encstring");
 const {User} = require("./user");
 const {ContextMenu, MenuAction} = require("../modules/context_menu/context_menu");
 const {fetch_api} = require("../utilities/request");
-const {EVENT_MANAGER} = require("./event_manager");
+const {GLOBAL_EVENTS} = require("./event_manager");
 
 /**
  * @type {Map<number, FilesystemStream>}
@@ -141,7 +141,7 @@ class FilesystemStream {
      * @returns {Promise<FilesystemItem>}
      */
     async fetch_item(item_id) {
-        if (!item_id)
+        if (item_id === null)
             return null;
         const existing = this._items.get(item_id);
         if (existing) {
@@ -208,7 +208,7 @@ class FilesystemStream {
         } else if (this._roots) {
             this._roots.add(item.id);
         }
-        EVENT_MANAGER.broadcast('add_item', item);
+        GLOBAL_EVENTS.broadcast('add_item', item);
     }
 
     /**
@@ -222,7 +222,7 @@ class FilesystemStream {
         } else {
             this._roots.delete(item.id);
         }
-        EVENT_MANAGER.broadcast('remove_item', item);
+        GLOBAL_EVENTS.broadcast('remove_item', item);
     }
 
     /**

@@ -7,7 +7,7 @@ function from_distant_repos(item) {
         case 'video':
             return `<div class="item-small">
                             <img class="item-background" src="${PAGE_CONTEXT.repos_path()}/thumbnail/${item.id}" alt="fichier: '${item.name}" onError="this.onError = null; this.src='/images/icons/mime-icons/video.png'"/>
-                            <img class="item-overlay" src="/images/icons/icons8-play-64.png" alt="play button">
+                            <img class="item-overlay" src="/public/images/icons/icons8-play-64.png" alt="play button">
                         </div>`
         case 'image':
             return `<img class="item-small" src="${PAGE_CONTEXT.repos_path()}/thumbnail/${item.id}" alt="fichier: ${item.name}" onError="this.onError = null; this.src='/images/icons/mime-icons/image.png'"/>`

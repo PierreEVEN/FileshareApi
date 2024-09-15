@@ -61,6 +61,6 @@ function get_mime_icon_path(mimetype) {
     return mime_category.base;
 }
 
-const UNDEFINED_MIME_STRING = `<img class="item-small" src="/images/icons/no-mime-icon.png" alt="undefined-type"/>`;
+const UNDEFINED_MIME_STRING = `<img class="item-small" src="/public/images/icons/no-mime-icon.png" alt="undefined-type"/>`;
 
 export {get_mime_icon_path, is_mimetype_valid, UNDEFINED_MIME_STRING}
