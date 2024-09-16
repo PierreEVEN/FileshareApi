@@ -153,19 +153,19 @@ macro_rules! make_database_id {
 #[macro_export]
 macro_rules! query_fmt {
     ($db:expr, $query:expr) => {{
-        $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), &[]).await?
+        $db.db().query(&$query.replace("SCHEMA_NAME", &$db.schema_name), &[]).await?
     }};
 
     ($db:expr, $query:expr, $( $bound_values:expr),*) => {{
         let params: &[&(dyn postgres_types::ToSql + Sync)] = &[$(&$bound_values,)*];
-        $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), params).await?
+        $db.db().query(&$query.replace("SCHEMA_NAME", &$db.schema_name), params).await?
     }};
 }
 
 #[macro_export]
 macro_rules! query_objects {
     ($db:expr, $StructType:ty, $query:expr) => {{
-        let query = $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), &[]).await?;
+        let query = $db.db().query(&$query.replace("SCHEMA_NAME", &$db.schema_name), &[]).await?;
         let mut rows = Vec::with_capacity(query.len());
         for row in query {
             rows.push(<$StructType>::try_from_row(&row)?);
@@ -174,7 +174,7 @@ macro_rules! query_objects {
     }};
     ($db:expr, $StructType:ty, $query:expr, $( $bound_values:expr),*) => {{
         let params: &[&(dyn postgres_types::ToSql + Sync)] = &[$(&$bound_values,)*];
-        let query = $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), params).await?;
+        let query = $db.db().query(&$query.replace("SCHEMA_NAME", &$db.schema_name), params).await?;
         let mut rows = Vec::with_capacity(query.len());
         for row in query {
             rows.push(<$StructType>::try_from_row(&row)?);
@@ -186,7 +186,7 @@ macro_rules! query_objects {
 #[macro_export]
 macro_rules! query_object {
     ($db:expr, $StructType:ty, $query:expr) => {{
-        let mut query = $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), &[]).await?;
+        let mut query = $db.db().query(&$query.replace("SCHEMA_NAME", &$db.schema_name), &[]).await?;
         if query.len() > 1 {
             return Err(Error::msg("Received more than one expected item"))
         }
@@ -197,7 +197,7 @@ macro_rules! query_object {
     }};
     ($db:expr, $StructType:ty, $query:expr, $( $bound_values:expr),*) => {{
         let params: &[&(dyn postgres_types::ToSql + Sync)] = &[$(&$bound_values,)*];
-        let mut query = $db.db.query(&$query.replace("SCHEMA_NAME", &$db.schema_name), params).await?;
+        let mut query = $db.db().query(&$query.replace("SCHEMA_NAME", &$db.schema_name), params).await?;
         if query.len() > 1 {
             return Err(Error::msg("Received more than one expected item"))
         }

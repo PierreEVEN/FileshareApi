@@ -57,6 +57,27 @@ class FilesystemItem {
          */
         this.in_trash = data.in_trash;
 
+        if (this.is_regular_file) {
+            /**
+             * @type EncString
+             */
+            this.mimetype = new EncString(data.mimetype);
+            /**
+             * @type number
+             */
+            this.size = data.size;
+            /**
+             * @type number
+             */
+            this.timestamp = data.timestamp;
+        } else {
+            /**
+             * @type boolean
+             */
+            this.open_upload = data.open_upload;
+        }
+
+
         /**
          * @type {null|Set<number>}
          */

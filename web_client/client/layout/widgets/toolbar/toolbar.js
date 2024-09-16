@@ -41,14 +41,14 @@ class Toolbar {
                         action: async () => {
                             await this.directory_content.navigator.move_clipboard_to_parent(this.directory_content.navigator.get_current_directory())
                         },
-                        image: '/images/icons/icons8-paste-96.png'
+                        image: '/public/images/icons/icons8-paste-96.png'
                     });
                 actions.push({
                     title: "Trier par ...",
                     action: () => {
                         this.open_sort_by_menu();
                     },
-                    image: '/images/icons/icons8-sort-100.png'
+                    image: '/public/images/icons/icons8-sort-100.png'
                 });
                 actions.push({
                     title: "Tous les fichiers",
@@ -56,7 +56,7 @@ class Toolbar {
                     action: async () => {
                         await this.directory_content.only_files_recursive()
                     },
-                    image: '/images/icons/icons8-file-sort-96.png'
+                    image: '/public/images/icons/icons8-file-sort-96.png'
                 });
                 if (this.directory_content.navigator.current_directory && await permissions.can_user_edit_item(PAGE_CONTEXT.repos_path(), this.directory_content.navigator.current_directory)) {
                     actions.push({
@@ -87,7 +87,7 @@ class Toolbar {
                                     }
                                 }));
                         },
-                        image: '/images/icons/icons8-edit-96.png'
+                        image: '/public/images/icons/icons8-edit-96.png'
                     });
                 }
                 actions.push({
@@ -97,7 +97,7 @@ class Toolbar {
                         this.directory_content = this.directory_content.owner.directory_content;
                         await this.update_path();
                     },
-                    image: '/images/icons/icons8-trash-96.png'
+                    image: '/public/images/icons/icons8-trash-96.png'
                 });
                 spawn_context_action(actions);
             },
@@ -122,7 +122,7 @@ class Toolbar {
         if (this.directory_content.owner.is_looking_trash) {
 
             const trash_img = document.createElement('img');
-            trash_img.src = '/images/icons/icons8-trash-52.png'
+            trash_img.src = '/public/images/icons/icons8-trash-52.png'
 
             const exit_button = document.createElement('button')
             const exit_text = document.createElement('p');
@@ -138,7 +138,7 @@ class Toolbar {
         } else {
             const button = document.createElement('button')
             const home_img = document.createElement('img');
-            home_img.src = '/images/icons/icons8-home-96.png'
+            home_img.src = '/public/images/icons/icons8-home-96.png'
             button.append(home_img);
             button.onclick = () => {
                 this.directory_content.navigator.set_current_dir(null);
@@ -210,7 +210,7 @@ class Toolbar {
             action: async () => {
                 await this.directory_content.set_filter(new LexicographicFilter(this.directory_content.navigator.filesystem))
             },
-            image: '/images/icons/icons8-sort-96.png'
+            image: '/public/images/icons/icons8-sort-96.png'
         });
         actions.push({
             title: "Tri alphabétique Z-A",
@@ -218,7 +218,7 @@ class Toolbar {
             action: async () => {
                 await this.directory_content.set_filter(new LexicographicFilter(this.directory_content.navigator.filesystem).reverse_filter())
             },
-            image: '/images/icons/icons8-sort-96.png'
+            image: '/public/images/icons/icons8-sort-96.png'
         });
         actions.push({
             title: "Type",
@@ -226,7 +226,7 @@ class Toolbar {
             action: async () => {
                 await this.directory_content.set_filter(new TypeFilter(this.directory_content.navigator.filesystem))
             },
-            image: '/images/icons/icons8-file-sort-96.png'
+            image: '/public/images/icons/icons8-file-sort-96.png'
         });
         actions.push({
             title: "Taille",
@@ -234,7 +234,7 @@ class Toolbar {
             action: async () => {
                 await this.directory_content.set_filter(new SizeFilter(this.directory_content.navigator.filesystem))
             },
-            image: '/images/icons/icons8-weight-96.png'
+            image: '/public/images/icons/icons8-weight-96.png'
         });
         actions.push({
             title: "Date croissant",
@@ -242,7 +242,7 @@ class Toolbar {
             action: async () => {
                 await this.directory_content.set_filter(new DateFilter(this.directory_content.navigator.filesystem))
             },
-            image: '/images/icons/icons8-date-96.png'
+            image: '/public/images/icons/icons8-date-96.png'
         });
         actions.push({
             title: "Date décroissant",
@@ -250,7 +250,7 @@ class Toolbar {
             action: async () => {
                 await this.directory_content.set_filter(new DateFilter(this.directory_content.navigator.filesystem).reverse_filter())
             },
-            image: '/images/icons/icons8-date-96.png'
+            image: '/public/images/icons/icons8-date-96.png'
         });
         spawn_context_action(actions)
     }

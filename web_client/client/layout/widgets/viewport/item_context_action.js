@@ -20,7 +20,7 @@ async function spawn_item_context_action(item) {
             await navigator.clipboard.writeText(url);
             print_message('info', 'Lien copié dans le presse - papier', url)
         },
-        image: '/images/icons/icons8-url-96.png'
+        image: '/public/images/icons/icons8-url-96.png'
     });
 
     actions.push({
@@ -28,7 +28,7 @@ async function spawn_item_context_action(item) {
         action: () => {
             window.open(`${PAGE_CONTEXT.repos_path()}/file/${item.id}`, '_blank').focus();
         },
-        image: '/images/icons/icons8-download-96.png'
+        image: '/public/images/icons/icons8-download-96.png'
     });
 
     if (await permissions.can_user_edit_item(PAGE_CONTEXT.repos_path(), item.id)) {
@@ -98,14 +98,14 @@ async function spawn_item_context_action(item) {
                                 }
                             }));
                 },
-                image: '/images/icons/icons8-edit-96.png'
+                image: '/public/images/icons/icons8-edit-96.png'
             });
         actions.push({
             title: "Couper",
             action: () => {
                 REPOS_BUILDER.cut_selection();
             },
-            image: '/images/icons/icons8-cut-48.png'
+            image: '/public/images/icons/icons8-cut-48.png'
         });
         if (REPOS_BUILDER.is_looking_trash) {
             actions.push({
@@ -132,7 +132,7 @@ async function spawn_item_context_action(item) {
                         close_modal();
                     }
                 },
-                image: '/images/icons/icons8-restore-96.png'
+                image: '/public/images/icons/icons8-restore-96.png'
             });
             actions.push({
                 title: "Supprimer définitivement",
@@ -175,7 +175,7 @@ async function spawn_item_context_action(item) {
                     div.append(confirm_button)
                     open_modal(div, '500px', '100px');
                 },
-                image: '/images/icons/icons8-trash-52.png'
+                image: '/public/images/icons/icons8-trash-52.png'
             });
         } else {
             actions.push({
@@ -200,7 +200,7 @@ async function spawn_item_context_action(item) {
                     div.append(confirm_button)
                     open_modal(div, '500px', '100px');
                 },
-                image: '/images/icons/icons8-trash-52.png'
+                image: '/public/images/icons/icons8-trash-52.png'
             })
         }
     }

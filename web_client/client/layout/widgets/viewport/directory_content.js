@@ -129,7 +129,7 @@ class DirectoryContent {
                         })
                         open_modal(make_directory, '500px', '250px', 'make-directory')
                     },
-                    image: '/images/icons/icons8-add-folder-48.png'
+                    image: '/public/images/icons/icons8-add-folder-48.png'
                 });
 
                 if (this.navigator.clipboard_items && this.navigator.clipboard_items.length !== 0)
@@ -138,7 +138,7 @@ class DirectoryContent {
                         action: async () => {
                             await this.navigator.move_clipboard_to_parent(this.navigator.get_current_directory())
                         },
-                        image: '/images/icons/icons8-paste-96.png'
+                        image: '/public/images/icons/icons8-paste-96.png'
                     })
                 spawn_context_action(actions);
                 event.preventDefault();
@@ -258,16 +258,16 @@ class DirectoryContent {
         if (item.owner !== PAGE_CONTEXT.display_repos.owner) {
             const user_icon = document.createElement('img');
             user_icon.classList.add('user-icon');
-            user_icon.src = '/images/icons/icons8-user-60.png';
+            user_icon.src = '/public/images/icons/icons8-user-60.png';
             element.append(user_icon)
         }
         if (!item.is_regular_file) {
             if (item.open_upload) {
                 const open_upload_icon = document.createElement('img');
                 open_upload_icon.classList.add('open-upload-icon');
-                open_upload_icon.src = '/images/icons/icons8-check-60.png';
+                open_upload_icon.src = '/public/images/icons/icons8-check-60.png';
 
-                element.getElementsByTagName('img')[0].src = '/images/icons/icons8-opened-folder-96.png';
+                element.getElementsByTagName('img')[0].src = '/public/images/icons/icons8-opened-folder-96.png';
             }
         }
     }

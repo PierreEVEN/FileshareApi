@@ -4,10 +4,12 @@ pub mod database;
 mod app_ctx;
 pub mod utils;
 mod web_client;
+mod compatibility_upgrade;
 
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use anyhow::Error;
 use axum::{middleware, Router};
 use axum::body::Body;
 use axum::extract::State;
@@ -18,6 +20,7 @@ use axum_extra::extract::CookieJar;
 use axum_server::tls_rustls::RustlsConfig;
 use tracing::{error, info};
 use crate::app_ctx::AppCtx;
+use crate::compatibility_upgrade::Upgrade;
 use crate::config::Config;
 use crate::database::Database;
 use crate::database::user::User;
@@ -50,6 +53,33 @@ async fn main() {
             return;
         }
     };
+
+    if env::args().len() > 0 {
+        let mut upgrade = false;
+        let mut upgrade_schema = None;
+        for arg in env::args() {
+            if arg == "--upgrade" {
+                upgrade = true;
+            }
+            if upgrade {
+                upgrade_schema = Some(arg);
+                upgrade = false;
+            }
+        }
+        if let Some(upgrade_schema) = upgrade_schema {
+            match Upgrade::run(&database, &upgrade_schema).await {
+                Ok(_) => {
+                    info!("Successfully upgraded database from {upgrade_schema}");
+                    return;
+                }
+                Err(err) => {
+                    error!("Failed to upgrade database : {err}");
+                    return;
+                }
+            };
+        }
+    }
+
     let ctx = Arc::new(AppCtx::new(config.clone(), database));
     router = router.nest("/api/", RootRoutes::create(&ctx).unwrap());
 
@@ -64,9 +94,9 @@ async fn main() {
     if let Some(web_client) = web_client {
         router = router.nest("/", web_client.router(&ctx).unwrap());
     }
-    
+
     let router = router.layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
-    
+
     // Create http server
     let addr = SocketAddr::from(([127, 0, 0, 1], config.port));
     if config.use_tls {
@@ -88,7 +118,7 @@ async fn main() {
 
 pub async fn middleware_get_request_context(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, mut request: Request<Body>, next: Next) -> Result<Response, ServerError> {
     let mut context = RequestContext::default();
-    
+
     let token = match jar.get("authtoken") {
         None => { request.headers().get("content-authtoken").map(EncString::try_from) }
         Some(token) => { Some(EncString::from_url_path(token.value().to_string())) }

@@ -153,11 +153,11 @@ function open_upload_modal_for_files() {
         pause: (button) => {
             if (button.paused) {
                 button.paused = false;
-                button.firstChild.src = '/images/icons/icons8-pause-30.png';
+                button.firstChild.src = '/public/images/icons/icons8-pause-30.png';
                 filesystem_upload.start();
             } else {
                 button.paused = true;
-                button.firstChild.src = '/images/icons/icons8-play-64.png';
+                button.firstChild.src = '/public/images/icons/icons8-play-64.png';
                 filesystem_upload.pause();
             }
         }
@@ -220,7 +220,7 @@ async function start_upload() {
     cancel_upload.value = "Arrêter";
     const button = global_status_div.getElementsByTagName('button')[0];
     button.paused = false;
-    button.firstChild.src = '/images/icons/icons8-pause-30.png';
+    button.firstChild.src = '/public/images/icons/icons8-pause-30.png';
 
     filesystem_upload.start();
 }
@@ -249,11 +249,11 @@ function open_file_dialog() {
     spawn_context_action([{
         title: "Ajouter des fichiers",
         action: async () => open_file_browser(false),
-        image: '/images/icons/icons8-file-96.png'
+        image: '/public/images/icons/icons8-file-96.png'
     }, {
         title: "Ajouter un dossier et son contenu",
         action: async () => open_file_browser(true),
-        image: '/images/icons/icons8-folder-96.png'
+        image: '/public/images/icons/icons8-folder-96.png'
     }])
 }
 

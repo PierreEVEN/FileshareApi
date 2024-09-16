@@ -16,7 +16,7 @@ class LazyImage extends HTMLElement {
             tmp_image.src = this.getAttribute('alternate-src');
             this.append(tmp_image);
         }
-        //onError="this.onError = null; this.src='/images/icons/mime-icons/image.png'"
+        //onError="this.onError = null; this.src='/public/images/icons/mime-icons/image.png'"
         const image = new Image();
         image.src = this.getAttribute('src');
         image.classList.add('item-large');

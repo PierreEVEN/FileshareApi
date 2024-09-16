@@ -61,8 +61,8 @@ impl FromRow for Item {
             item.file = Some(FileData {
                 size,
                 mimetype: row.get::<&str, EncString>("mimetype"),
-                timestamp: row.get::<&str, i64>("mimetype"),
-                object: row.get::<&str, ObjectId>("mimetype"),
+                timestamp: row.get::<&str, i64>("timestamp"),
+                object: row.get::<&str, ObjectId>("object"),
             })
         } else if let Ok(open_upload) = row.try_get::<&str, bool>("open_upload") {
             item.directory = Some(DirectoryData {
@@ -92,8 +92,8 @@ impl FromRow for Item {
             item.file = Some(FileData {
                 size,
                 mimetype: row.get::<&str, EncString>("mimetype"),
-                timestamp: row.get::<&str, i64>("mimetype"),
-                object: row.get::<&str, ObjectId>("mimetype"),
+                timestamp: row.get::<&str, i64>("timestamp"),
+                object: row.get::<&str, ObjectId>("object"),
             })
         } else if let Ok(open_upload) = row.try_get::<&str, bool>("open_upload") {
             item.directory = Some(DirectoryData {
@@ -124,14 +124,18 @@ impl Serialize for Item {
         state.serialize_field("absolute_path", &self.absolute_path)?;
         state.serialize_field("in_trash", &self.in_trash)?;
         if let Some(directory) = &self.directory {
-            state.serialize_field("directory", &directory)?;
+            state.serialize_field("open_upload", &directory.open_upload)?;
+            state.serialize_field("is_regular_file", &false)?;
         } else {
             match &self.file {
                 None => {
                     return Err(serde::ser::Error::custom("Missing file data : this item is neither a file or a directory."))
                 }
                 Some(file) => {
-                    state.serialize_field("file", &file)?;
+                    state.serialize_field("is_regular_file", &true)?;
+                    state.serialize_field("timestamp", &file.timestamp)?;
+                    state.serialize_field("mimetype", &file.mimetype)?;
+                    state.serialize_field("size", &file.size)?;
                 }
             };
         }

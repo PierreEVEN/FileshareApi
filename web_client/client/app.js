@@ -44,8 +44,9 @@ class FileshareApp {
          */
         this._side_bar = new SideBar(this._elements.side_bar);
 
-        GLOBAL_EVENTS.add('add_repository', (repository) => {
+        const cb = GLOBAL_EVENTS.add('add_repository', (repository) => {
             this.set_display_repository(repository);
+            cb.remove();
         })
     }
 

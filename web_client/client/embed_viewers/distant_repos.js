@@ -4,7 +4,7 @@ import {PAGE_CONTEXT} from "../common/tools/utils";
 function get(item) {
     const url = `${PAGE_CONTEXT.repos_path()}/file/${item.id}`;
     const thumbnail_url = `${PAGE_CONTEXT.repos_path()}/thumbnail/${item.id}`;
-    const mimetype = item.mimetype.plain().split('/');
+    const mimetype = item.mimetype.split('/');
     switch (mimetype[0]) {
         case 'image':
             return `<lazy-img class="item-large" src="${url}" alternate-src="${thumbnail_url}""/>`

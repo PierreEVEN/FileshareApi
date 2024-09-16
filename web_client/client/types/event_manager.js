@@ -35,13 +35,14 @@ class EventManager {
      * @return {EventHandle}
      */
     add(event, callback) {
-        const handle = new EventHandle(this, callback, name);
+        const id = ++this._id;
+        const handle = new EventHandle(this, callback, event, id);
         let events = this._events.get(event);
         if (!events) {
             events = new Map();
             this._events.set(event, events);
         }
-        events.set(++this._id, handle);
+        events.set(id, handle);
         return handle;
     }
 

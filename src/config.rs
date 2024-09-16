@@ -12,6 +12,7 @@ pub struct PostgresConfig {
     pub database: String,
     pub ssl_mode: bool,
     pub scheme_name: String,
+    pub old_scheme_name: Option<String>,
     pub file_storage_path: PathBuf,
     pub thumbnail_storage_path: PathBuf
 }
@@ -57,6 +58,7 @@ impl Default for Config {
                 database: "postgres".to_string(),
                 ssl_mode: false,
                 scheme_name: "fileshare_v3".to_string(),
+                old_scheme_name: None,
                 file_storage_path: PathBuf::from("data").join("files"),
                 thumbnail_storage_path: PathBuf::from("data").join("thumbnails"),
             },

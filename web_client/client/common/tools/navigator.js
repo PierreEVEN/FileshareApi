@@ -67,7 +67,7 @@ class Navigator {
             action_div.innerHTML = '';
             const cut_button = document.createElement('button');
             const cut_image = document.createElement('img');
-            cut_image.src = '/images/icons/icons8-cut-48.png'
+            cut_image.src = '/public/images/icons/icons8-cut-48.png'
             cut_button.append(cut_image)
             cut_button.onclick = () => {
                 this.cut_selection()
@@ -77,7 +77,7 @@ class Navigator {
 
             const more_button = document.createElement('button');
             const remove_image = document.createElement('img');
-            remove_image.src = '/images/icons/icons8-ellipsis-90.png'
+            remove_image.src = '/public/images/icons/icons8-ellipsis-90.png'
             more_button.append(remove_image)
             more_button.classList.add('more-button')
             more_button.onclick = () => {

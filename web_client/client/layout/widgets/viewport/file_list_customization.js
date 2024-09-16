@@ -23,11 +23,11 @@ async function update_last_repos() {
 
         const button_img = document.createElement('img');
         if (repos.status === 'public')
-            button_img.src = '/images/icons/icons8-public-96.png';
+            button_img.src = '/public/images/icons/icons8-public-96.png';
         if (repos.status === 'hidden')
-            button_img.src = '/images/icons/icons8-invisible-96.png';
+            button_img.src = '/public/images/icons/icons8-invisible-96.png';
         if (repos.status === 'private')
-            button_img.src = '/images/icons/icons8-locked-96.png';
+            button_img.src = '/public/images/icons/icons8-locked-96.png';
         const button_text = document.createElement('p');
         button_text.innerText = new ClientString(repos.name).plain();
         button.append(button_text);
@@ -73,7 +73,7 @@ async function open_repos_context_menu(repos_id) {
                     window.location.href = `${window.origin}/${new ClientString(repos_data[0].username).encoded()}/${new ClientString(repos_data[0].name).encoded()}/settings/`;
                 }
             },
-            image: '/images/icons/icons8-edit-96.png'
+            image: '/public/images/icons/icons8-edit-96.png'
         });
     }
     if (Number(repos_id) === Number(PAGE_CONTEXT.display_repos.id)) {
@@ -83,7 +83,7 @@ async function open_repos_context_menu(repos_id) {
                 await REPOS_BUILDER.go_to_trash(true);
                 await REPOS_BUILDER.path_builder.update_path();
             },
-            image: '/images/icons/icons8-trash-96.png'
+            image: '/public/images/icons/icons8-trash-96.png'
         });
     }
     spawn_context_action(actions);

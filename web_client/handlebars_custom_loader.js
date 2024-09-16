@@ -5,7 +5,7 @@ const {parse} = require("path");
 function get_available_mime_icons() {
     const icons = {};
     const mime_icons_path = `${__dirname}/public/images/icons/mime-icons/`;
-    const mime_icons_public_path = `/images/icons/mime-icons`;
+    const mime_icons_public_path = `/public/images/icons/mime-icons`;
     for (const file of fs.readdirSync(mime_icons_path)) {
         const stats = fs.statSync(`${mime_icons_path}/${file}`);
         if (stats.isFile()) {
@@ -33,7 +33,7 @@ function loader_function(source) {
     const template = hbs.precompile(ast);
     let data_text = fs.readFileSync("./handlebars_loader_function.js").toString()
         .replace("'{{template}}'", template.toString())
-        .replace("'{{mime_icons}}'", JSON.stringify(get_available_mime_icons()));
+        .replace("'{{mime_icons}}'", "'" + JSON.stringify(get_available_mime_icons()) + "'");
     const slug = template ? data_text : `module.exports = function() { return null; };`;
 
     this.async()(null, slug);
