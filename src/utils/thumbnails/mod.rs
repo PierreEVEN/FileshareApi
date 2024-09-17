@@ -1,69 +1,55 @@
+use std::fs;
 use std::fs::File;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use anyhow::Error;
-use image::error::UnsupportedErrorKind::Format;
-use image::imageops::FilterType;
-use image::{ColorType, DynamicImage, GenericImage, GenericImageView, ImageBuffer, ImageFormat, ImageReader, Rgb, Rgba};
-use image::DynamicImage::ImageRgb8;
+use image::{ColorType, DynamicImage, ExtendedColorType, ImageBuffer, ImageEncoder, ImageReader, Luma, LumaA, Rgb, Rgba};
+use image::codecs::jpeg::JpegEncoder;
+use image::codecs::png::PngEncoder;
+use imagepipe::{ImageSource, Pipeline, SRGBImage};
+use tracing::info;
+use tracing::log::warn;
 use crate::database::object::ObjectId;
-use crate::utils::enc_string::EncString;
 
-pub struct Thumbnails {
+pub struct Thumbnail {}
 
-}
-
-impl Thumbnails {
-    pub fn new(file: &Path, thumbnail_path: &Path, id: &ObjectId, mimetype: &EncString, name: &EncString) -> Result<PathBuf, Error>{
-        let img = ImageReader::open(file)?.decode()?;
-        let raw_image = rawloader::decode_file(file)?;
-
-        match raw_image.data {
-            rawloader::RawImageData::Integer(data) => {
-
-                let format = match raw_image.cpp {
-                    1 => {
-                        ColorType::L16
-                    }
-                    2 => {
-                        ColorType::La16
-                    }
-                    3 => {
-                        ColorType::Rgb16
-
-                    }
-                    4 => {
-                        ColorType::Rgba16
-                    }
-                    _ => {
-                        return Err(Error::msg(format!("Invalid component count in raw image : {}", raw_image.cpp)));
-                    }
-                };
-
-                let image = ImageBuffer::<Rgb<u8>, Vec<u8>>::new(100, 100);
-                image.put_pixel()
-                let mut image = DynamicImage::new(raw_image.width as u32, raw_image.height as u32, format);
-                for pixel in data {
-                    image.put_pixel(0, 0, Rgba::from(pixel))
-                }
-                
-            },
-            rawloader::RawImageData::Float(data) => {
-
-            }
+impl Thumbnail {
+    pub fn create(file: &Path, thumbnail_path: &Path, id: &ObjectId) -> Result<PathBuf, Error> {
+        if !thumbnail_path.exists() {
+            fs::create_dir_all(thumbnail_path)?;
         }
+        info!("A");
+        let raw_image = match imagepipe::simple_decode_8bit(file, 500,  500) {
+            Ok(res) => { res }
+            Err(err) => { return Err(Error::msg(err)) }
+        };
 
-        let thmb = img.thumbnail(100, 100);
-        let path_result = thumbnail_path.join(format!("{id}"));
-        let mut output = File::create(path_result.clone())?;
-        resized.write_to(&mut output, ImageFormat::Jpeg)?;
-        let encoder = JpegEncoder::new_with_quality(&mut writer, 95);
-        img.write_with_encoder(encoder)?;
-        output.flush()?;
-        Ok(PathBuf::from(path_result))
+        info!("B");
+        let final_image = DynamicImage::ImageRgb8(ImageBuffer::<Rgb<u8>, Vec<u8>>::from_raw(raw_image.width as u32, raw_image.height as u32, raw_image.data).ok_or(Error::msg("failed to convert to image buffer"))?);
+
+        info!("C");
+        let final_image = final_image.thumbnail(500, 500);
+        info!("D");
+
+        let path_result = Self::path(id, thumbnail_path);
+        let output = File::create(path_result.clone())?;
+        let encoder = PngEncoder::new(output);
+        final_image.write_with_encoder(encoder)?;
+        info!("E");
+        //encoder.write_image(&raw_image.data, raw_image.width as u32, raw_image.height as u32, ExtendedColorType::from(ColorType::Rgb8))?;
+        Ok(path_result)
     }
     pub fn mimetype<'a>() -> &'a str {
         "image/jpeg"
     }
-    pub fn find_or_create()
+    pub fn path(id: &ObjectId, thumbnail_path: &Path) -> PathBuf {
+        thumbnail_path.join(format!("{id}"))
+    }
+    pub fn find_or_create(file: &Path, thumbnail_path: &Path, id: &ObjectId) -> Result<PathBuf, Error> {
+        let path = Self::path(id, thumbnail_path);
+        if path.exists() {
+            Ok(path.to_path_buf())
+        } else {
+            Self::create(file, thumbnail_path, id)
+        }
+    }
 }

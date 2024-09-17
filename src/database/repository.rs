@@ -1,7 +1,7 @@
 use crate::database::item::Item;
 use crate::database::subscription::Subscription;
 use crate::database::user::UserId;
-use crate::database::{Database, DatabaseIdTrait};
+use crate::database::{Database, DatabaseId, DatabaseIdTrait};
 use crate::utils::enc_string::EncString;
 use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;

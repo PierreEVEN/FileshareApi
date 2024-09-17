@@ -8,6 +8,7 @@ mod compatibility_upgrade;
 
 use std::env;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use anyhow::Error;
 use axum::{middleware, Router};
@@ -19,19 +20,29 @@ use axum::response::Response;
 use axum_extra::extract::CookieJar;
 use axum_server::tls_rustls::RustlsConfig;
 use tracing::{error, info};
+use which::Path;
 use crate::app_ctx::AppCtx;
 use crate::compatibility_upgrade::Upgrade;
 use crate::config::Config;
-use crate::database::Database;
+use crate::database::{Database, DatabaseId};
+use crate::database::object::ObjectId;
 use crate::database::user::User;
 use crate::routes::{RequestContext, RootRoutes};
 use crate::utils::enc_string::EncString;
 use crate::utils::server_error::ServerError;
+use crate::utils::thumbnails::Thumbnail;
 use crate::web_client::WebClient;
 
 #[tokio::main]
 async fn main() {
+
     tracing_subscriber::fmt().init();
+
+    match Thumbnail::find_or_create(PathBuf::from("C:\\Users\\pierre\\Desktop\\test\\test_img").as_path(), PathBuf::from("C:\\Users\\pierre\\Desktop\\test").as_path(), &ObjectId::from(5)) {
+        Ok(result) => {info!("res : {:?}", result)}
+        Err(err) => {error!("ERROR : {err}")}
+    }
+    return;
 
     // Open Config
     let config = match Config::from_file(env::current_exe().expect("Failed to find executable path").parent().unwrap().join("config.json")) {

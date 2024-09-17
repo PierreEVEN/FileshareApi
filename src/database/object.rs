@@ -1,7 +1,6 @@
-use std::fmt::{Display};
 use crate::database::item::{Item, ItemId, Trash};
 use crate::database::repository::RepositoryId;
-use crate::database::Database;
+use crate::database::{Database};
 use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;
 use postgres_from_row::FromRow;
