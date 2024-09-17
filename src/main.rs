@@ -58,15 +58,15 @@ async fn main() {
         let mut upgrade = false;
         let mut upgrade_schema = None;
         for arg in env::args() {
-            if arg == "--upgrade" {
-                upgrade = true;
-            }
             if upgrade {
                 upgrade_schema = Some(arg);
                 upgrade = false;
+            } else if arg == "--upgrade" {
+                upgrade = true;
             }
         }
         if let Some(upgrade_schema) = upgrade_schema {
+            info!("Upgrading from old schema {upgrade_schema}");
             match Upgrade::run(&database, &upgrade_schema).await {
                 Ok(_) => {
                     info!("Successfully upgraded database from {upgrade_schema}");

@@ -48,7 +48,7 @@ class RepositoryNode {
             }
             if (!this._listener_add)
                 this._listener_add = GLOBAL_EVENTS.add('add_item', async (item) => {
-                    if (item.parent_item === this._id && !item.in_trash) {
+                    if (item.parent_item === this._id && !item.in_trash && !item.is_regular_file) {
                         await add_item(item.id);
                     }
                 })
@@ -122,7 +122,7 @@ class RepositoryTree {
 
             if (!this._listener_add)
                 this._listener_add = GLOBAL_EVENTS.add('add_item', async (item) => {
-                    if (item.parent_item === null && item.repository === this.repository.id && !item.in_trash) {
+                    if (item.parent_item === null && item.repository === this.repository.id && !item.in_trash && !item.is_regular_file) {
                         await add_item(item.id);
                     }
                 })

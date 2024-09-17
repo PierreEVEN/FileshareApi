@@ -14,7 +14,6 @@ class ItemView {
 
         this.events = events;
 
-        console.log(item)
         if (item.is_regular_file)
             this.div = require('./file.hbs')({item: item.display_data()}, {
 
