@@ -147,6 +147,11 @@ macro_rules! make_database_id {
                 Ok(Self(row.try_get::<&str, crate::database::DatabaseId>("id")?))
             }
         }
+        impl std::fmt::Display for $T {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.0.fmt(f)
+            }
+        }
     };
 }
 

@@ -1,3 +1,4 @@
+use std::fmt::{Display};
 use crate::database::item::{Item, ItemId, Trash};
 use crate::database::repository::RepositoryId;
 use crate::database::Database;
@@ -8,7 +9,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 make_database_id!(ObjectId);
-
 
 #[derive(Debug, FromRow)]
 pub struct Object {
