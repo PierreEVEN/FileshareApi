@@ -2,20 +2,21 @@ import {get_mime_icon_path} from "./mime_utils";
 import {PAGE_CONTEXT} from "./utils";
 
 function from_distant_repos(item) {
+    const thumbnail_url = `api/item/thumbnail/${item.id}/`;
     const mime = item.mimetype.split('/');
     switch (mime[0]) {
         case 'video':
             return `<div class="item-small">
-                            <img class="item-background" src="${PAGE_CONTEXT.repos_path()}/thumbnail/${item.id}" alt="fichier: '${item.name}" onError="this.onError = null; this.src='/public/images/icons/mime-icons/video.png'"/>
+                            <img class="item-background" src="${thumbnail_url}" alt="fichier: '${item.name}" onError="this.onError = null; this.src='/public/images/icons/mime-icons/video.png'"/>
                             <img class="item-overlay" src="/public/images/icons/icons8-play-64.png" alt="play button">
                         </div>`
         case 'image':
-            return `<img class="item-small" src="${PAGE_CONTEXT.repos_path()}/thumbnail/${item.id}" alt="fichier: ${item.name}" onError="this.onError = null; this.src='/public/images/icons/mime-icons/image.png'"/>`
+            return `<img class="item-small" src="${thumbnail_url}" alt="fichier: ${item.name}" onError="this.onError = null; this.src='/public/images/icons/mime-icons/image.png'"/>`
         case 'application':
             switch (mime[1]) {
                 case 'x-pdf':
                 case 'pdf':
-                    return `<img class="item-small" src="${PAGE_CONTEXT.repos_path()}/thumbnail/${item.id}" alt="fichier: ${item.name}" onError="this.onError = null; this.src='/public/images/icons/mime-icons/image.png'"/>`
+                    return `<img class="item-small" src="${thumbnail_url}" alt="fichier: ${item.name}" onError="this.onError = null; this.src='/public/images/icons/mime-icons/image.png'"/>`
             }
             break;
     }

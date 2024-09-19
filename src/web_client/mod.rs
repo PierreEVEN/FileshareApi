@@ -76,7 +76,7 @@ impl WebClient {
         Ok(Self { _subcommand: command })
     }
 
-    pub fn router(&self, ctx: &Arc<AppCtx>) -> Result<Router, Error> {
+    pub fn router(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
         Ok(Router::new()
             .route("/", get(get_index).with_state(ctx.clone()))
             .route("/:display_user/", get(get_index).with_state(ctx.clone()))

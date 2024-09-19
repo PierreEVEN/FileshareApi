@@ -6,9 +6,9 @@ pub mod utils;
 mod web_client;
 mod compatibility_upgrade;
 
-use std::env;
+use std::{env, thread, time};
+use std::future::IntoFuture;
 use std::net::SocketAddr;
-use std::path::PathBuf;
 use std::sync::Arc;
 use anyhow::Error;
 use axum::{middleware, Router};
@@ -19,31 +19,19 @@ use axum::middleware::Next;
 use axum::response::Response;
 use axum_extra::extract::CookieJar;
 use axum_server::tls_rustls::RustlsConfig;
+use jobsys::{JobInstance, JobScope, JobSystem};
 use tracing::{error, info};
-use which::Path;
 use crate::app_ctx::AppCtx;
 use crate::compatibility_upgrade::Upgrade;
 use crate::config::Config;
-use crate::database::{Database, DatabaseId};
-use crate::database::object::ObjectId;
 use crate::database::user::User;
 use crate::routes::{RequestContext, RootRoutes};
 use crate::utils::enc_string::EncString;
 use crate::utils::server_error::ServerError;
-use crate::utils::thumbnails::Thumbnail;
 use crate::web_client::WebClient;
 
 #[tokio::main]
 async fn main() {
-
-    tracing_subscriber::fmt().init();
-
-    match Thumbnail::find_or_create(PathBuf::from("C:\\Users\\pierre\\Desktop\\test\\test_img").as_path(), PathBuf::from("C:\\Users\\pierre\\Desktop\\test").as_path(), &ObjectId::from(5)) {
-        Ok(result) => {info!("res : {:?}", result)}
-        Err(err) => {error!("ERROR : {err}")}
-    }
-    return;
-
     // Open Config
     let config = match Config::from_file(env::current_exe().expect("Failed to find executable path").parent().unwrap().join("config.json")) {
         Ok(config) => { config }
@@ -53,17 +41,14 @@ async fn main() {
         }
     };
 
-    // Instantiate router
-    let mut router = Router::new();
-
-    // Start server api
-    let database = match Database::new(&config.postgres_db_config).await {
-        Ok(database) => { database }
+    let ctx = Arc::new(match AppCtx::new(config.clone()).await {
+        Ok(ctx) => { ctx }
         Err(error) => {
-            error!("{}", error);
+            error!("Failed to load app context : {error}");
             return;
         }
-    };
+    });
+
 
     if env::args().len() > 0 {
         let mut upgrade = false;
@@ -78,7 +63,7 @@ async fn main() {
         }
         if let Some(upgrade_schema) = upgrade_schema {
             info!("Upgrading from old schema {upgrade_schema}");
-            match Upgrade::run(&database, &upgrade_schema).await {
+            match Upgrade::run(&ctx.database, &upgrade_schema).await {
                 Ok(_) => {
                     info!("Successfully upgraded database from {upgrade_schema}");
                     return;
@@ -91,22 +76,32 @@ async fn main() {
         }
     }
 
-    let ctx = Arc::new(AppCtx::new(config.clone(), database));
-    router = router.nest("/api/", RootRoutes::create(&ctx).unwrap());
 
-    // Start web client
-    let web_client = match WebClient::new(&config.web_client_config).await {
-        Ok(web_client) => { Some(web_client) }
-        Err(error) => {
-            error!("Failed to start web client : {}", error);
-            None
+    match ctx.new_task(|| {
+        
+        match WebClient::new(&config.web_client_config).await {
+            Ok(_) => {}
+            Err(err) => {
+                error!("Failed to start web client : {err}");
+            }
+        };
+    }) {
+        Ok(_) => {}
+        Err(err) => {
+            error!("Cannot create web client, failed to instantiate the task : {err}");
+            return;
         }
-    };
-    if let Some(web_client) = web_client {
-        router = router.nest("/", web_client.router(&ctx).unwrap());
-    }
+    }; 
+    
+    
+    // Start web client
 
+    // Instantiate router
+    let mut router = Router::new();
+    router = router.nest("/api/", RootRoutes::create(&ctx).unwrap());
+    router = router.nest("/", crate::web_client::WebClient::router(&ctx).unwrap());
     let router = router.layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
+
 
     // Create http server
     let addr = SocketAddr::from(([127, 0, 0, 1], config.port));

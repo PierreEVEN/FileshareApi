@@ -1,19 +1,23 @@
 use crate::app_ctx::AppCtx;
 use crate::database::item::{DirectoryData, Item, ItemId, Trash};
-use crate::utils::server_error::ServerError;
-use anyhow::Error;
-use axum::extract::{FromRequest, Request, State};
-use axum::response::IntoResponse;
-use axum::routing::post;
-use axum::{Json, Router};
-use std::sync::Arc;
-use axum::http::StatusCode;
-use serde::Deserialize;
-use regex::Regex;
 use crate::database::repository::RepositoryId;
+use crate::database::DatabaseId;
 use crate::require_connected_user;
 use crate::utils::enc_string::EncString;
 use crate::utils::permissions::Permissions;
+use crate::utils::server_error::ServerError;
+use crate::utils::thumbnails::Thumbnail;
+use anyhow::Error;
+use axum::body::Body;
+use axum::extract::{FromRequest, Path, Request, State};
+use axum::http::{header, StatusCode};
+use axum::response::IntoResponse;
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use regex::Regex;
+use serde::Deserialize;
+use std::sync::Arc;
+use tokio_util::io::ReaderStream;
 
 pub struct ItemRoutes {}
 
@@ -26,6 +30,7 @@ impl ItemRoutes {
             .route("/restore/", post(restore).with_state(ctx.clone()))
             .route("/new-directory/", post(new_directory).with_state(ctx.clone()))
             .route("/directory-content/", post(directory_content).with_state(ctx.clone()))
+            .route("/thumbnail/:id/", get(thumbnail).with_state(ctx.clone()))
         )
     }
 }
@@ -139,4 +144,28 @@ async fn delete(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl
         }
     }
     Ok(Json(items))
+}
+
+async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -> Result<impl IntoResponse, ServerError> {
+
+    let item = Item::from_id(&ctx.database, &ItemId::from(id), Trash::Both).await?;
+
+    let file = match &item.file {
+        None => {return Err(ServerError::msg(StatusCode::NOT_ACCEPTABLE, "Cannot generate thumbnail for a directory"))}
+        Some(f) => {f}
+    };
+
+    let thumbnail_path = Thumbnail::find_or_create(
+        ctx.config.backend_config.file_storage_path.join(item.id().to_string()).as_path(),
+        ctx.config.backend_config.thumbnail_storage_path.as_path(),
+        &file.mimetype, 100)?;
+
+    let stream = ReaderStream::new(tokio::fs::File::open(thumbnail_path).await?);
+    let body = Body::from_stream(stream);
+
+    let headers = [
+        (header::CONTENT_TYPE, file.mimetype.plain()?),
+        (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", item.name.encoded()))
+    ];
+    Ok((headers, body))
 }

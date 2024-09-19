@@ -1,7 +1,8 @@
 use crate::database::item::Item;
+use crate::database::item::Trash::Both;
 use crate::database::subscription::Subscription;
 use crate::database::user::UserId;
-use crate::database::{Database, DatabaseId, DatabaseIdTrait};
+use crate::database::{Database, DatabaseIdTrait};
 use crate::utils::enc_string::EncString;
 use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;
@@ -10,7 +11,6 @@ use postgres_types::private::BytesMut;
 use postgres_types::{to_sql_checked, IsNull, Type};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use crate::database::item::Trash::Both;
 
 make_database_id!(RepositoryId);
 
@@ -109,7 +109,7 @@ impl Repository {
     }
 
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
-        for mut item in Item::from_repository(db, &self.id, Both).await? {
+        for item in Item::from_repository(db, &self.id, Both).await? {
             item.delete(db).await?;
         }
         for subscriptions in Subscription::from_repository(db, &self.id).await? {

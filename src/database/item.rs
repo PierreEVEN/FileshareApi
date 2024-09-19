@@ -1,4 +1,3 @@
-use std::fmt::{Display, Formatter};
 use crate::database::object::ObjectId;
 use crate::database::repository::RepositoryId;
 use crate::database::user::UserId;
@@ -8,10 +7,10 @@ use crate::utils::enc_string::EncString;
 use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;
 use postgres_from_row::FromRow;
+use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
-use serde::ser::{SerializeStruct};
+use std::fmt::{Display, Formatter};
 use tokio_postgres::Row;
-use tracing::info;
 
 make_database_id!(ItemId);
 

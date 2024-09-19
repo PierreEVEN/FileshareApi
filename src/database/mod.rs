@@ -6,7 +6,7 @@ use tokio::net::TcpStream;
 use tokio_postgres::{Client, Config, Connection};
 use tokio_postgres::tls::NoTlsStream;
 use tracing::info;
-use crate::config::PostgresConfig;
+use crate::config::{BackendConfig};
 
 pub mod item;
 pub mod object;
@@ -42,9 +42,9 @@ impl DatabaseIdTrait for DatabaseId {
 }
 
 impl Database {
-    pub async fn new(config: &PostgresConfig) -> Result<Self, Error> {
-        let db = connect(format!("host={} port={} user={} password={} dbname={} sslmode={}", config.url, config.port, config.username, config.secret, config.database, if config.ssl_mode { "enable" } else { "disable" }).as_str()).await?;
-        let database = Self { db, schema_name: config.scheme_name.to_string(), file_storage_path: config.file_storage_path.clone(), thumbnail_storage_path: config.thumbnail_storage_path.clone() };
+    pub async fn new(config: &BackendConfig) -> Result<Self, Error> {
+        let db = connect(format!("host={} port={} user={} password={} dbname={} sslmode={}", config.postgres.url, config.postgres.port, config.postgres.username, config.postgres.secret, config.postgres.database, if config.postgres.ssl_mode { "enable" } else { "disable" }).as_str()).await?;
+        let database = Self { db, schema_name: config.postgres.scheme_name.to_string(), file_storage_path: config.file_storage_path.clone(), thumbnail_storage_path: config.thumbnail_storage_path.clone() };
         database.migrate(PathBuf::from("./migrations"), "fileshare_v3").await?;
         Ok(database)
     }

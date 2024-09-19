@@ -11,10 +11,7 @@ pub struct PostgresConfig {
     pub port: u16,
     pub database: String,
     pub ssl_mode: bool,
-    pub scheme_name: String,
-    pub old_scheme_name: Option<String>,
-    pub file_storage_path: PathBuf,
-    pub thumbnail_storage_path: PathBuf
+    pub scheme_name: String
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -36,10 +33,19 @@ pub struct TlsConfig {
     pub private_key: PathBuf,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct BackendConfig {
+    pub file_storage_path: PathBuf,
+    pub thumbnail_storage_path: PathBuf,
+    pub thumbnail_size: usize,
+    pub max_parallel_task: usize,
+    pub postgres: PostgresConfig,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub port: u16,
-    pub postgres_db_config: PostgresConfig,
+    pub backend_config: BackendConfig,
     pub server_mail_server: ServiceEmailConfig,
     pub web_client_config: WebClientConfig,
     pub tls_config: TlsConfig,
@@ -50,17 +56,20 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             port: 3000,
-            postgres_db_config: PostgresConfig {
-                username: "postgres".to_string(),
-                secret: "password".to_string(),
-                url: "127.0.0.1".to_string(),
-                port: 5432,
-                database: "postgres".to_string(),
-                ssl_mode: false,
-                scheme_name: "fileshare_v3".to_string(),
-                old_scheme_name: None,
+            backend_config: BackendConfig {
                 file_storage_path: PathBuf::from("data").join("files"),
                 thumbnail_storage_path: PathBuf::from("data").join("thumbnails"),
+                thumbnail_size: 0,
+                max_parallel_task: 0,
+                postgres: PostgresConfig {
+                    username: "postgres".to_string(),
+                    secret: "password".to_string(),
+                    url: "127.0.0.1".to_string(),
+                    port: 5432,
+                    database: "postgres".to_string(),
+                    ssl_mode: false,
+                    scheme_name: "fileshare_v3".to_string()
+                },
             },
             server_mail_server: ServiceEmailConfig {
                 host: "mail.fileshare.fr".to_string(),

@@ -42,7 +42,7 @@ impl Object {
 
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
         // Dereference from files
-        for mut item in Item::from_object(db, &self.id, Trash::Both).await? {
+        for item in Item::from_object(db, &self.id, Trash::Both).await? {
             item.delete(db).await?
         }
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.objects WHERE id = $1;"#, *self.id);

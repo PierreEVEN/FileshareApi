@@ -3,7 +3,7 @@ import {PAGE_CONTEXT} from "../common/tools/utils";
 
 function get(item) {
     const url = `${PAGE_CONTEXT.repos_path()}/file/${item.id}`;
-    const thumbnail_url = `${PAGE_CONTEXT.repos_path()}/thumbnail/${item.id}`;
+    const thumbnail_url = `api/item/thumbnail/${item.id}/`;
     const mimetype = item.mimetype.split('/');
     switch (mimetype[0]) {
         case 'image':

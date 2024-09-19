@@ -29,7 +29,6 @@ impl StaticFileServer {
     }
 
     pub async fn serve_file_from_path(State(file_path): State<PathBuf>) -> Result<impl IntoResponse, ServerError> {
-        
         if file_path.exists() {
             let file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
             let mime_type = match mime_guess::from_path(file_path.clone()).first_raw() {
