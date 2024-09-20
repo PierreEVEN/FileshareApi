@@ -59,8 +59,8 @@ impl Default for Config {
             backend_config: BackendConfig {
                 file_storage_path: PathBuf::from("data").join("files"),
                 thumbnail_storage_path: PathBuf::from("data").join("thumbnails"),
-                thumbnail_size: 0,
-                max_parallel_task: 0,
+                thumbnail_size: 100,
+                max_parallel_task: num_cpus::get() - 1,
                 postgres: PostgresConfig {
                     username: "postgres".to_string(),
                     secret: "password".to_string(),

@@ -1,51 +1,67 @@
-use std::ffi::{OsString};
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use anyhow::Error;
+use crate::app_ctx::AppCtx;
 use crate::database::object::ObjectId;
 use crate::utils::enc_string::EncString;
+use anyhow::Error;
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::fs;
+
+fn video_thumbnail(file: &PathBuf, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<(), Error> {
+    Ok(())
+}
+
+fn image_thubmnail(file: &PathBuf, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<(), Error> {
+    fs::create_dir_all(thumbnail_path)?;
+    let mime_plain = mimetype.plain()?;
+    let mime_plain = match mime_plain.as_str() {
+        "image/vnd.microsoft.icon" => {
+            "image/ico"
+        }
+        plain => { plain }
+    };
+    let mut mime = mime_plain.split("/");
+    mime.next();
+    let mut path_str = OsString::from(mime.next().ok_or(Error::msg(format!("invalid mimetype : {}", mime_plain)))?);
+    path_str.push(":");
+    path_str.push(file.as_os_str());
+
+    let cmd = Command::new("mogrify")
+        .arg("-format")
+        .arg("webp")
+        .arg("-interlace")
+        .arg("plane")
+        .arg("-quality")
+        .arg("70%")
+        .arg("-path")
+        .arg(thumbnail_path)
+        .arg("-thumbnail")
+        .arg(format!("{size}x{size}"))
+        .arg("-auto-orient")
+        .arg(&path_str)
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .spawn()?;
+    cmd.wait_with_output()?;
+    Ok(())
+}
 
 pub struct Thumbnail {}
 
 impl Thumbnail {
     pub fn create(file: PathBuf, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<PathBuf, Error> {
-        
-        if !mimetype.plain()?.starts_with("image/") {
-            return Err(Error::msg("Unsupported mimetype"));
-        }
-        fs::create_dir_all(thumbnail_path)?;
-        let mime_plain = mimetype.plain()?;
-        let mime_plain = match mime_plain.as_str() {
-            "image/vnd.microsoft.icon" => {
-                "image/ico"
+        let mut mime_start = mimetype.split("/");
+        match mime_start.next().ok_or(Error::msg("Invalid mimetype"))? {
+            "image" => {
+                image_thubmnail(&file, thumbnail_path, mimetype, size)?;
             }
-            plain => {plain}
-        };
-        let mut mime = mime_plain.split("/");
-        mime.next();
-        let mut path_str = OsString::from(mime.next().ok_or(Error::msg(format!("invalid mimetype : {}", mime_plain)))?);
-        path_str.push(":");
-        path_str.push(file.as_os_str());
-
-        println!("path : {:?}", path_str);
-        let cmd = Command::new("mogrify")
-            .arg("-format")
-            .arg("webp")
-            .arg("-interlace")
-            .arg("plane")
-            .arg("-quality")
-            .arg("70%")
-            .arg("-path")
-            .arg(thumbnail_path)
-            .arg("-thumbnail")
-            .arg(format!("{size}x{size}"))
-            .arg("-auto-orient")
-            .arg(&path_str)
-            .stderr(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .spawn()?;
-        cmd.wait_with_output()?;
+            "video" => {
+                video_thumbnail(&file, thumbnail_path, mimetype, size)?;                
+            }
+            _ => {
+                return Err(Error::msg("Unsupported mimetype"));
+            }
+        }
         Ok(thumbnail_path.join(Self::thumbnail_filename(file.as_path())))
     }
     pub fn mimetype<'a>() -> &'a str {
@@ -59,7 +75,7 @@ impl Thumbnail {
         file_name.push(".webp");
         file_name
     }
-    pub fn find_or_create(file: &Path, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<PathBuf, Error> {
+    pub fn find_or_create(ctx: &AppCtx, file: &Path, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<PathBuf, Error> {
         let path = thumbnail_path.join(Self::thumbnail_filename(file));
         if path.exists() {
             Ok(path.to_path_buf())

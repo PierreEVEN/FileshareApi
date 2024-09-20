@@ -155,7 +155,7 @@ async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -
         Some(f) => {f}
     };
 
-    let thumbnail_path = Thumbnail::find_or_create(
+    let thumbnail_path = Thumbnail::find_or_create(ctx.as_ref(),
         ctx.config.backend_config.file_storage_path.join(item.id().to_string()).as_path(),
         ctx.config.backend_config.thumbnail_storage_path.as_path(),
         &file.mimetype, 100)?;
