@@ -27,8 +27,8 @@ use crate::utils::enc_string::EncString;
 use crate::utils::server_error::ServerError;
 use crate::web_client::WebClient;
 
-async fn start_web_client(config: &WebClientConfig) {
-    match WebClient::new(config).await {
+async fn start_web_client(config: WebClientConfig) {
+    match WebClient::new(&config).await {
         Ok(_) => { info!("Successfully started web client.") }
         Err(err) => {
             error!("Failed to start web client : {err}");
@@ -87,7 +87,7 @@ async fn main() {
         }
     }
 
-    drop(start_web_client(&config.web_client_config));
+    start_web_client(config.web_client_config.clone()).await;
 
     // Start web client
 
@@ -111,7 +111,13 @@ async fn main() {
         axum_server::bind_rustls(addr, tls_config).serve(router.into_make_service()).await.unwrap();
     } else {
         info!("listening on {}", addr);
-        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+        let listener = match tokio::net::TcpListener::bind(addr).await {
+            Ok(listener) => { listener }
+            Err(error) => {
+                error!("Cannot start web server : {error}");
+                return;
+            }
+        };
         axum::serve(listener, router).await.unwrap();
     }
     info!("Server closed !");

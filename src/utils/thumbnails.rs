@@ -6,12 +6,32 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::fs;
+use tracing::error;
 
 fn video_thumbnail(file: &PathBuf, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<(), Error> {
+    let cmd = match Command::new("ffmpeg")
+        .arg("-ss")
+        .arg("00:00:01.00")
+        .arg("-i")
+        .arg(file)
+        .arg("-vf")
+        .arg(format!("'scale={size}:{size}:force_original_aspect_ratio=decrease'"))
+        .arg("-vframes")
+        .arg("1")
+        .arg(thumbnail_path.join(Thumbnail::thumbnail_filename(file)))
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .spawn() {
+        Ok(cmd) => {cmd}
+        Err(err) => {
+            return Err(Error::msg(format!("This server doesn't support thumbnails because ffmpeg is not available : {}", err)))
+        }
+    };
+    cmd.wait_with_output()?;
     Ok(())
 }
 
-fn image_thubmnail(file: &PathBuf, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<(), Error> {
+fn image_thubmnail(file: &Path, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<(), Error> {
     fs::create_dir_all(thumbnail_path)?;
     let mime_plain = mimetype.plain()?;
     let mime_plain = match mime_plain.as_str() {
@@ -26,7 +46,7 @@ fn image_thubmnail(file: &PathBuf, thumbnail_path: &Path, mimetype: &EncString, 
     path_str.push(":");
     path_str.push(file.as_os_str());
 
-    let cmd = Command::new("mogrify")
+    let cmd = match Command::new("mogrify")
         .arg("-format")
         .arg("webp")
         .arg("-interlace")
@@ -41,7 +61,12 @@ fn image_thubmnail(file: &PathBuf, thumbnail_path: &Path, mimetype: &EncString, 
         .arg(&path_str)
         .stderr(Stdio::inherit())
         .stdout(Stdio::inherit())
-        .spawn()?;
+        .spawn() {
+        Ok(cmd) => {cmd}
+        Err(err) => {
+            return Err(Error::msg(format!("This server doesn't support thumbnails because imagemagick is not available : {}", err)))
+        }
+    };
     cmd.wait_with_output()?;
     Ok(())
 }
