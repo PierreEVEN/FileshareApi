@@ -3,6 +3,7 @@ import {DirectoryContentProvider, RepositoryRootProvider} from "../../../types/v
 import {ItemView} from "./content/item_view";
 import {context_menu_repository} from "../../context_menu/contexts/context_repository";
 import {Uploader} from "./upload/uploader";
+import {DropBox} from "./upload/drop_box";
 
 require('./repository_viewport.scss')
 
@@ -39,12 +40,17 @@ class RepositoryViewport {
 
         this.content.set_content_provider(new RepositoryRootProvider(repository));
 
-        this.open_upload_container();
+        new DropBox(this._elements.drop_box, () => {
+            if (!this.uploader)
+                this.open_upload_container();
+            return this.uploader;
+        });
     }
 
     open_upload_container() {
         this._elements.upload_container.innerHTML = '';
         this.uploader = new Uploader(this._elements.upload_container)
+        this.uploader.expand(true);
     }
 }
 

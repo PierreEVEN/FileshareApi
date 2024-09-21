@@ -30,7 +30,6 @@ class SideBar {
             },
             switch_shared: () => {
                 this.expand_shared(!this._shared_expanded);
-
             },
             switch_recent: () => {
                 this.expand_recent(!this._recent_expanded);

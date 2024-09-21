@@ -1,8 +1,9 @@
-import {get_uploader} from "./uploader";
 import {UploadItem} from "./upload_item";
 
+require("./drop-box.scss")
+
 class DropBox {
-    constructor(box) {
+    constructor(box, get_uploader) {
         this.box = box;
 
         let WILL_DROP = null;

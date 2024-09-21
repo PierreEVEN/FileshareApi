@@ -51,8 +51,6 @@ class FileshareApp {
             this.set_display_repository(repository);
             cb.remove();
         })
-
-        new DropBox(this._elements.drop_box)
     }
 
     set_display_repository(repository) {
