@@ -3,26 +3,45 @@ use crate::database::object::ObjectId;
 use crate::utils::enc_string::EncString;
 use anyhow::Error;
 use std::ffi::OsString;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::fs;
-use tracing::error;
+use std::str::FromStr;
 
 fn video_thumbnail(file: &PathBuf, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<(), Error> {
+    let get_duration_cmd = match Command::new("ffprobe")
+        .arg("-v")
+        .arg("error")
+        .arg("-show_entries")
+        .arg("format=duration")
+        .arg("-of")
+        .arg("default=noprint_wrappers=1:nokey=1")
+        .arg(file)
+        .stderr(Stdio::inherit())
+        .output() {
+        Ok(cmd) => { cmd }
+        Err(err) => {
+            return Err(Error::msg(format!("This server doesn't support thumbnails because ffmpeg is not available : {}", err)))
+        }
+    };
+    let duration = match f32::from_str(String::from_utf8(get_duration_cmd.stdout)?.as_str()) {
+        Ok(duration) => { duration }
+        Err(_) => { 0f32 }
+    };
+
     let cmd = match Command::new("ffmpeg")
         .arg("-ss")
-        .arg("00:00:01.00")
+        .arg((duration / 2f32).to_string())
         .arg("-i")
         .arg(file)
         .arg("-vf")
-        .arg(format!("'scale={size}:{size}:force_original_aspect_ratio=decrease'"))
+        .arg(format!("scale={size}:{size}:force_original_aspect_ratio=decrease"))
         .arg("-vframes")
         .arg("1")
         .arg(thumbnail_path.join(Thumbnail::thumbnail_filename(file)))
         .stderr(Stdio::inherit())
-        .stdout(Stdio::inherit())
         .spawn() {
-        Ok(cmd) => {cmd}
+        Ok(cmd) => { cmd }
         Err(err) => {
             return Err(Error::msg(format!("This server doesn't support thumbnails because ffmpeg is not available : {}", err)))
         }
@@ -62,7 +81,7 @@ fn image_thubmnail(file: &Path, thumbnail_path: &Path, mimetype: &EncString, siz
         .stderr(Stdio::inherit())
         .stdout(Stdio::inherit())
         .spawn() {
-        Ok(cmd) => {cmd}
+        Ok(cmd) => { cmd }
         Err(err) => {
             return Err(Error::msg(format!("This server doesn't support thumbnails because imagemagick is not available : {}", err)))
         }
@@ -81,7 +100,7 @@ impl Thumbnail {
                 image_thubmnail(&file, thumbnail_path, mimetype, size)?;
             }
             "video" => {
-                video_thumbnail(&file, thumbnail_path, mimetype, size)?;                
+                video_thumbnail(&file, thumbnail_path, mimetype, size)?;
             }
             _ => {
                 return Err(Error::msg("Unsupported mimetype"));
