@@ -1,6 +1,7 @@
 import {MODAL} from "../modal/modal";
 import {Authentication} from "../tools/authentication/authentication";
 import {APP_CONFIG} from "../../types/app_config";
+import {SIDE_BAR} from "../side_bar/side_bar";
 
 require('./global_header.scss')
 
@@ -24,6 +25,9 @@ class GlobalHeader {
             },
             logout: () => {
                 Authentication.logout();
+            },
+            menu: () => {
+                SIDE_BAR.show_mobile()
             }
         });
 

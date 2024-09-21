@@ -12,7 +12,6 @@ class Uploader {
                 this.expand(!this.expanded)
             }
         });
-        this.div = div;
         this._elements = div.elements;
         document.body.append(div);
         this.children = new Map();
@@ -25,9 +24,9 @@ class Uploader {
             return;
         this.expanded = expanded;
         if (this.expanded)
-            this.div.classList.add("expanded")
+            this._elements.uploader.classList.add("expanded")
         else
-            this.div.classList.remove("expanded")
+            this._elements.uploader.classList.remove("expanded")
     }
 
     set_uploading(uploading) {

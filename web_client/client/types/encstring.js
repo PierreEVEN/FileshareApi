@@ -1,11 +1,11 @@
 
 function custom_encode(data) {
     return encodeURIComponent(data)
-        .replace("(", "%28")
-        .replace(")", "%29")
-        .replace("'", "%27")
-        .replace("*", "%2A")
-        .replace("*", "%21")
+        .replaceAll("(", "%28")
+        .replaceAll(")", "%29")
+        .replaceAll("'", "%27")
+        .replaceAll("*", "%2A")
+        .replaceAll("*", "%21")
 }
 
 class EncString {

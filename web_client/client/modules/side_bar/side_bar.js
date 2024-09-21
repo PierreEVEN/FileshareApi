@@ -1,8 +1,6 @@
-import {fetch_api, fetch_user} from "../../utilities/request";
+import {fetch_api} from "../../utilities/request";
 import {APP_CONFIG} from "../../types/app_config";
 import {Repository} from "../../types/repository";
-import {APP} from "../../app";
-import {APP_COOKIES} from "../../utilities/cookies";
 import {User} from "../../types/user";
 import {RepositoryTree} from "./repository_tree/repository_tree";
 import {context_menu_my_repositories} from "../context_menu/contexts/context_my_repositories";
@@ -10,8 +8,16 @@ import {GLOBAL_EVENTS} from "../../types/event_manager";
 
 require('./side_bar.scss')
 
+/**
+ * @type {SideBar}
+ */
+let SIDE_BAR = null;
+
 class SideBar {
     constructor(container) {
+
+        SIDE_BAR = this;
+
         /**
          * @type {User}
          * @private
@@ -34,6 +40,7 @@ class SideBar {
                 e.preventDefault();
             }
         });
+        this.div = div;
         this._elements = div['elements'];
         container.append(div);
 
@@ -95,6 +102,11 @@ class SideBar {
         this._recent_expanded = expanded;
     }
 
+    show_mobile() {
+        console.log("ah")
+        this.div.parentElement.style.display = 'flex';
+    }
+
     /**
      * @param connected_user {User}
      */
@@ -122,4 +134,4 @@ class SideBar {
     }
 }
 
-export {SideBar}
+export {SideBar, SIDE_BAR}

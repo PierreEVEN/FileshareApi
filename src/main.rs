@@ -99,18 +99,18 @@ async fn main() {
 
 
     // Create http server
-    let addr = SocketAddr::from(([127, 0, 0, 1], config.port));
+    let addr = SocketAddr::from(([192, 168, 0, 10], config.port));
     if config.use_tls {
         if !config.tls_config.certificate.exists() || config.tls_config.private_key.exists() {
             error!("Invalid tls certificate paths : cert:{} / key:{}", config.tls_config.certificate.display(), config.tls_config.private_key.display());
             return;
         }
 
-        info!("[secured] listening on {}", addr);
+        info!("listening on {}", addr);
         let tls_config = RustlsConfig::from_pem_file(config.tls_config.certificate.clone(), config.tls_config.private_key.clone()).await.unwrap();
         axum_server::bind_rustls(addr, tls_config).serve(router.into_make_service()).await.unwrap();
     } else {
-        info!("listening on {}", addr);
+        info!("[unsecured] listening on {}", addr);
         let listener = match tokio::net::TcpListener::bind(addr).await {
             Ok(listener) => { listener }
             Err(error) => {
