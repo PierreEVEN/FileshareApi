@@ -17,7 +17,8 @@ pub struct PostgresConfig {
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct WebClientConfig {
     pub client_path: PathBuf,
-    pub debug: bool
+    pub debug: bool,
+    pub check_for_packages_updates: bool
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -79,6 +80,7 @@ impl Default for Config {
             web_client_config: WebClientConfig {
                 client_path: PathBuf::from("./web_client"),
                 debug: false,
+                check_for_packages_updates: true,
             },
             tls_config: TlsConfig {
                 certificate: PathBuf::from("/Path/To/certificate.pem"),

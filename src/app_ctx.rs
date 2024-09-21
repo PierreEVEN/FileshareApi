@@ -1,14 +1,11 @@
-use std::collections::VecDeque;
 use std::future::Future;
-use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
 use anyhow::Error;
 use jobsys::{JobInstance, JobScope, JobSystem};
-use tokio::sync::{AcquireError, Semaphore, SemaphorePermit};
-use tracing::{error, info};
-use tracing::log::warn;
+use tokio::sync::{Semaphore, SemaphorePermit};
+use tracing::{info};
 use crate::config::Config;
 use crate::database::Database;
 

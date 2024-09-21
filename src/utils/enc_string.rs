@@ -36,7 +36,7 @@ impl EncString {
     fn new(encoded: String) -> Result<Self, Error> {
         let encoded_test = encoded.replace("%", "a");
         if urlencoding::encode(encoded_test.as_str()) != encoded_test {
-            Err(Error::msg(format!("'{}' is not an encoded string !!", encoded)))
+            Err(Error::msg(format!("'{}' is not an encoded string !! (expected '{}')", encoded, urlencoding::encode(encoded_test.as_str()))))
         } else {
             Ok(Self(encoded))
         }

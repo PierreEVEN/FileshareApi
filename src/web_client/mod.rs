@@ -43,16 +43,18 @@ impl WebClient {
 
         let result = which("node").or(Err(Error::msg("Failed to find node path. Please ensure nodejs is correctly installed")))?;
         let npm_cli_path = result.parent().unwrap().join("node_modules").join("npm").join("bin").join("npm-cli.js");
-
-        info!("Installing webclient dependencies...");
-        let mut install_cmd = Command::new("node")
-            .arg(npm_cli_path.to_str().unwrap())
-            .arg("install")
-            .stderr(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .spawn()?;
-        install_cmd.wait().await?;
-        info!("Installed webclient dependencies !");
+        
+        if config.check_for_packages_updates {
+            info!("Installing webclient dependencies...");
+            let mut install_cmd = Command::new("node")
+                .arg(npm_cli_path.to_str().unwrap())
+                .arg("install")
+                .stderr(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .spawn()?;
+            install_cmd.wait().await?;
+            info!("Installed webclient dependencies !");
+        }
 
         let command = if config.debug
         {

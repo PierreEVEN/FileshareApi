@@ -11,6 +11,9 @@ import {GlobalHeader} from "./modules/global_header/global_header";
 import {SideBar} from "./modules/side_bar/side_bar";
 import {GLOBAL_EVENTS} from "./types/event_manager";
 
+import "./modules/upload/uploader";
+import {DropBox} from "./modules/upload/drop_box";
+
 class FileshareApp {
     constructor() {
         /**
@@ -48,6 +51,8 @@ class FileshareApp {
             this.set_display_repository(repository);
             cb.remove();
         })
+
+        new DropBox(this._elements.drop_box)
     }
 
     set_display_repository(repository) {

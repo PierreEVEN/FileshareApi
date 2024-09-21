@@ -5,13 +5,6 @@ import {ClientString} from "../common/tools/client_string";
 /* ################## HELPER {ITEM_THUMBNAIL} ################## */
 const get_item_thumbnail = require('../common/tools/get_item_thumbnail')
 Handlebars.registerHelper("item_thumbnail", (item) => {
-
-    //@TODO : remove this temporary fix and use the new filesystem
-    if (item.is_file) {
-        item.is_regular_file = true;
-        item.mimetype = ClientString.FromClient(item.mimetype)
-    }
-
     // CASE : IS STANDARD FILE
     if (item.is_regular_file) {
         if (!is_mimetype_valid(item.mimetype))
@@ -21,7 +14,7 @@ Handlebars.registerHelper("item_thumbnail", (item) => {
             return new Handlebars.SafeString(get_item_thumbnail.from_distant_repos(item));
         }
         // Filesystem file
-        else if (item.lastModified) {
+        else {
             return new Handlebars.SafeString(get_item_thumbnail.from_local_path(item));
         }
     }

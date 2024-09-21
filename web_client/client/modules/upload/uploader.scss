@@ -1,0 +1,223 @@
+@import "../../stylesheets/palette";
+
+#uploader {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  height: 110px;
+  position: absolute;
+  backdrop-filter: blur(20px);
+  z-index: 10;
+  bottom: 5px;
+  right: 10px;
+  box-shadow: -2px -2px 5px black;
+  border-radius: 5px;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.06);
+  transition-duration: 0.2s;
+
+  .header {
+    padding-left: 10px;
+    display: flex;
+    background-color: $primary;
+    opacity: 70%;
+    height: 35px;
+    align-items: center;
+    justify-content: center;
+
+    .details {
+      margin-left: auto;
+      margin-right: 10px;
+      flex-direction: column;
+      display: flex;
+
+      p {
+        margin: 0;
+        text-align: right;
+        font-size: 12px;
+        color: $text-secondary;
+      }
+    }
+
+    .expand {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      img {
+        transition-duration: 0.2s;
+        rotate: 180deg;
+        width: 15px;
+      }
+    }
+
+    p {
+      margin: 0;
+    }
+
+    &:hover {
+      background-color: item_focused($primary);
+      cursor: pointer;
+      opacity: 100%;
+    }
+
+    &:active {
+      background-color: item_active($primary);
+      cursor: pointer;
+    }
+  }
+
+  .file-list {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    width: 100%;
+    background-color: $secondary;
+    overflow: scroll;
+  }
+  .upload-button {
+    display: none;
+    margin: 10px 40px;
+    font-weight: bold;
+    min-height: 50px;
+  }
+  .upload-in-progress {
+    display: none;
+    flex-direction: row;
+    padding: 10px 0;
+
+    p {
+      margin: 0;
+    }
+
+    .thumbnail {
+      img {
+        width: 40px;
+        margin: 0 10px;
+      }
+    }
+
+    .infos {
+      width: 100%;
+
+      .title {
+        display: flex;
+        flex-direction: column;
+
+        .name-line {
+          display: flex;
+          position: relative;
+
+          .close {
+            top: 0;
+            right: 0;
+
+            img {
+
+              width: 15px;
+            }
+          }
+        }
+
+        .size {
+          font-size: smaller;
+          color: $text-secondary;
+        }
+      }
+    }
+
+    .progress {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+
+      p {
+        font-size: smaller;
+        width: 50px;
+        text-align: center;
+      }
+
+      .progress-bar {
+        background-color: #1d1d1d;
+        height: 5px;
+        width: 100%;
+        overflow: hidden;
+        border-radius: 10px;
+
+        .progress-status {
+          background-color: white;
+          width: 75%;
+          height: 100%;
+          border-radius: 10px;
+        }
+      }
+    }
+  }
+
+  &.expanded {
+    min-width: 400px;
+    max-width: 95%;
+    width: 25%;
+    height: auto;
+    top: 70px;
+
+    .header .expand img {
+      rotate: 0deg;
+    }
+  }
+}
+
+@media (orientation: portrait) {
+  #uploader {
+    left: 10px;
+    right: 10px;
+    min-width: unset;
+    width: auto;
+
+    &.expanded {
+      width: unset;
+      max-width: unset;
+    }
+  }
+}
+
+.uploader-item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+
+  button {
+    justify-content: left;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    margin: 0;
+
+    .title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    img {
+      width: 20px;
+      margin-right: 10px;
+      margin-left: 2px;
+    }
+
+    .arrow {
+      transition-duration: 0.2s;
+    }
+  }
+
+  .content {
+    margin-left: 20px;
+  }
+
+  &.expand {
+    > button {
+      > p.arrow {
+        rotate: 90deg;
+      }
+    }
+  }
+}

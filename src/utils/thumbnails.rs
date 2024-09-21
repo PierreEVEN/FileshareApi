@@ -30,6 +30,8 @@ fn video_thumbnail(file: &PathBuf, thumbnail_path: &Path, mimetype: &EncString, 
     };
 
     let cmd = match Command::new("ffmpeg")
+        .arg("-v")
+        .arg("error")
         .arg("-ss")
         .arg((duration / 2f32).to_string())
         .arg("-i")
@@ -56,6 +58,9 @@ fn image_thubmnail(file: &Path, thumbnail_path: &Path, mimetype: &EncString, siz
     let mime_plain = match mime_plain.as_str() {
         "image/vnd.microsoft.icon" => {
             "image/ico"
+        }
+        "image/svg+xml" => {
+            "image/svg"
         }
         plain => { plain }
     };
