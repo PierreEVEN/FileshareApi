@@ -45,7 +45,7 @@ pub struct BackendConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
-    pub port: u16,
+    pub address: String,
     pub backend_config: BackendConfig,
     pub server_mail_server: ServiceEmailConfig,
     pub web_client_config: WebClientConfig,
@@ -56,7 +56,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            port: 3000,
+            address: String::from("localhost:3000"),
             backend_config: BackendConfig {
                 file_storage_path: PathBuf::from("data").join("files"),
                 thumbnail_storage_path: PathBuf::from("data").join("thumbnails"),

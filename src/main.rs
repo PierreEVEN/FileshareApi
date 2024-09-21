@@ -7,7 +7,8 @@ mod web_client;
 mod compatibility_upgrade;
 
 use std::{env, thread};
-use std::net::SocketAddr;
+use std::net::{AddrParseError, SocketAddr};
+use std::str::FromStr;
 use std::sync::Arc;
 use axum::{middleware, Router};
 use axum::body::Body;
@@ -99,7 +100,10 @@ async fn main() {
 
 
     // Create http server
-    let addr = SocketAddr::from(([192, 168, 0, 10], config.port));
+    let addr = match SocketAddr::from_str(config.address.as_str()) {
+        Ok(addr) => {addr}
+        Err(err) => {error!("Invalid server address '{}' : {err}", config.address); return;}
+    };
     if config.use_tls {
         if !config.tls_config.certificate.exists() || config.tls_config.private_key.exists() {
             error!("Invalid tls certificate paths : cert:{} / key:{}", config.tls_config.certificate.display(), config.tls_config.private_key.display());

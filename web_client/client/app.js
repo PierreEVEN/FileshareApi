@@ -11,8 +11,8 @@ import {GlobalHeader} from "./modules/global_header/global_header";
 import {SideBar} from "./modules/side_bar/side_bar";
 import {GLOBAL_EVENTS} from "./types/event_manager";
 
-import "./modules/upload/uploader";
-import {DropBox} from "./modules/upload/drop_box";
+import "./modules/viewport/repository_viewport/upload/uploader";
+import {DropBox} from "./modules/viewport/repository_viewport/upload/drop_box";
 
 class FileshareApp {
     constructor() {

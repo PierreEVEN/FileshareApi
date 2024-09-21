@@ -2,6 +2,7 @@ import {ViewportContent} from "../../../types/viewport_content/viewport_content"
 import {DirectoryContentProvider, RepositoryRootProvider} from "../../../types/viewport_content/providers";
 import {ItemView} from "./content/item_view";
 import {context_menu_repository} from "../../context_menu/contexts/context_repository";
+import {Uploader} from "./upload/uploader";
 
 require('./repository_viewport.scss')
 
@@ -37,6 +38,13 @@ class RepositoryViewport {
         container.append(div);
 
         this.content.set_content_provider(new RepositoryRootProvider(repository));
+
+        this.open_upload_container();
+    }
+
+    open_upload_container() {
+        this._elements.upload_container.innerHTML = '';
+        this.uploader = new Uploader(this._elements.upload_container)
     }
 }
 
