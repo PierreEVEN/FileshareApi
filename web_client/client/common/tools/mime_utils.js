@@ -9,6 +9,8 @@ function get_mime_alias(mimetype) {
         case 'application/x-zip':
         case 'application/x-zip-compressed':
             return 'application/zip';
+        case 'text/javascript':
+        case 'text/x-javascript':
         case 'application/x-javascript':
             return 'application/javascript';
         case 'text/jade':

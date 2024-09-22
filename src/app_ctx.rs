@@ -1,15 +1,17 @@
 use crate::config::Config;
 use crate::database::Database;
-use crate::utils::upload::{Upload, UploadState};
+use crate::utils::upload::Upload;
 use anyhow::Error;
 use rand::random;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::fs;
+use std::sync::Arc;
+use tracing::info;
 
 pub struct AppCtx {
     pub config: Config,
     pub database: Database,
-    uploads: RwLock<HashMap<usize, Arc<tokio::sync::RwLock<Upload>>>>
+    uploads: tokio::sync::RwLock<HashMap<usize, Arc<tokio::sync::RwLock<Upload>>>>,
 }
 
 impl AppCtx {
@@ -19,12 +21,12 @@ impl AppCtx {
         Ok(Self {
             config,
             database,
-            uploads: Default::default()
+            uploads: Default::default(),
         })
     }
 
-    pub fn add_upload(&self, mut upload: Upload) -> UploadState {
-        let mut uploads = self.uploads.write().unwrap();
+    pub async fn add_upload(&self, mut upload: Upload, db: &Database) -> Result<usize, Error> {
+        let mut uploads = self.uploads.write().await;
 
         let mut id;
         loop {
@@ -35,22 +37,23 @@ impl AppCtx {
         }
 
         upload.id = id;
-
-        let state = upload.get_state();
-        if !state.finished {
-            uploads.insert(id, Arc::new(tokio::sync::RwLock::new(upload)));
+        if upload.get_file_path().exists() {
+            fs::remove_file(upload.get_file_path())?;
         }
-        state
+        uploads.insert(id, Arc::new(tokio::sync::RwLock::new(upload)));
+        Ok(id)
     }
 
-    pub fn get_upload(&self, id: usize) -> Result<Arc<tokio::sync::RwLock<Upload>>, Error> {
-        match self.uploads.read().unwrap().get(&id) {
+    pub async fn get_upload(&self, id: usize) -> Result<Arc<tokio::sync::RwLock<Upload>>, Error> {
+        match self.uploads.read().await.get(&id) {
             None => { Err(Error::msg("Upload not found")) }
             Some(upload) => { Ok(upload.clone()) }
         }
     }
 
-    pub fn finalize_upload(&self, id: usize) {
-        self.uploads.write().unwrap().remove(&id);
+    pub async fn finalize_upload(&self, id: usize, db: &Database) -> Result<(), Error> {
+        let item = self.uploads.write().await.remove(&id).ok_or(Error::msg("Upload not found"))?;
+        item.write().await.store(db).await?;
+        Ok(())
     }
 }

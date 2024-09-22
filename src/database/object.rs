@@ -7,6 +7,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
+use tracing::{error, info};
 
 make_database_id!(ObjectId);
 
@@ -30,7 +31,10 @@ impl Object {
     }
 
     pub async fn insert(db: &Database, file: &Path, hash: &String) -> Result<Self, Error> {
-        let new_object = query_object!(db, Self, "INSERT INTO fileshare.objects (hash) VALUES ($1)", hash).ok_or(Error::msg("Failed to insert object"))?;
+        let new_object = query_object!(db, Self, "INSERT INTO SCHEMA_NAME.objects (hash) VALUES ($1) RETURNING *", hash).ok_or(Error::msg("Failed to insert object"))?;
+        if !new_object.data_path(db).parent().unwrap().exists() {
+            fs::create_dir_all(new_object.data_path(db).parent().unwrap())?;
+        }
         match fs::rename(file, new_object.data_path(db)) {
             Ok(_) => {}
             Err(err) => {
@@ -41,7 +45,7 @@ impl Object {
         Ok(new_object)
     }
 
-    pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
+    pub async fn delete(&self, db: &Database) -> Result<(), Error> {
         // Dereference from files
         for item in Item::from_object(db, &self.id, Trash::Both).await? {
             item.delete(db).await?
@@ -63,25 +67,25 @@ impl Object {
     }
 
 
-    pub fn equals_to_file(&self, db: &Database, file: PathBuf) -> Result<bool, Error> {
-        let mut reader1 = BufReader::new(File::open(self.data_path(db))?);
-        let mut reader2 = BufReader::new(File::open(file)?);
+    pub async fn equals_to_file(&self, db: &Database, file: PathBuf) -> Result<bool, Error> {
+        if !self.data_path(db).exists() {
+            error!("The object {:?} is not pointing to a valid file", self);
+            self.delete(db).await?;
+            return Ok(false);
+        }
+
+        let mut reader1 = BufReader::new(File::open(self.data_path(db)).map_err(|err| Error::msg(format!("Cannot open object data : {err}")))?);
+        let mut reader2 = BufReader::new(File::open(file).map_err(|err| Error::msg(format!("Cannot open tested file : {err}")))?);
         let mut buf1 = [0; 10000];
         let mut buf2 = [0; 10000];
 
-        loop {
-            if let Ok(n1) = reader1.read(&mut buf1) {
-                if n1 > 0 {
-                    if let Ok(n2) = reader2.read(&mut buf2) {
-                        if n1 == n2 {
-                            if buf1 == buf2 {
-                                continue;
-                            }
-                        }
-                        return Ok(false);
+        while let Ok(n1) = reader1.read(&mut buf1) {
+            if n1 > 0 {
+                if let Ok(n2) = reader2.read(&mut buf2) {
+                    if n1 == n2 && buf1 == buf2 {
+                        continue;
                     }
-                } else {
-                    break;
+                    return Ok(false);
                 }
             } else {
                 break;

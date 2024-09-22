@@ -1,4 +1,5 @@
 use std::fs;
+use std::hint::black_box;
 use std::path::PathBuf;
 use std::str::FromStr;
 use anyhow::{Error};
@@ -45,7 +46,7 @@ impl Database {
     pub async fn new(config: &BackendConfig) -> Result<Self, Error> {
         let db = connect(format!("host={} port={} user={} password={} dbname={} sslmode={}", config.postgres.url, config.postgres.port, config.postgres.username, config.postgres.secret, config.postgres.database, if config.postgres.ssl_mode { "enable" } else { "disable" }).as_str()).await?;
         let database = Self { db, schema_name: config.postgres.scheme_name.to_string(), file_storage_path: config.file_storage_path.clone(), thumbnail_storage_path: config.thumbnail_storage_path.clone() };
-        database.migrate(PathBuf::from("./migrations"), "fileshare_v3").await?;
+        database.migrate(PathBuf::from("./migrations"), config.postgres.scheme_name.as_str()).await?;
         Ok(database)
     }
 

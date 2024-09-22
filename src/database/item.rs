@@ -172,7 +172,7 @@ impl Item {
     }
 
     pub async fn from_object(db: &Database, id: &ObjectId, filter: Trash) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE id IN (SELECT id FROM SCHEMA_NAME.files WHERE object = $1) {filter}"), id))
+        Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE id IN (SELECT id FROM SCHEMA_NAME.file WHERE object = $1) {filter}"), id))
     }
 
     pub async fn from_parent(db: &Database, parent_directory: &ItemId, filter: Trash) -> Result<Vec<Self>, Error> {

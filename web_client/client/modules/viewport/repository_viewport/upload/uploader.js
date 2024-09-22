@@ -90,7 +90,7 @@ class Uploader {
             if (!found_item)
                 break;
 
-            this.processor = new UploadProcessor(found_item, this.viewport.repository.content);
+            this.processor = new UploadProcessor(found_item, this.viewport.repository);
             found_item.remove();
             await this.processor.upload();
         } while (true);

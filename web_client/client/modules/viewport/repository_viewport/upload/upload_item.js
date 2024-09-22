@@ -10,6 +10,9 @@ class UploadItem {
     constructor(data) {
         this.is_regular_file = data.is_regular_file;
         this.name = data.name;
+        /**
+         * @type {File}
+         */
         this.file = data.file;
         this.children = new Map();
         this.expanded = false;

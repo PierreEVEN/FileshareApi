@@ -14,12 +14,13 @@ use axum::extract::{FromRequest, Path, Request, State};
 use axum::http::{header, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
-use axum::{Json, Router};
+use axum::{debug_handler, Json, Router};
 use regex::Regex;
 use serde::Deserialize;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio_util::io::ReaderStream;
+use tracing::info;
 
 pub struct ItemRoutes {}
 
@@ -157,10 +158,11 @@ async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -
         Some(f) => { f }
     };
 
+    //@TODO : move this method inside the Object file
     let thumbnail_path = Thumbnail::find_or_create(
-                                                   ctx.config.backend_config.file_storage_path.join(item.id().to_string()).as_path(),
-                                                   ctx.config.backend_config.thumbnail_storage_path.as_path(),
-                                                   &file.mimetype, 100)?;
+        ctx.config.backend_config.file_storage_path.join(file.object.to_string()).as_path(),
+        ctx.config.backend_config.thumbnail_storage_path.as_path(),
+        &file.mimetype, 100)?;
 
     let stream = ReaderStream::new(tokio::fs::File::open(thumbnail_path).await?);
     let body = Body::from_stream(stream);
@@ -171,25 +173,26 @@ async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -
     ];
     Ok((headers, body))
 }
+
 async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let connected_user = require_connected_user!(request);
     let headers = request.headers().clone();
-    if let Some(content_id) = headers.get("Content-Id") {
-        let content_id = usize::from_str(content_id.to_str()?)?;
+    let id = if let Some(content_id) = headers.get("Content-Id") {
+        usize::from_str(content_id.to_str()?)?
+    } else {
+        let upload = Upload::new(headers, connected_user.id().clone())?;
+        ctx.add_upload(upload, &ctx.database).await?
+    };
 
-        let found_upload = ctx.get_upload(content_id)?;
+    
+    let state = {
+        let found_upload = ctx.get_upload(id).await?;
         let mut upload = found_upload.write().await;
         upload.push_data(request.into_body()).await?;
-
-        let state = upload.get_state();
-        if state.finished {
-            ctx.finalize_upload(content_id);
-        }
-        Ok(Json(state))
-    } else {
-        let mut upload = Upload::new(headers, connected_user.id().clone())?;
-        upload.push_data(request.into_body()).await?;
-        upload.get_state();
-        Ok(Json(ctx.add_upload(upload)))
+        upload.get_state()
+    };
+    if state.finished {
+        ctx.finalize_upload(id, &ctx.database).await?;
     }
+    Ok(Json(state))
 }

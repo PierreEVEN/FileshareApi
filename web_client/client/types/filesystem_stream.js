@@ -101,6 +101,8 @@ class FilesystemItem {
         result.name = this.name.plain()
         result.description = this.description.plain()
         result.absolute_path = this.absolute_path.plain()
+        if (this.mimetype)
+            result.mimetype = this.mimetype.plain()
         return result
     }
 

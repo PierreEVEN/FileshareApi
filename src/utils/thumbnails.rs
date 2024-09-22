@@ -55,6 +55,9 @@ fn image_thubmnail(file: &Path, thumbnail_path: &Path, mimetype: &EncString, siz
     fs::create_dir_all(thumbnail_path)?;
     let mime_plain = mimetype.plain()?;
     let mime_plain = match mime_plain.as_str() {
+        "image/x-icon" => {
+            "image/ico"
+        }
         "image/vnd.microsoft.icon" => {
             "image/ico"
         }
@@ -98,7 +101,8 @@ pub struct Thumbnail {}
 
 impl Thumbnail {
     pub fn create(file: PathBuf, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<PathBuf, Error> {
-        let mut mime_start = mimetype.split("/");
+        let mime_text = mimetype.plain()?;
+        let mut mime_start = mime_text.split("/");
         match mime_start.next().ok_or(Error::msg("Invalid mimetype"))? {
             "image" => {
                 image_thubmnail(&file, thumbnail_path, mimetype, size)?;
@@ -107,7 +111,7 @@ impl Thumbnail {
                 video_thumbnail(&file, thumbnail_path, size)?;
             }
             _ => {
-                return Err(Error::msg("Unsupported mimetype"));
+                return Err(Error::msg(format!("Unsupported mimetype : {mimetype}")));
             }
         }
         Ok(thumbnail_path.join(Self::thumbnail_filename(file.as_path())))
