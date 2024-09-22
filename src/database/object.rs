@@ -1,10 +1,11 @@
 use crate::database::item::{Item, ItemId, Trash};
-use crate::database::repository::RepositoryId;
-use crate::database::{Database};
+use crate::database::Database;
 use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;
 use postgres_from_row::FromRow;
 use std::fs;
+use std::fs::File;
+use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 
 make_database_id!(ObjectId);
@@ -12,7 +13,7 @@ make_database_id!(ObjectId);
 #[derive(Debug, FromRow)]
 pub struct Object {
     id: ObjectId,
-    pub hash: String
+    pub hash: String,
 }
 
 impl Object {
@@ -20,21 +21,21 @@ impl Object {
         Ok(query_object!(db, Object, "SELECT * FROM SCHEMA_NAME.objects WHERE id = $1", id).unwrap())
     }
 
-    pub async fn from_repos(db: &Database, id: &RepositoryId) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Object, "SELECT * FROM SCHEMA_NAME.objects WHERE repos = $1", id))
-    }
-
     pub async fn from_item(db: &Database, id: &ItemId) -> Result<Vec<Self>, Error> {
         Ok(query_objects!(db, Object, "SELECT * FROM SCHEMA_NAME.objects WHERE id = $1", id))
     }
 
-    pub async fn insert(db: &Database, file: &Path) -> Result<Self, Error> {
-        let new_object = query_object!(db, Self, "INSERT INTO fileshare.objects () VALUES ()").ok_or(Error::msg("Failed to insert object"))?;
+    pub async fn from_hash(db: &Database, hash: &String) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Object, "SELECT * FROM SCHEMA_NAME.objects WHERE hash = $1", hash))
+    }
+
+    pub async fn insert(db: &Database, file: &Path, hash: &String) -> Result<Self, Error> {
+        let new_object = query_object!(db, Self, "INSERT INTO fileshare.objects (hash) VALUES ($1)", hash).ok_or(Error::msg("Failed to insert object"))?;
         match fs::rename(file, new_object.data_path(db)) {
             Ok(_) => {}
             Err(err) => {
                 query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.objects WHERE id = $1;"#, *new_object.id);
-                return Err(Error::msg(format!("Failed to store new object : {err}")))
+                return Err(Error::msg(format!("Failed to store new object : {err}")));
             }
         };
         Ok(new_object)
@@ -55,5 +56,38 @@ impl Object {
 
     pub fn thumbnail_path(&self, db: &Database) -> PathBuf {
         db.thumbnail_storage_path.join(self.id.to_string().as_str())
+    }
+
+    pub fn id(&self) -> &ObjectId {
+        &self.id
+    }
+
+
+    pub fn equals_to_file(&self, db: &Database, file: PathBuf) -> Result<bool, Error> {
+        let mut reader1 = BufReader::new(File::open(self.data_path(db))?);
+        let mut reader2 = BufReader::new(File::open(file)?);
+        let mut buf1 = [0; 10000];
+        let mut buf2 = [0; 10000];
+
+        loop {
+            if let Ok(n1) = reader1.read(&mut buf1) {
+                if n1 > 0 {
+                    if let Ok(n2) = reader2.read(&mut buf2) {
+                        if n1 == n2 {
+                            if buf1 == buf2 {
+                                continue;
+                            }
+                        }
+                        return Ok(false);
+                    }
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+
+        Ok(true)
     }
 }

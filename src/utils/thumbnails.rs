@@ -1,4 +1,3 @@
-use crate::app_ctx::AppCtx;
 use crate::database::object::ObjectId;
 use crate::utils::enc_string::EncString;
 use anyhow::Error;
@@ -8,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
 
-fn video_thumbnail(file: &PathBuf, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<(), Error> {
+fn video_thumbnail(file: &PathBuf, thumbnail_path: &Path, size: u32) -> Result<(), Error> {
     let get_duration_cmd = match Command::new("ffprobe")
         .arg("-v")
         .arg("error")
@@ -105,7 +104,7 @@ impl Thumbnail {
                 image_thubmnail(&file, thumbnail_path, mimetype, size)?;
             }
             "video" => {
-                video_thumbnail(&file, thumbnail_path, mimetype, size)?;
+                video_thumbnail(&file, thumbnail_path, size)?;
             }
             _ => {
                 return Err(Error::msg("Unsupported mimetype"));
@@ -124,7 +123,7 @@ impl Thumbnail {
         file_name.push(".webp");
         file_name
     }
-    pub fn find_or_create(ctx: &AppCtx, file: &Path, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<PathBuf, Error> {
+    pub fn find_or_create(file: &Path, thumbnail_path: &Path, mimetype: &EncString, size: u32) -> Result<PathBuf, Error> {
         let path = thumbnail_path.join(Self::thumbnail_filename(file));
         if path.exists() {
             Ok(path.to_path_buf())

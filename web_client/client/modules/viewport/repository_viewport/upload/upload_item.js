@@ -136,7 +136,7 @@ class UploadItem {
      * @param name {string}
      * @param repository_id {number}
      * @param parent {number|null}
-     * @return {Promise<void>}
+     * @return {Promise<FilesystemItem>}
      * @private
      */
     async _get_or_create_dir(name, repository_id, parent) {
@@ -161,7 +161,7 @@ class UploadItem {
             }]
         );
         if (directories.length === 1) {
-            this.directory = await FilesystemItem.new(directories[0]);
+            return await FilesystemItem.new(directories[0]);
         }
     }
 }

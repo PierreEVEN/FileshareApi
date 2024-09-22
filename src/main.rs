@@ -7,7 +7,7 @@ mod web_client;
 mod compatibility_upgrade;
 
 use std::{env, thread};
-use std::net::{AddrParseError, SocketAddr};
+use std::net::{SocketAddr};
 use std::str::FromStr;
 use std::sync::Arc;
 use axum::{middleware, Router};

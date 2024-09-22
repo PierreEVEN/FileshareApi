@@ -7,6 +7,7 @@ use crate::utils::enc_string::EncString;
 use crate::utils::permissions::Permissions;
 use crate::utils::server_error::ServerError;
 use crate::utils::thumbnails::Thumbnail;
+use crate::utils::upload::Upload;
 use anyhow::Error;
 use axum::body::Body;
 use axum::extract::{FromRequest, Path, Request, State};
@@ -16,6 +17,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use regex::Regex;
 use serde::Deserialize;
+use std::str::FromStr;
 use std::sync::Arc;
 use tokio_util::io::ReaderStream;
 
@@ -31,6 +33,7 @@ impl ItemRoutes {
             .route("/new-directory/", post(new_directory).with_state(ctx.clone()))
             .route("/directory-content/", post(directory_content).with_state(ctx.clone()))
             .route("/thumbnail/:id/", get(thumbnail).with_state(ctx.clone()))
+            .route("/send/", post(send).with_state(ctx.clone()))
         )
     }
 }
@@ -147,18 +150,17 @@ async fn delete(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl
 }
 
 async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -> Result<impl IntoResponse, ServerError> {
-
     let item = Item::from_id(&ctx.database, &ItemId::from(id), Trash::Both).await?;
 
     let file = match &item.file {
-        None => {return Err(ServerError::msg(StatusCode::NOT_ACCEPTABLE, "Cannot generate thumbnail for a directory"))}
-        Some(f) => {f}
+        None => { return Err(ServerError::msg(StatusCode::NOT_ACCEPTABLE, "Cannot generate thumbnail for a directory")) }
+        Some(f) => { f }
     };
 
-    let thumbnail_path = Thumbnail::find_or_create(ctx.as_ref(),
-        ctx.config.backend_config.file_storage_path.join(item.id().to_string()).as_path(),
-        ctx.config.backend_config.thumbnail_storage_path.as_path(),
-        &file.mimetype, 100)?;
+    let thumbnail_path = Thumbnail::find_or_create(
+                                                   ctx.config.backend_config.file_storage_path.join(item.id().to_string()).as_path(),
+                                                   ctx.config.backend_config.thumbnail_storage_path.as_path(),
+                                                   &file.mimetype, 100)?;
 
     let stream = ReaderStream::new(tokio::fs::File::open(thumbnail_path).await?);
     let body = Body::from_stream(stream);
@@ -168,4 +170,26 @@ async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -
         (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", item.name.encoded()))
     ];
     Ok((headers, body))
+}
+async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let connected_user = require_connected_user!(request);
+    let headers = request.headers().clone();
+    if let Some(content_id) = headers.get("Content-Id") {
+        let content_id = usize::from_str(content_id.to_str()?)?;
+
+        let found_upload = ctx.get_upload(content_id)?;
+        let mut upload = found_upload.write().await;
+        upload.push_data(request.into_body()).await?;
+
+        let state = upload.get_state();
+        if state.finished {
+            ctx.finalize_upload(content_id);
+        }
+        Ok(Json(state))
+    } else {
+        let mut upload = Upload::new(headers, connected_user.id().clone())?;
+        upload.push_data(request.into_body()).await?;
+        upload.get_state();
+        Ok(Json(ctx.add_upload(upload)))
+    }
 }

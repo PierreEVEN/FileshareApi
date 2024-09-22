@@ -102,7 +102,6 @@ class SideBar {
     }
 
     show_mobile() {
-        console.log("ah")
         this.div.parentElement.style.display = 'flex';
     }
 
