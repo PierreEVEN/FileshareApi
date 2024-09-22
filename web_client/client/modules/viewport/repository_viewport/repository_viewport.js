@@ -9,11 +9,14 @@ require('./repository_viewport.scss')
 
 class RepositoryViewport {
     constructor(repository, container) {
-
         const div = require('./repository_viewport.hbs')({}, {
             background_context: (event) => {
                 event.preventDefault();
                 context_menu_repository(repository);
+            },
+            open_upload: () => {
+                this.open_upload_container()
+                div.elements.upload_button.style.display = 'none';
             }
         });
         this._elements = div.elements;
@@ -45,6 +48,10 @@ class RepositoryViewport {
                 this.open_upload_container();
             return this.uploader;
         });
+    }
+
+    close_upload_container() {
+        div.elements.upload_button.style.display = 'flex';
     }
 
     open_upload_container() {

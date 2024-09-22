@@ -20,6 +20,23 @@
     display: flex;
   }
 
+  .upload-button {
+    position: absolute;
+    bottom: 40px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    padding: 0;
+
+    &:not(:hover) {
+      border: 1px solid $border-default;
+    }
+
+    img {
+      width: 40px;
+    }
+  }
+
   .repository-content {
     display: flex;
     flex-direction: row;

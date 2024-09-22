@@ -82,9 +82,10 @@
       width: 100%;
       background-color: $secondary;
       overflow: scroll;
+      height: 0;
     }
 
-    .upload-button {
+    .start-upload-button {
       display: none;
       margin: 10px 40px;
       font-weight: bold;
