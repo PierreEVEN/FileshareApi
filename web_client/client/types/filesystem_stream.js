@@ -90,6 +90,7 @@ class FilesystemItem {
         if (filesystem) {
             await filesystem.set_or_update_item(item);
         }
+        return item;
     }
 
     /**

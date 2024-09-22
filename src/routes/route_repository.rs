@@ -121,7 +121,7 @@ pub async fn root_content(State(ctx): State<Arc<AppCtx>>, request: axum::http::R
     let mut result = vec![];
     for repository in data.0 {
         permission.view_repository(&ctx.database, &repository).await?.require()?;
-        result.append(&mut Item::repository_root(&ctx.database, &repository, Trash::No).await?);
+        result.append(&mut Item::repository_root(&ctx.database, &repository, Trash::Both).await?);
     }
     Ok(Json(result))
 }

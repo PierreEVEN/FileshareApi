@@ -51,7 +51,7 @@ class DropBox {
                         if (parent)
                             parent.add_child(directory);
                         else
-                            get_uploader().add_item(directory);
+                            await get_uploader().add_item(directory);
                         entry.createReader().readEntries((entries) => {
                             for (const new_entry of entries)
                                 process_entry(new_entry, directory);
@@ -60,7 +60,7 @@ class DropBox {
                         if (parent)
                             parent.add_child(await UploadItem.FromFilesystemDrop(entry))
                         else
-                            get_uploader().add_item(await UploadItem.FromFilesystemDrop(entry))
+                            await get_uploader().add_item(await UploadItem.FromFilesystemDrop(entry))
                     }
                 }
 

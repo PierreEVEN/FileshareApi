@@ -15,12 +15,12 @@ async function overwrite_or_restore(item_name, existing) {
         }, {
             overwrite: async (e) => {
                 await delete_item(existing, false);
-                resolve({handled: true});
+                resolve({handled: true, canceled: false});
                 MODAL.close();
             },
             restore: async (e) => {
                 await restore_item(existing);
-                resolve({handled: false});
+                resolve({handled: false, canceled: false});
                 MODAL.close();
             },
             cancel: () => {
@@ -29,7 +29,7 @@ async function overwrite_or_restore(item_name, existing) {
         });
         MODAL.open(widget, {
             custom_width: '500px', custom_height: '250px', on_close: () => {
-                resolve({handled: false});
+                resolve({handled: false, canceled: true});
             }
         })
     })

@@ -12,6 +12,8 @@ class RepositoryViewport {
         const div = require('./repository_viewport.hbs')({}, {
             background_context: (event) => {
                 event.preventDefault();
+                if (!event.target.classList.contains('file-list'))
+                    return;
                 context_menu_repository(repository);
             },
             open_upload: () => {
@@ -19,6 +21,8 @@ class RepositoryViewport {
                 div.elements.upload_button.style.display = 'none';
             }
         });
+
+        this.repository = repository;
         this._elements = div.elements;
 
         this.content = new ViewportContent();
@@ -51,12 +55,12 @@ class RepositoryViewport {
     }
 
     close_upload_container() {
-        div.elements.upload_button.style.display = 'flex';
+        this._elements.upload_button.style.display = 'flex';
     }
 
     open_upload_container() {
         this._elements.upload_container.innerHTML = '';
-        this.uploader = new Uploader(this._elements.upload_container)
+        this.uploader = new Uploader(this._elements.upload_container, this)
         this.uploader.expand(true);
     }
 }

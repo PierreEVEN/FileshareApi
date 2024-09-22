@@ -126,6 +126,13 @@ class ViewportContent {
         await this._regen_content();
     }
 
+    /**
+     * @return {ContentProvider|null}
+     */
+    get_content_provider() {
+        return this._provider
+    }
+
     _add(item) {
         if (this._displayed_items.has(item.id))
             return;
