@@ -1,6 +1,7 @@
 import {GLOBAL_EVENTS} from "../../../types/event_manager";
 import {context_menu_item} from "../../context_menu/contexts/context_item";
 import {context_menu_repository} from "../../context_menu/contexts/context_repository";
+import {APP} from "../../../app";
 
 class RepositoryNode {
     /**
@@ -26,6 +27,7 @@ class RepositoryNode {
                 e.preventDefault();
             }
         });
+        this.data = data;
         this._div = div;
         this._elements = div.elements;
         this._container.append(div);
@@ -36,6 +38,7 @@ class RepositoryNode {
      * @param expanded {boolean}
      */
     async expand_node(expanded) {
+        await APP.set_display_item(this.data);
         this._expanded = expanded;
         this._elements.content.innerHTML = '';
         if (expanded) {
@@ -109,6 +112,7 @@ class RepositoryTree {
      * @param expanded {boolean}
      */
     async expand_node(expanded) {
+        await APP.set_display_repository(this.repository);
         this._expanded = expanded;
         this._elements.content.innerHTML = '';
         if (expanded) {

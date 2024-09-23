@@ -1,4 +1,5 @@
 import {ContentProvider} from "./viewport_content";
+import {APP} from "../../app";
 
 class RepositoryRootProvider extends ContentProvider {
     /**
@@ -32,6 +33,7 @@ class DirectoryContentProvider extends ContentProvider {
      */
     constructor(directory) {
         super();
+        console.assert(!directory.is_regular_file, "Cannot open a file as a directory");
         this.directory = directory;
     }
 

@@ -7,7 +7,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
-use tracing::{error, info};
+use tracing::{error};
 
 make_database_id!(ObjectId);
 

@@ -1,4 +1,3 @@
-
 import './utilities/handlebars_helpers';
 //@FIX : don't importing this cause a weird issue when rendering pdf...
 require('./embed_viewers/custom_elements/pdf_viewer/pdf-viewer.hbs');
@@ -9,13 +8,17 @@ require('./app.scss');
 
 import {GlobalHeader} from "./modules/global_header/global_header";
 import {SideBar} from "./modules/side_bar/side_bar";
-import {GLOBAL_EVENTS} from "./types/event_manager";
 
 import "./modules/viewport/repository_viewport/upload/uploader";
-import {DropBox} from "./modules/viewport/repository_viewport/upload/drop_box";
+import {State} from "./utilities/state";
+import {Repository} from "./types/repository";
+import {Viewport} from "./modules/viewport/viewport";
+import {APP_CONFIG} from "./types/app_config";
+import {FilesystemItem} from "./types/filesystem_stream";
 
 class FileshareApp {
     constructor() {
+
         /**
          * @type {HTMLElement}
          * @private
@@ -45,24 +48,32 @@ class FileshareApp {
          * @type {SideBar}
          * @private
          */
-        this._side_bar = new SideBar(this._elements.side_bar);
+        this._side_bar = new SideBar(this, this._elements.side_bar);
 
-        const cb = GLOBAL_EVENTS.add('add_repository', (repository) => {
-            this.set_display_repository(repository);
-            cb.remove();
-        })
+        this.state = new State(this);
+
+        (async () => {
+            if (await APP_CONFIG.display_item()) {
+                await this.set_display_item(await APP_CONFIG.display_item());
+            } else if (APP_CONFIG.display_repository()) {
+                await this.set_display_repository(APP_CONFIG.display_repository());
+            } else if (APP_CONFIG.display_user()) {
+
+            }
+        })().catch(error => console.error(`initialization failed :`, error));
     }
 
-    set_display_repository(repository) {
-        if (repository) {
-            const {Viewport} = require("./modules/viewport/viewport");
-            if (!this._viewport)
-                this._viewport = new Viewport(this._elements.viewport);
-            this._viewport.set_displayed_repository(repository);
-        } else if (this._viewport) {
-            this._viewport.clear();
-            delete this._viewport;
-        }
+    /**
+     * @param repository {Repository}
+     * @return {Promise<void>}
+     */
+    async set_display_repository(repository) {
+        console.assert(repository, "invalid repository");
+        const {Viewport} = require("./modules/viewport/viewport");
+        if (!this._viewport)
+            this._viewport = new Viewport(this._elements.viewport);
+        await this.state.open_repository(repository);
+        await (await this._viewport.set_displayed_repository(repository)).open_root();
     }
 
     set_connected_user(user) {
@@ -70,10 +81,23 @@ class FileshareApp {
 
         if (user) {
             if (!this._side_bar) {
-                this._side_bar = new SideBar(this._elements.side_bar);
+                this._side_bar = new SideBar(this, this._elements.side_bar);
             }
         }
         this._side_bar.refresh(user);
+    }
+
+    /**
+     * @param item {FilesystemItem}
+     * @return {Promise<void>}
+     */
+    async set_display_item(item) {
+        const repository = await Repository.find(item.repository);
+        if (!this._viewport)
+            this._viewport = new Viewport(this._elements.viewport);
+        const viewport = await this._viewport.set_displayed_repository(repository);
+        await viewport.open_item(item);
+        await this.state.open_item(item);
     }
 }
 

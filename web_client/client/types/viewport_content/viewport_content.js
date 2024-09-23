@@ -195,7 +195,7 @@ class ViewportContent extends MemoryTracker {
     _remove_entry(item) {
         if (!this._displayed_items.has(item.id))
             return;
-        this._displayed_items.delete(item);
+        this._displayed_items.delete(item.id);
         this.events.broadcast('remove', item);
     }
 

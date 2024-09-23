@@ -1,6 +1,5 @@
 const {EncString} = require("./encstring");
 const {User} = require("./user");
-const {ContextMenu, MenuAction} = require("../modules/context_menu/context_menu");
 const {fetch_api} = require("../utilities/request");
 const {GLOBAL_EVENTS} = require("./event_manager");
 

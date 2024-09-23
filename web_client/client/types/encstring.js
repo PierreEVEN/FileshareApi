@@ -5,7 +5,7 @@ function custom_encode(data) {
         .replaceAll(")", "%29")
         .replaceAll("'", "%27")
         .replaceAll("*", "%2A")
-        .replaceAll("*", "%21")
+        .replaceAll("!", "%21")
 }
 
 class EncString {

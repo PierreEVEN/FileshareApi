@@ -6,6 +6,7 @@ use axum::response::IntoResponse;
 use axum::Router;
 use tracing::warn;
 use crate::app_ctx::AppCtx;
+use crate::database::item::Item;
 use crate::database::repository::Repository;
 use crate::database::user::User;
 use crate::routes::route_item::ItemRoutes;
@@ -86,6 +87,25 @@ macro_rules! get_display_user {
 }
 
 #[macro_export]
+macro_rules! get_display_item {
+    ($request:expr, $prop:ident, $body:expr, $or_else:expr) => {{
+        let req_ctx = $request.extensions().get::<std::sync::Arc<crate::routes::RequestContext>>().unwrap();
+        if let Some($prop) = req_ctx.display_item().await.as_ref() {
+            {$body}
+        } else {
+            $or_else
+        }
+    }};
+
+    ($request:expr, $prop:ident, $body:expr) => (
+        let req_ctx = $request.extensions().get::<std::sync::Arc<crate::routes::RequestContext>>().unwrap();
+        if let Some($prop) = req_ctx.display_item().await.as_ref() {
+            $body
+        }
+    );
+}
+
+#[macro_export]
 macro_rules! require_display_repository {
     ($request:expr) => {{
         crate::get_display_repository!($request, display_directory, {
@@ -101,30 +121,37 @@ macro_rules! require_display_repository {
 pub struct RequestContext {
     pub connected_user: tokio::sync::RwLock<Option<User>>,
     pub display_user: tokio::sync::RwLock<Option<User>>,
-    pub display_repository: tokio::sync::RwLock<Option<Repository>>
+    pub display_repository: tokio::sync::RwLock<Option<Repository>>,
+    pub display_item: tokio::sync::RwLock<Option<Item>>,
 }
 
 impl RequestContext {
     pub async fn connected_user(&self) -> tokio::sync::RwLockReadGuard<Option<User>> {
         self.connected_user.read().await
     }
-
     pub async fn connected_user_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<User>> {
         self.connected_user.write().await
     }
+
     pub async fn display_user(&self) -> tokio::sync::RwLockReadGuard<Option<User>> {
         self.display_user.read().await
     }
-
     pub async fn display_user_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<User>> {
         self.display_user.write().await
     }
+
     pub async fn display_repository(&self) -> tokio::sync::RwLockReadGuard<Option<Repository>> {
         self.display_repository.read().await
     }
-
     pub async fn display_repository_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<Repository>> {
         self.display_repository.write().await
+    }
+
+    pub async fn display_item(&self) -> tokio::sync::RwLockReadGuard<Option<Item>> {
+        self.display_item.read().await
+    }
+    pub async fn display_item_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<Item>> {
+        self.display_item.write().await
     }
 }
 

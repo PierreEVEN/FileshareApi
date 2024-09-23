@@ -1,6 +1,6 @@
 use std::{env, fs};
 use std::io::Write;
-use crate::database::item::{FileData, Item, ItemId, Trash};
+use crate::database::item::{FileData, Item, ItemId};
 use crate::database::object::Object;
 use crate::database::repository::RepositoryId;
 use crate::database::user::UserId;

@@ -14,7 +14,7 @@ require('./side_bar.scss')
 let SIDE_BAR = null;
 
 class SideBar {
-    constructor(container) {
+    constructor(app, container) {
 
         SIDE_BAR = this;
 
@@ -23,6 +23,8 @@ class SideBar {
          * @private
          */
         this._connected_user = undefined;
+
+        this.app = app;
 
         const div = require('./side_bar.hbs')({}, {
             expand_my_repositories: () => {

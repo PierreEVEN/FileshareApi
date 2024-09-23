@@ -11,14 +11,15 @@ use std::net::{SocketAddr};
 use std::str::FromStr;
 use std::sync::Arc;
 use axum::{middleware, Router};
-use axum::body::Body;
+use axum::body::{Body, Bytes};
 use axum::extract::State;
-use axum::http::Request;
+use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 use axum_extra::extract::CookieJar;
 use axum_server::tls_rustls::RustlsConfig;
 use tracing::{error, info, warn};
+use http_body_util::BodyExt;
 use crate::app_ctx::AppCtx;
 use crate::compatibility_upgrade::Upgrade;
 use crate::config::{Config, WebClientConfig};
@@ -93,16 +94,19 @@ async fn main() {
     // Start web client
 
     // Instantiate router
-    let mut router = Router::new();
-    router = router.nest("/api/", RootRoutes::create(&ctx).unwrap());
-    router = router.nest("/", WebClient::router(&ctx).unwrap());
-    let router = router.layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context));
-
+    let router = Router::new()
+        .nest("/api/", RootRoutes::create(&ctx).unwrap())
+        .nest("/", WebClient::router(&ctx).unwrap())
+        .layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_request_context))
+        .layer(middleware::from_fn(print_request_response));
 
     // Create http server
     let addr = match SocketAddr::from_str(config.address.as_str()) {
-        Ok(addr) => {addr}
-        Err(err) => {error!("Invalid server address '{}' : {err}", config.address); return;}
+        Ok(addr) => { addr }
+        Err(err) => {
+            error!("Invalid server address '{}' : {err}", config.address);
+            return;
+        }
     };
     if config.use_tls {
         if !config.tls_config.certificate.exists() || config.tls_config.private_key.exists() {
@@ -149,4 +153,41 @@ pub async fn middleware_get_request_context(jar: CookieJar, State(ctx): State<Ar
     info!("[{}] {} | {}", request.method(), user_string, uri);
     request.extensions_mut().insert(Arc::new(context));
     Ok(next.run(request).await)
+}
+async fn print_request_response(req: Request<Body>, next: Next) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let (parts, body) = req.into_parts();
+    let bytes = buffer_and_print("request", body).await?;
+    let req = Request::from_parts(parts, Body::from(bytes));
+    let path = req.uri().path().to_string();
+    let res = next.run(req).await;
+    if !res.status().is_success() {
+        warn!("{} ({})", res.status().to_string(), path);
+    }
+    let (parts, body) = res.into_parts();
+    let bytes = buffer_and_print("response", body).await?;
+    let res = Response::from_parts(parts, Body::from(bytes));
+
+    Ok(res)
+}
+
+async fn buffer_and_print<B>(direction: &str, body: B) -> Result<Bytes, (StatusCode, String)>
+where
+    B: axum::body::HttpBody<Data = Bytes>,
+    B::Error: std::fmt::Display,
+{
+    let bytes = match body.collect().await {
+        Ok(collected) => collected.to_bytes(),
+        Err(err) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                format!("failed to read {direction} body: {err}"),
+            ));
+        }
+    };
+
+    if let Ok(body) = std::str::from_utf8(&bytes) {
+        tracing::debug!("{direction} body = {body:?}");
+    }
+
+    Ok(bytes)
 }

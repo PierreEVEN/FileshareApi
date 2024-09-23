@@ -76,7 +76,7 @@ impl Repository {
         Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.repository WHERE id IN (SELECT repository FROM SCHEMA_NAME.subscriptions WHERE owner = $1);", user))
     }
     pub async fn from_url_name(db: &Database, name: &EncString) -> Result<Self, Error> {
-        match query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.repository WHERE url_name = lower($1)", name) {
+        match query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.repository WHERE lower(url_name) = lower($1)", name) {
             None => { Err(Error::msg("Repository not found")) }
             Some(repository) => { Ok(repository) }
         }

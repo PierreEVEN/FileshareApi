@@ -1,0 +1,85 @@
+import {User} from "../types/user";
+import {Repository} from "../types/repository";
+import {FilesystemItem, FilesystemStream} from "../types/filesystem_stream";
+
+class State {
+    /**
+     * @param app {FileshareApp}
+     */
+    constructor(app) {
+        this.app = app;
+        addEventListener('popstate', async (event) => {
+            if (event.state && event.state.app_action)
+                await this._handle_state(event.state)
+        })
+
+        this._disable_state = false;
+    }
+
+    /**
+     * @param repository {Repository}
+     */
+    async open_repository(repository) {
+        if (this._disable_state)
+            return;
+        history.pushState({
+            app_action: true,
+            repository: repository.id
+        }, "", `/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/`);
+    }
+
+    /**
+     * @param item {FilesystemItem}
+     * @return {Promise<void>}
+     */
+    async open_item(item) {
+        if (this._disable_state)
+            return;
+        let repository = await Repository.find(item.repository)
+        history.pushState({
+            app_action: true,
+            item: item.id,
+            repository: item.repository
+        }, "", `/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/tree${item.absolute_path.encoded()}${item.is_regular_file ? "" : "/"}`);
+    }
+
+    /**
+     * @param repository {Repository}
+     */
+    async open_trash(repository) {
+        if (this._disable_state)
+            return;
+        history.pushState({
+            app_action: true,
+            repository: repository.id,
+            trash: true
+        }, "", `/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/trash/`);
+    }
+
+    async open_user(user) {
+        if (this._disable_state)
+            return;
+        history.pushState({
+            app_action: true,
+            user: user.id
+        }, "", `/${user.name.encoded()}/`);
+    }
+
+    async _handle_state(state) {
+        this._disable_state = true;
+        if (state.item && state.repository) {
+            let repository = await Repository.find(state.repository);
+            await this.app.set_display_item(await repository.content.fetch_item(state.item));
+        } else if (state.repository) {
+            let repository = await Repository.find(state.repository);
+            await this.app.set_display_repository(repository);
+        }
+        this._disable_state = false;
+    }
+
+    async _get_user_name(id) {
+        return (await User.fetch(id)).name.encoded()
+    }
+}
+
+export {State}

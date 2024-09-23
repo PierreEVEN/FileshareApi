@@ -1,4 +1,5 @@
 import {EncString} from "./encstring";
+import {fetch_api} from "../utilities/request";
 
 class UserRole {
     constructor(data) {
@@ -66,6 +67,20 @@ class User {
      */
     static async find(id) {
         return User._LOCAL_CACHE.get(id);
+    }
+
+    /**
+     * @param id {number}
+     * @returns {Promise<User>}
+     */
+    static async fetch(id) {
+        const current = User._LOCAL_CACHE.get(id);
+        if (current)
+            return current;
+        let user = await fetch_api("/user/find/", "POST", [id]);
+        if (user)
+            return new User(user);
+        return null;
     }
 }
 

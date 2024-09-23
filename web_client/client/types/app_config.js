@@ -1,13 +1,8 @@
 import {User} from "./user";
+import {FilesystemItem} from "./filesystem_stream";
 import {Repository} from "./repository";
-import {extend} from "dayjs";
 
-class OnUserChanged extends Event {
-
-}
-
-
-class App_config {
+class AppConfig {
     constructor() {
         const data = JSON.parse(document.body.dataset['app_config']);
         console.assert(data, "Invalid application configuration data")
@@ -23,7 +18,14 @@ class App_config {
         /**
          * @type {Repository}
          */
-        this._display_repository = data.display_repository ? new Repository(data.display_repository) : null;
+        this._display_repository = data['display_repository'] ? new Repository(data['display_repository']) : null;
+        /**
+         * @type {Promise<FilesystemItem>}
+         */
+        this._display_item = null;
+        this._pre_init_item = data['display_item'];
+
+        console.assert(data.origin, "MISSING ORIGIN IN RECEIVED CONFIG");
         /**
          * @type {String}
          */
@@ -54,6 +56,12 @@ class App_config {
         return this._display_user;
     }
 
+    async display_item() {
+        if (!this._display_item && this._pre_init_item)
+            this._display_item = FilesystemItem.new(this._pre_init_item);
+        return await this._display_item;
+    }
+
     display_repository() {
         return this._display_repository;
     }
@@ -64,8 +72,8 @@ class App_config {
 }
 
 /**
- * @type {App_config}
+ * @type {AppConfig}
  */
-const APP_CONFIG = new App_config();
+let APP_CONFIG = new AppConfig();
 
 export {APP_CONFIG}

@@ -1,4 +1,5 @@
 import {RepositoryViewport} from "./repository_viewport/repository_viewport";
+import {MemoryTracker} from "../../types/memory_handler";
 
 class Viewport {
     /**
@@ -6,19 +7,13 @@ class Viewport {
      */
     constructor(container) {
         /**
-         * @type {Repository}
-         * @private
-         */
-        this._displayed_repository = null;
-
-        /**
          * @type {HTMLElement}
          * @private
          */
         this._container = container;
 
         /**
-         * @type {MemoryTracker}
+         * @type {RepositoryViewport}
          * @private
          */
         this._viewport_object = null;
@@ -26,21 +21,20 @@ class Viewport {
 
     /**
      * @param repository {Repository}
+     * @return {Promise<RepositoryViewport>}
      */
-    set_displayed_repository(repository) {
-        if (this._displayed_repository !== repository) {
+    async set_displayed_repository(repository) {
+        if (!this._viewport_object || repository !== this._viewport_object.repository) {
             this.clear();
-            this._displayed_repository = repository;
-            if (repository) {
-                if (this._viewport_object)
-                    this._viewport_object.delete();
-                this._viewport_object = new RepositoryViewport(repository, this._container);
-            }
+            this._viewport_object = new RepositoryViewport(repository, this._container);
         }
+        return this._viewport_object;
     }
 
     clear() {
         this._container.innerHTML = '';
+        if (this._viewport_object)
+            this._viewport_object.delete();
     }
 }
 

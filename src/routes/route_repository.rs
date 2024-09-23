@@ -35,11 +35,11 @@ impl RepositoryRoutes {
 
 async fn find_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<Json<Vec<Repository>>, ServerError> {
     let permission = Permissions::new(&request)?;
-    let json = Json::<Vec<RepositoryId>>::from_request(request, &ctx).await?;
+    let json = Json::<Vec<RepositoryId>>::from_request(request, &ctx).await.map_err(|err| {Error::msg(format!("Invalid body, {err} : expected Vec<RepositoryId>"))}) ?;
     let mut repositories = vec![];
     for repository in &json.0 {
         if permission.view_repository(&ctx.database, repository).await?.granted() {
-            repositories.push(Repository::from_id(&ctx.database, repository).await?)
+            repositories.push(Repository::from_id(&ctx.database, repository).await?);
         }
     }
     Ok(Json(repositories))

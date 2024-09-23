@@ -102,7 +102,7 @@ class Repository {
         const local = Repository._LOCAL_CACHE.get(id);
         if (local)
             return local;
-
+        console.assert(id, "Invalid repository ID !");
         let repositories = await fetch_api('repository/find/', 'POST', [id]);
         for (const repository of repositories)
             new Repository(repository);

@@ -6,6 +6,7 @@ import {Uploader} from "./upload/uploader";
 import {DropBox} from "./upload/drop_box";
 import {MemoryTracker} from "../../../types/memory_handler";
 import {context_menu_item} from "../../context_menu/contexts/context_item";
+import {APP} from "../../../app";
 
 require('./repository_viewport.scss')
 
@@ -38,7 +39,7 @@ class RepositoryViewport extends MemoryTracker {
         this.content.events.add('add', (item) => {
             this._visible_items.set(item.id, new ItemView(item, this._elements.content, {
                 clicked: async () => {
-                    await this.content.set_content_provider(new DirectoryContentProvider(item));
+                    await APP.set_display_item(item);
                 }
             }))
         })
@@ -51,13 +52,25 @@ class RepositoryViewport extends MemoryTracker {
 
         container.append(div);
 
-        this.content.set_content_provider(new RepositoryRootProvider(repository));
-
         new DropBox(this._elements.drop_box, () => {
             if (!this.uploader)
                 this.open_upload_container();
             return this.uploader;
         });
+    }
+
+    /**
+     * @param item {FilesystemItem}
+     * @return {Promise<void>}
+     */
+    async open_item(item) {
+        if (!item.is_regular_file)
+           await this.content.set_content_provider(new DirectoryContentProvider(item));
+    }
+
+    async open_root() {
+        if (this.content && (!this.content.get_content_provider() || this.content.get_content_provider().constructor.name !== 'RepositoryRootProvider'))
+            await this.content.set_content_provider(new RepositoryRootProvider(this.repository));
     }
 
     close_upload_container() {

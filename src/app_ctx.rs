@@ -6,7 +6,6 @@ use rand::random;
 use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
-use tracing::info;
 
 pub struct AppCtx {
     pub config: Config,
@@ -25,7 +24,7 @@ impl AppCtx {
         })
     }
 
-    pub async fn add_upload(&self, mut upload: Upload, db: &Database) -> Result<usize, Error> {
+    pub async fn add_upload(&self, mut upload: Upload) -> Result<usize, Error> {
         let mut uploads = self.uploads.write().await;
 
         let mut id;

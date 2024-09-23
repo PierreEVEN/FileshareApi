@@ -1,6 +1,7 @@
 mod static_file_server;
 
 use std::{env, fs};
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::process::{Stdio};
 use std::sync::Arc;
@@ -20,8 +21,10 @@ use crate::app_ctx::AppCtx;
 use crate::config::WebClientConfig;
 use crate::database::repository::Repository;
 use crate::database::user::User;
-use crate::{get_connected_user, get_display_repository, get_display_user};
+use crate::{get_connected_user, get_display_item, get_display_repository, get_display_user};
+use crate::database::item::{Item, Trash};
 use crate::routes::RequestContext;
+use crate::utils::enc_path::EncPath;
 use crate::utils::enc_string::EncString;
 use crate::utils::server_error::ServerError;
 use crate::web_client::static_file_server::StaticFileServer;
@@ -43,7 +46,7 @@ impl WebClient {
 
         let result = which("node").or(Err(Error::msg("Failed to find node path. Please ensure nodejs is correctly installed")))?;
         let npm_cli_path = result.parent().unwrap().join("node_modules").join("npm").join("bin").join("npm-cli.js");
-        
+
         if config.check_for_packages_updates {
             info!("Installing webclient dependencies...");
             let mut install_cmd = Command::new("node")
@@ -107,11 +110,30 @@ pub async fn middleware_get_path_context(State(ctx): State<Arc<AppCtx>>, Path(Pa
         }
     }
 
+    let mut repository_id = None;
     if let Some(display_repository) = display_repository {
         if let Ok(display_repository) = Repository::from_url_name(&ctx.database, &EncString::from_url_path(display_repository.clone())?).await {
+            repository_id = Some(display_repository.id().clone());
             *context.display_repository.write().await = Some(display_repository);
         } else {
             return Err(ServerError::msg(StatusCode::NOT_FOUND, format!("Unknown repository '{}'", display_repository)));
+        }
+    }
+
+    if let Some(repository) = repository_id {
+        let mut path: VecDeque<&str> = request.uri().path().split("/").filter(|&x| !x.is_empty()).collect();
+        if path.len() > 3 {
+            path.pop_front().ok_or(Error::msg("Expected user in path"))?;
+            path.pop_front().ok_or(Error::msg("Expected repository in path"))?;
+            let _action = path.pop_front().ok_or(Error::msg("Expected action in path"))?;
+
+            let mut enc_path = vec![];
+            for item in path {
+                enc_path.push(EncString::from_url_path(item.to_string())?);
+            }
+
+            let item = Item::from_path(&ctx.database, &EncPath::from(enc_path), &repository, Trash::Both).await?;
+            *context.display_item.write().await = Some(item);
         }
     }
 
@@ -124,6 +146,7 @@ struct ClientAppConfig {
     pub connected_user: Option<User>,
     pub display_user: Option<User>,
     pub display_repository: Option<Repository>,
+    pub display_item: Option<Item>,
 }
 
 async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
@@ -140,6 +163,9 @@ async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<i
     });
     get_display_repository!(request, repository, {
         client_config.display_repository = Some(repository.clone());
+    });
+    get_display_item!(request, item, {
+        client_config.display_item = Some(item.clone());
     });
 
     let index_data = fs::read_to_string("web_client/public/index.html")?;

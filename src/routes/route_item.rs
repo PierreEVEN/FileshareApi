@@ -180,7 +180,7 @@ async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
         usize::from_str(content_id.to_str()?)?
     } else {
         let upload = Upload::new(headers, connected_user.id().clone())?;
-        ctx.add_upload(upload, &ctx.database).await?
+        ctx.add_upload(upload).await?
     };
 
     

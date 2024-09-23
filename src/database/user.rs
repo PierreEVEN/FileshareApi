@@ -109,7 +109,7 @@ impl User {
     }
 
     pub async fn from_url_name(db: &Database, name: &EncString) -> Result<Self, Error> {
-        match query_object!(db, User, "SELECT * FROM SCHEMA_NAME.users WHERE name = LOWER($1)", name) {
+        match query_object!(db, User, "SELECT * FROM SCHEMA_NAME.users WHERE LOWER(name) = LOWER($1)", name) {
             None => { Err(Error::msg("User not found")) }
             Some(user) => { Ok(user) }
         }
