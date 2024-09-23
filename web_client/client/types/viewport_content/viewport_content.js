@@ -1,7 +1,9 @@
-import {EventManager} from "../event_manager";
+import {EventManager, GLOBAL_EVENTS} from "../event_manager";
+import {MemoryTracker} from "../memory_handler";
 
-class ContentFilter {
+class ContentFilter extends MemoryTracker {
     constructor() {
+        super(ContentFilter)
         this._inner = null;
     }
 
@@ -34,8 +36,14 @@ class ContentFilter {
     }
 }
 
-class ContentProvider {
+class ContentProvider extends MemoryTracker {
     constructor() {
+        super(ContentProvider)
+
+        this.events = new EventManager();
+        this._add_event = GLOBAL_EVENTS.add('add_item', (item) => {
+            this._internal_add_item(item)
+        })
     }
 
     /**
@@ -44,10 +52,20 @@ class ContentProvider {
     async get_content() {
         return [];
     }
+
+    _internal_add_item(item) {
+
+    }
+
+    delete() {
+        super.delete();
+        this._add_event.remove();
+    }
 }
 
-class ContentSorter {
+class ContentSorter extends MemoryTracker {
     constructor() {
+        super(ContentSorter)
     }
 
     /**
@@ -68,9 +86,10 @@ class ContentSorter {
     }
 }
 
-class ViewportContent {
+class ViewportContent extends MemoryTracker {
 
     constructor() {
+        super(ViewportContent);
 
         /**
          * @type {Map<number, FilesystemItem>}
@@ -100,12 +119,31 @@ class ViewportContent {
          * @private
          */
         this._provider = null;
+
+        this._listener_remove = GLOBAL_EVENTS.add('remove_item', async (item) => {
+            this._remove_entry(item);
+        })
+    }
+
+    delete() {
+        super.delete();
+        if (this._filter)
+            this._filter.delete();
+        if (this._sorter)
+            this._sorter.delete();
+        if (this._provider)
+            this._provider.delete();
+        if (this.add_event)
+            this.add_event.remove();
+        this._listener_remove.remove();
     }
 
     /**
      * @param filter {ContentFilter|null}
      */
     async set_filter(filter) {
+        if (this._filter)
+            this._filter.delete();
         this._filter = filter;
         await this._regen_content();
     }
@@ -114,6 +152,8 @@ class ViewportContent {
      * @param sorter {ContentSorter|null}
      */
     async set_sorter(sorter) {
+        if (this._sorter)
+            this._sorter.delete();
         this._sorter = sorter;
         await this._regen_content();
     }
@@ -122,7 +162,19 @@ class ViewportContent {
      * @param provider {ContentProvider|null}
      */
     async set_content_provider(provider) {
+        if (this.add_event)
+            this.add_event.remove();
+        if (this._provider)
+            this._provider.delete();
         this._provider = provider;
+        this.add_event = this._provider.events.add('add', (item) => {
+            if (this._filter) {
+                if (this._filter.test(item))
+                    this._add(item)
+            }
+            else
+                this._add(item)
+        })
         await this._regen_content();
     }
 
@@ -161,10 +213,11 @@ class ViewportContent {
         const sources = await this._provider.get_content();
         let filtered_sources = [];
 
-        if (this._filter)
+        if (this._filter) {
             for (const item of sources)
-                filtered_sources.push(this._filter.test());
-        else
+                if (this._filter.test(item))
+                    filtered_sources.push(item);
+        } else
             filtered_sources = sources;
 
         if (this._sorter)

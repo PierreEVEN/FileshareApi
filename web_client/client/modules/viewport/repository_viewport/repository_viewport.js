@@ -4,17 +4,23 @@ import {ItemView} from "./content/item_view";
 import {context_menu_repository} from "../../context_menu/contexts/context_repository";
 import {Uploader} from "./upload/uploader";
 import {DropBox} from "./upload/drop_box";
+import {MemoryTracker} from "../../../types/memory_handler";
+import {context_menu_item} from "../../context_menu/contexts/context_item";
 
 require('./repository_viewport.scss')
 
-class RepositoryViewport {
+class RepositoryViewport extends MemoryTracker {
     constructor(repository, container) {
+        super(RepositoryViewport);
         const div = require('./repository_viewport.hbs')({}, {
             background_context: (event) => {
                 event.preventDefault();
                 if (!event.target.classList.contains('file-list'))
                     return;
-                context_menu_repository(repository);
+                if (this.content.get_content_provider().constructor.name === 'DirectoryContentProvider')
+                    context_menu_item(this.content.get_content_provider().directory)
+                else
+                    context_menu_repository(repository);
             },
             open_upload: () => {
                 this.open_upload_container()
@@ -62,6 +68,12 @@ class RepositoryViewport {
         this._elements.upload_container.innerHTML = '';
         this.uploader = new Uploader(this._elements.upload_container, this)
         this.uploader.expand(true);
+    }
+
+    delete() {
+        super.delete();
+        if (this.content)
+            this.content.delete();
     }
 }
 

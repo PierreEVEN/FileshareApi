@@ -120,12 +120,13 @@ class RepositoryTree {
                     this._items.set(item_id, await new RepositoryNode(this.repository, this._elements.content, item_id).init());
             }
 
-            if (!this._listener_add)
+            if (!this._listener_add) {
                 this._listener_add = GLOBAL_EVENTS.add('add_item', async (item) => {
-                    if (item.parent_item === null && item.repository === this.repository.id && !item.in_trash && !item.is_regular_file) {
+                    if (item.parent_item === undefined && item.repository === this.repository.id && !item.in_trash && !item.is_regular_file) {
                         await add_item(item.id);
                     }
                 })
+            }
             if (!this._listener_remove)
                 this._listener_remove = GLOBAL_EVENTS.add('remove_item', async (item) => {
                     const item_node = this._items.get(item.id);

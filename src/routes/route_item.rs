@@ -14,13 +14,12 @@ use axum::extract::{FromRequest, Path, Request, State};
 use axum::http::{header, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
-use axum::{debug_handler, Json, Router};
+use axum::{Json, Router};
 use regex::Regex;
 use serde::Deserialize;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio_util::io::ReaderStream;
-use tracing::info;
 
 pub struct ItemRoutes {}
 

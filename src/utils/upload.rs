@@ -132,7 +132,6 @@ impl Upload {
         self.item.file = Some(self.file.clone());
         self.item.push(db).await?;
 
-        info!("PUSH : {:?}", self.item);
         Ok(self.item.clone())
     }
 }

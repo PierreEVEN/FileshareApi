@@ -16,6 +16,12 @@ class Viewport {
          * @private
          */
         this._container = container;
+
+        /**
+         * @type {MemoryTracker}
+         * @private
+         */
+        this._viewport_object = null;
     }
 
     /**
@@ -26,13 +32,15 @@ class Viewport {
             this.clear();
             this._displayed_repository = repository;
             if (repository) {
-                new RepositoryViewport(repository, this._container);
+                if (this._viewport_object)
+                    this._viewport_object.delete();
+                this._viewport_object = new RepositoryViewport(repository, this._container);
             }
         }
     }
 
     clear() {
-        this._container.innerHTML = null;
+        this._container.innerHTML = '';
     }
 }
 

@@ -18,6 +18,12 @@ class RepositoryRootProvider extends ContentProvider {
         }
         return items;
     }
+
+    _internal_add_item(item) {
+        if (!item.in_trash && item.parent_item === undefined && item.repository === this.repository.id)
+            this.events.broadcast('add', item);
+    }
+
 }
 
 class DirectoryContentProvider extends ContentProvider {
@@ -38,6 +44,16 @@ class DirectoryContentProvider extends ContentProvider {
                 items.push(item);
         }
         return items;
+    }
+
+    _internal_add_item(item) {
+        super._internal_add_item(item);
+        if (!item.in_trash && item.parent_item === this.directory.id)
+            this.events.broadcast('add', item);
+    }
+
+    delete() {
+        super.delete();
     }
 }
 
