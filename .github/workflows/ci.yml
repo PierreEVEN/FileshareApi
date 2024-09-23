@@ -67,19 +67,19 @@ jobs:
         uses: actions/download-artifact@main
         with:
           name: server-artifact
-          path: ./
+          path: ./server_artifact
 
       - name: Retrieve webapp data
         uses: actions/download-artifact@main
         with:
           name: webapp-artifact
-          path: ./web_client/public
+          path: ./web_client_artifact/public
 
       - run: mkdir fileshare
       - run: mkdir migration
-      - run: unzip "./output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
-      - run: mv ./migrations/* ./fileshare
-      - run: mv ./web_client/* ./fileshare
+      - run: unzip "./server_artifact/output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
+      - run: mv ./server_artifact/migrations/* ./fileshare
+      - run: mv ./web_client_artifact/* ./fileshare
 
 
       - uses: actions/upload-artifact@main
