@@ -19,13 +19,34 @@ jobs:
     steps:
       - uses: actions/checkout@main
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-      - run: cargo build --release --verbose
-      - run: cargo test --verbose
-      - uses: actions/upload-artifact@master
+
+      - name: "Cache cargo"
+        id: cache-cargo
+        uses: "actions/cache@v4"
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          save-always: true
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+
+      - name: Compile
+        id: compile
+        uses: rust-build/rust-build.action@v1.4.5
+        with:
+          RUSTTARGET: x86_64-unknown-linux-musl
+          UPLOAD_MODE: none
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
           name: server-artifact
           retention-days: 1
-          path:
+          path: |
             ${{ steps.compile.outputs.BUILT_ARCHIVE }}
             ${{ steps.compile.outputs.BUILT_CHECKSUM }}
 
@@ -38,8 +59,7 @@ jobs:
         run: npm install
       - working-directory: ./web_client
         run: npm run prod
-      - run: ls -la
-      - uses: actions/upload-artifact@master
+      - uses: actions/upload-artifact@main
         with:
           name: webapp-artifact
           retention-days: 1
@@ -65,8 +85,8 @@ jobs:
           path: /
       - run: ls -la
       - run: cd web_client && ls -la
-      - uses: actions/upload-artifact@master
+      - uses: actions/upload-artifact@main
         with:
           name: FileshareApp
           path: |
-            /web_client/*
+            /web_client/public
