@@ -11,7 +11,7 @@ env:
 jobs:
   build_rust:
     name: Fileshare - server - debian
-    runs-on: debian-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         toolchain:
@@ -24,7 +24,7 @@ jobs:
 
   build_web_app:
     name: Fileshare - web app - debian
-    runs-on: debian-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         toolchain:
