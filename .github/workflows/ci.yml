@@ -25,7 +25,9 @@ jobs:
         with:
           name: server-artifact
           retention-days: 1
-          path: /target/release/FileshareApi
+          path:
+            ${{ steps.compile.outputs.BUILT_ARCHIVE }}
+            ${{ steps.compile.outputs.BUILT_CHECKSUM }}
 
   build_web_app:
     name: Fileshare-webapp
@@ -36,11 +38,12 @@ jobs:
         run: npm install
       - working-directory: ./web_client
         run: npm run prod
+      - run: ls -la
       - uses: actions/upload-artifact@master
         with:
           name: webapp-artifact
           retention-days: 1
-          path: /web_client/public/*
+          path: ./web_client/public/*
 
   package:
     name: package app
