@@ -38,6 +38,7 @@ jobs:
           path: |
             ${{ steps.compile.outputs.BUILT_ARCHIVE }}
             ${{ steps.compile.outputs.BUILT_CHECKSUM }}
+            ${{ steps.compile.outputs.* }}
 
   build_web_app:
     name: Fileshare-webapp
@@ -71,11 +72,11 @@ jobs:
         uses: actions/download-artifact@main
         with:
           name: webapp-artifact
-          path: /
+          path: ./web_client/public
       - run: ls -la
       - run: cd web_client && ls -la
       - uses: actions/upload-artifact@main
         with:
           name: FileshareApp
           path: |
-            /web_client/public
+            ./*
