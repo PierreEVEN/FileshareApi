@@ -31,5 +31,6 @@ jobs:
           - stable
     steps:
       - uses: actions/checkout@main
+      - run: cd web_client
       - run: npm install
       - run: npm run prod
