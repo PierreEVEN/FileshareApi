@@ -20,19 +20,8 @@ jobs:
       - uses: actions/checkout@main
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
 
-      - name: "Cache cargo"
-        id: cache-cargo
-        uses: "actions/cache@v4"
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          save-always: true
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.3
 
 
       - name: Compile
@@ -42,7 +31,7 @@ jobs:
           RUSTTARGET: x86_64-unknown-linux-musl
           UPLOAD_MODE: none
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: server-artifact
           retention-days: 1
