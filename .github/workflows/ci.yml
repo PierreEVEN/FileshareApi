@@ -75,11 +75,11 @@ jobs:
           name: webapp-artifact
           path: ./web_client/public
 
-      - uses: mkdir fileshare
-      - uses: mkdir migration
-      - uses: unzip ".output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
-      - uses: mv ./migrations/* ./fileshare
-      - uses: mv ./web_client/* ./fileshare
+      - run: mkdir fileshare
+      - run: mkdir migration
+      - run: unzip ".output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
+      - run: mv ./migrations/* ./fileshare
+      - run: mv ./web_client/* ./fileshare
 
 
       - uses: actions/upload-artifact@main
