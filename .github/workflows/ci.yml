@@ -1,4 +1,4 @@
-name: Cargo Build & Test
+name: Build app
 
 on:
   push:
@@ -48,15 +48,15 @@ jobs:
     needs: [build_server, build_web_app]
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@main
 
       - name: Retrieve server data
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@main
         with:
           name: server-artifact
           path: web_client/
       - name: Retrieve webapp data
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@main
         with:
           name: webapp-artifact
           path: /
