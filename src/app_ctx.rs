@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::database::Database;
-use crate::utils::upload::Upload;
+use crate::utils::upload::{Upload, UploadState};
 use anyhow::Error;
 use rand::random;
 use std::collections::HashMap;
@@ -51,9 +51,10 @@ impl AppCtx {
         }
     }
 
-    pub async fn finalize_upload(&self, id: usize, db: &Database) -> Result<(), Error> {
+    pub async fn finalize_upload(&self, id: usize, db: &Database) -> Result<UploadState, Error> {
         let item = self.uploads.write().await.remove(&id).ok_or(Error::msg("Upload not found"))?;
-        item.write().await.store(db).await?;
-        Ok(())
+        let mut upload = item.write().await;
+        upload.store(db).await?;
+        Ok(upload.get_state())
     }
 }

@@ -1,9 +1,12 @@
 import {print_message} from "../../../../layout/widgets/components/message_box";
+import {FilesystemItem} from "../../../../types/filesystem_stream";
 
 class UploadState {
     constructor(data) {
         this.id = data.id;
         this.finished = data.finished;
+        if (data.item)
+            this.item = FilesystemItem.new(data.item);
     }
 }
 
@@ -47,8 +50,9 @@ class UploadProcessor {
                 if (this._request.status !== 200)
                     return this._fail(this._request.response)
                 this.state = new UploadState(JSON.parse(this._request.response));
-                if (this.state.finished)
+                if (this.state.finished) {
                     return this.upload_finished();
+                }
                 else {
                     this._send_next();
                 }

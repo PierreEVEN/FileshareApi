@@ -16,7 +16,6 @@ use std::str::FromStr;
 use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
 use tokio_util::io::StreamReader;
-use tracing::info;
 
 pub struct Upload {
     pub id: usize,
@@ -105,9 +104,11 @@ impl Upload {
     }
 
     pub fn get_state(&self) -> UploadState {
+        let finished = self.bytes_read == self.file.size as usize;
         UploadState {
             id: self.id,
-            finished: self.bytes_read == self.file.size as usize,
+            finished,
+            item: if finished { Some(self.item.clone()) } else { None },
         }
     }
 
@@ -140,4 +141,5 @@ impl Upload {
 pub struct UploadState {
     pub id: usize,
     pub finished: bool,
+    pub item: Option<Item>,
 }

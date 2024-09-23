@@ -184,14 +184,14 @@ async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
     };
 
     
-    let state = {
+    let mut state = {
         let found_upload = ctx.get_upload(id).await?;
         let mut upload = found_upload.write().await;
         upload.push_data(request.into_body()).await?;
         upload.get_state()
     };
     if state.finished {
-        ctx.finalize_upload(id, &ctx.database).await?;
+        state = ctx.finalize_upload(id, &ctx.database).await?;
     }
     Ok(Json(state))
 }
