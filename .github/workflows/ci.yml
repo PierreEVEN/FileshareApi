@@ -77,7 +77,7 @@ jobs:
 
       - run: mkdir fileshare
       - run: mkdir migration
-      - run: unzip ".output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
+      - run: unzip "./output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
       - run: mv ./migrations/* ./fileshare
       - run: mv ./web_client/* ./fileshare
 
