@@ -18,7 +18,8 @@ pub struct PostgresConfig {
 pub struct WebClientConfig {
     pub client_path: PathBuf,
     pub debug: bool,
-    pub check_for_packages_updates: bool
+    pub check_for_packages_updates: bool,
+    pub build_webpack: bool
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -56,7 +57,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            address: String::from("localhost:3000"),
+            address: String::from("127.0.0.1:3000"),
             backend_config: BackendConfig {
                 file_storage_path: PathBuf::from("data").join("files"),
                 thumbnail_storage_path: PathBuf::from("data").join("thumbnails"),
@@ -81,6 +82,7 @@ impl Default for Config {
                 client_path: PathBuf::from("./web_client"),
                 debug: false,
                 check_for_packages_updates: true,
+                build_webpack: true,
             },
             tls_config: TlsConfig {
                 certificate: PathBuf::from("/Path/To/certificate.pem"),

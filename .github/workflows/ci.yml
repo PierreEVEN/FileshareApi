@@ -36,9 +36,9 @@ jobs:
           name: server-artifact
           retention-days: 1
           path: |
+            ./migrations/*
             ${{ steps.compile.outputs.BUILT_ARCHIVE }}
             ${{ steps.compile.outputs.BUILT_CHECKSUM }}
-            ${{ steps.compile.outputs.* }}
 
   build_web_app:
     name: Fileshare-webapp
@@ -67,16 +67,23 @@ jobs:
         uses: actions/download-artifact@main
         with:
           name: server-artifact
-          path: web_client/
+          path: ./
+
       - name: Retrieve webapp data
         uses: actions/download-artifact@main
         with:
           name: webapp-artifact
           path: ./web_client/public
-      - run: ls -la
-      - run: cd web_client && ls -la
+
+      - uses: mkdir fileshare
+      - uses: mkdir migration
+      - uses: unzip ".output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
+      - uses: mv ./migrations/* ./fileshare
+      - uses: mv ./web_client/* ./fileshare
+
+
       - uses: actions/upload-artifact@main
         with:
           name: FileshareApp
           path: |
-            ./*
+            ./fileshare

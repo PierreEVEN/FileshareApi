@@ -46,7 +46,7 @@ impl StaticFileServer {
 
             Ok((headers, body).into_response())
         } else {
-            Err(ServerError::msg(StatusCode::NOT_FOUND, "File not found !"))
+            Err(ServerError::msg(StatusCode::NOT_FOUND, format!("File not found ! (searching {})", file_path.display())))
         }
     }
 

@@ -30,7 +30,7 @@ use crate::utils::server_error::ServerError;
 use crate::web_client::static_file_server::StaticFileServer;
 
 pub struct WebClient {
-    _subcommand: Child,
+    _subcommand: Option<Child>,
 }
 
 impl WebClient {
@@ -42,43 +42,47 @@ impl WebClient {
     }
 
     async fn try_create_client(config: &WebClientConfig) -> Result<Self, Error> {
-        env::set_current_dir(&config.client_path)?;
+        if config.build_webpack {
+            env::set_current_dir(&config.client_path)?;
 
-        let result = which("node").or(Err(Error::msg("Failed to find node path. Please ensure nodejs is correctly installed")))?;
-        let npm_cli_path = result.parent().unwrap().join("node_modules").join("npm").join("bin").join("npm-cli.js");
+            let result = which("node").or(Err(Error::msg("Failed to find node path. Please ensure nodejs is correctly installed")))?;
+            let npm_cli_path = result.parent().unwrap().join("node_modules").join("npm").join("bin").join("npm-cli.js");
 
-        if config.check_for_packages_updates {
-            info!("Installing webclient dependencies...");
-            let mut install_cmd = Command::new("node")
-                .arg(npm_cli_path.to_str().unwrap())
-                .arg("install")
-                .stderr(Stdio::inherit())
-                .stdout(Stdio::inherit())
-                .spawn()?;
-            install_cmd.wait().await?;
-            info!("Installed webclient dependencies !");
-        }
+            if config.check_for_packages_updates {
+                info!("Installing webclient dependencies...");
+                let mut install_cmd = Command::new("node")
+                    .arg(npm_cli_path.to_str().unwrap())
+                    .arg("install")
+                    .stderr(Stdio::inherit())
+                    .stdout(Stdio::inherit())
+                    .spawn()?;
+                install_cmd.wait().await?;
+                info!("Installed webclient dependencies !");
+            }
 
-        let command = if config.debug
-        {
-            Command::new("node")
-                .arg(npm_cli_path.to_str().unwrap())
-                .arg("run")
-                .arg("dev")
-                .stderr(Stdio::inherit())
-                .stdout(Stdio::inherit())
-                .spawn()?
+            let command = if config.debug
+            {
+                Command::new("node")
+                    .arg(npm_cli_path.to_str().unwrap())
+                    .arg("run")
+                    .arg("dev")
+                    .stderr(Stdio::inherit())
+                    .stdout(Stdio::inherit())
+                    .spawn()?
+            } else {
+                Command::new("node")
+                    .arg(npm_cli_path.to_str().unwrap())
+                    .arg("run")
+                    .arg("prod")
+                    .stderr(Stdio::inherit())
+                    .stdout(Stdio::inherit())
+                    .spawn()?
+            };
+
+            Ok(Self { _subcommand: Some(command) })
         } else {
-            Command::new("node")
-                .arg(npm_cli_path.to_str().unwrap())
-                .arg("run")
-                .arg("prod")
-                .stderr(Stdio::inherit())
-                .stdout(Stdio::inherit())
-                .spawn()?
-        };
-
-        Ok(Self { _subcommand: command })
+            Ok(Self { _subcommand: None })
+        }
     }
 
     pub fn router(ctx: &Arc<AppCtx>) -> Result<Router, Error> {
@@ -87,8 +91,8 @@ impl WebClient {
             .route("/:display_user/", get(get_index).with_state(ctx.clone()))
             .route("/:display_user/:display_repository/", get(get_index).with_state(ctx.clone()))
             .route("/:display_user/:display_repository/*path", get(get_index).with_state(ctx.clone()))
-            .route("/favicon.ico", get(StaticFileServer::serve_file_from_path).with_state(PathBuf::from("web_client/public/images/icons/favicon.ico")))
-            .nest("/public/", StaticFileServer::router(PathBuf::from("web_client/public")))
+            .route("/favicon.ico", get(StaticFileServer::serve_file_from_path).with_state(ctx.config.web_client_config.client_path.join("public").join("images").join("icons").join("favicon.ico")))
+            .nest("/public/", StaticFileServer::router(ctx.config.web_client_config.client_path.join("public")))
             .layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_path_context))
         )
     }
@@ -168,7 +172,12 @@ async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<i
         client_config.display_item = Some(item.clone());
     });
 
-    let index_data = fs::read_to_string("web_client/public/index.html")?;
+    let index_path_buf = ctx.config.web_client_config.client_path.join("public").join("index.html");
+    let index_path = index_path_buf.to_str().unwrap();
+    let index_data = match fs::read_to_string(index_path) {
+        Ok(file) => { file }
+        Err(err) => { Err(Error::msg(format!("Cannot find index file : {err} (searching in {index_path})")))? }
+    };
     let index_data = index_data.replace(r#"data-app_config='{}'"#, format!(r##"data-app_config='{}'"##, serde_json::to_string(&client_config)?).as_str());
     Ok(Html(index_data))
 }
