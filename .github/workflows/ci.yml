@@ -80,10 +80,19 @@ jobs:
       - run: unzip "./server_artifact/output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
       - run: mv ./server_artifact/migrations/* ./fileshare/migrations
       - run: mv ./web_client_artifact/* ./fileshare
+      - run: zip fileshare_linux.zip ./fileshare/*
 
-
-      - uses: actions/upload-artifact@main
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
         with:
-          name: FileshareApp
-          path: |
-            ./fileshare
+          draft: false
+          prerelease: false
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref }}
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./fileshare_linux.zip
+          asset_name: fileshare_linux.zip
+          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
