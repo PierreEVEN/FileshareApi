@@ -3,7 +3,7 @@ name: Build app
 on:
   push:
     tags:
-      - '*'
+      - '**'
 
 env:
   CARGO_TERM_COLOR: always
@@ -82,7 +82,7 @@ jobs:
       - run: mv ./web_client_artifact/* ./fileshare
       - run: zip -r fileshare_linux.zip ./fileshare/
 
-        
+
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
