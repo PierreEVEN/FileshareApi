@@ -73,7 +73,7 @@ class FileshareApp {
         if (!this._viewport)
             this._viewport = new Viewport(this._elements.viewport);
         await this.state.open_repository(repository);
-        await (await this._viewport.set_displayed_repository(repository)).open_root();
+        await this._viewport.set_displayed_repository(repository);
     }
 
     set_connected_user(user) {

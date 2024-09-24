@@ -28,6 +28,7 @@ class Viewport {
             this.clear();
             this._viewport_object = new RepositoryViewport(repository, this._container);
         }
+        await this._viewport_object.open_root();
         return this._viewport_object;
     }
 

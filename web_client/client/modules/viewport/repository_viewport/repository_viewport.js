@@ -68,9 +68,11 @@ class RepositoryViewport extends MemoryTracker {
            await this.content.set_content_provider(new DirectoryContentProvider(item));
     }
 
+
     async open_root() {
-        if (this.content && (!this.content.get_content_provider() || this.content.get_content_provider() instanceof RepositoryRootProvider))
+        if (this.content && (!this.content.get_content_provider() || !(this.content.get_content_provider() instanceof RepositoryRootProvider))) {
             await this.content.set_content_provider(new RepositoryRootProvider(this.repository));
+        }
     }
 
     close_upload_container() {
