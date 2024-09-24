@@ -2,8 +2,8 @@ name: Build app
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - main
 
 env:
   CARGO_TERM_COLOR: always
@@ -80,10 +80,9 @@ jobs:
       - run: unzip "./server_artifact/output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
       - run: mv ./server_artifact/migrations/* ./fileshare/migrations
       - run: mv ./web_client_artifact/* ./fileshare
-      - run: zip fileshare_linux.zip ./fileshare/*
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - uses: actions/upload-artifact@main
         with:
-          files: fileshare_linux.zip
+          name: FileshareApp
+          path: |
+            ./fileshare
