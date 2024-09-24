@@ -88,4 +88,3 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           files: fileshare_linux.zip
-          body: "This is my release text"
