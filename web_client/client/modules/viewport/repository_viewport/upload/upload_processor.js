@@ -1,5 +1,6 @@
 import {print_message} from "../../../../layout/widgets/components/message_box";
 import {FilesystemItem} from "../../../../types/filesystem_stream";
+import {UploadItem} from "./upload_item";
 
 class UploadState {
     constructor(data) {
@@ -71,7 +72,7 @@ class UploadProcessor {
     }
 
 
-    static MAX_BATCH_SIZE = this.max_batch_size = 50 * 1024 * 1024;
+    static MAX_BATCH_SIZE = 50 * 1024 * 1024;
     _send_next() {
 
         const start = this._cursor;
@@ -86,8 +87,9 @@ class UploadProcessor {
             this._request.setRequestHeader('Content-Timestamp', this.item.file.lastModified.toString());
             this._request.setRequestHeader('Content-Mimetype', encodeURIComponent(this.item.mimetype));
             this._request.setRequestHeader('Content-Repository', this.repository.id.toString());
-            if (this.item.parent.directory)
-                this._request.setRequestHeader('Content-Parent', this.item.parent.directory.id);
+            if (this.item.parent.directory) {
+                this._request.setRequestHeader('Content-Parent', this.item.parent.directory.id.toString());
+            }
         } else {
             this._request.setRequestHeader('Content-Id', this.state.id);
         }
@@ -96,8 +98,9 @@ class UploadProcessor {
 
 
     async upload() {
-        if (this.item.parent.constructor.name === 'UploadItem')
+        if (this.item.parent instanceof UploadItem) {
             await this.item.parent.create_directory(this.repository.content);
+        }
 
         this._init();
 

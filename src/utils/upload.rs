@@ -13,6 +13,7 @@ use futures::{io, TryStreamExt};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::str::FromStr;
+use log::info;
 use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
 use tokio_util::io::StreamReader;
@@ -38,9 +39,14 @@ impl Upload {
         };
         item.in_trash = false;
         item.repository = RepositoryId::from(DatabaseId::from_str(headers.get("Content-Repository").ok_or(Error::msg("missing Content-Repository header"))?.to_str()?)?);
+
+        info!("headers : {:?}", headers);
         item.parent_item = match headers.get("Content-Parent") {
-            None => { None }
-            Some(header) => { Some(ItemId::from(DatabaseId::from_str(header.to_str()?)?)) }
+            None => {
+                info!("no parent");None }
+            Some(header) => {
+                info!("upload : {:?}", header);
+                Some(ItemId::from(DatabaseId::from_str(header.to_str()?)?)) }
         };
         item.owner = owner.clone();
 

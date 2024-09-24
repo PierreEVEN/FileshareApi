@@ -7,8 +7,8 @@
     "debug:build": "webpack --watch --config webpack.debug.js",
     "dev": "npm run dev:build",
     "dev:build": "webpack --watch --config webpack.dev.js",
-    "prod": "npm-run-all --parallel rel:build",
-    "rel:build": "webpack --config webpack.prod.js"
+    "prod": "npm run rel:build",
+    "rel:build": "webpack --watch --config webpack.prod.js"
   },
   "dependencies": {
     "@babel/core": "^7.22.20",

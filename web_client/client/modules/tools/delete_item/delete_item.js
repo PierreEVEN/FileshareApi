@@ -13,7 +13,7 @@ async function delete_item(item, move_to_trash) {
     );
     if (move_to_trash)
         for (const item_id of items) {
-            set_item_to_trash(fs.find(item_id), true);
+            set_item_to_trash(await fs.fetch_item(item_id), true);
             await item.refresh();
         }
     else
@@ -25,12 +25,14 @@ async function delete_item(item, move_to_trash) {
  * @return {Promise<void>}
  */
 async function restore_item(item) {
+    const fs = item.filesystem();
     const items = await fetch_api(`item/restore/`, 'POST',
         [item.id]
     );
-    for (const item_id of items)
-        set_item_to_trash(item, false);
-    await item.refresh();
+    for (const item_id of items) {
+        set_item_to_trash(await fs.fetch_item(item_id), false);
+        await item.refresh();
+    }
 }
 
 /**

@@ -18,7 +18,7 @@ class UploadItem {
         this.expanded = false;
         this.mimetype = data.mimetype;
         this.parent = null;
-        this.directory_item = data.directory
+        this.directory = data.directory
     }
 
     instantiate(container) {
@@ -125,7 +125,7 @@ class UploadItem {
     async create_directory(filesystem) {
         if (this.directory)
             return;
-        if (this.parent.constructor.name === 'UploadItem') {
+        if (this.parent instanceof UploadItem) {
             if (!this.parent.directory) {
                 await this.parent.create_directory(filesystem);
             }

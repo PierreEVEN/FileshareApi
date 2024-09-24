@@ -18,7 +18,7 @@ class RepositoryViewport extends MemoryTracker {
                 event.preventDefault();
                 if (!event.target.classList.contains('file-list'))
                     return;
-                if (this.content.get_content_provider().constructor.name === 'DirectoryContentProvider')
+                if (this.content.get_content_provider() instanceof DirectoryContentProvider)
                     context_menu_item(this.content.get_content_provider().directory)
                 else
                     context_menu_repository(repository);
@@ -69,7 +69,7 @@ class RepositoryViewport extends MemoryTracker {
     }
 
     async open_root() {
-        if (this.content && (!this.content.get_content_provider() || this.content.get_content_provider().constructor.name !== 'RepositoryRootProvider'))
+        if (this.content && (!this.content.get_content_provider() || this.content.get_content_provider() instanceof RepositoryRootProvider))
             await this.content.set_content_provider(new RepositoryRootProvider(this.repository));
     }
 

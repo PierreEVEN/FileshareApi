@@ -242,7 +242,7 @@ class FilesystemStream {
         if (item.parent_item) {
             const parent = await this.fetch_item(item.parent_item);
             parent.children.delete(item.id);
-        } else {
+        } else if (this._roots) {
             this._roots.delete(item.id);
         }
         GLOBAL_EVENTS.broadcast('remove_item', item);

@@ -103,7 +103,7 @@ class Uploader {
     async add_item(item) {
 
         const provider = this.viewport.content.get_content_provider();
-        if (provider && provider.constructor.name === 'DirectoryContentProvider') {
+        if (provider && provider instanceof DirectoryContentProvider) {
 
             /**
              * @type {FilesystemItem}
