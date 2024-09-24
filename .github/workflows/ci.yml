@@ -96,12 +96,7 @@ jobs:
 
       - name: upload-release
         uses: actions/create-release@v1
-        id: create_release
         with:
-          draft: false
-          prerelease: false
-          release_name: ${{ steps.version.outputs.version }}
-          tag_name: ${{ github.ref }}
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./fileshare_linux.zip
           asset_name: fileshare_linux.zip
