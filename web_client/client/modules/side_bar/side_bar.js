@@ -27,14 +27,14 @@ class SideBar {
         this.app = app;
 
         const div = require('./side_bar.hbs')({}, {
-            expand_my_repositories: () => {
-                this.expand_my_repositories(!this._my_repos_expanded);
+            expand_my_repositories: async () => {
+                await this.expand_my_repositories(!this._my_repos_expanded);
             },
-            switch_shared: () => {
-                this.expand_shared(!this._shared_expanded);
+            switch_shared: async () => {
+                await this.expand_shared(!this._shared_expanded);
             },
-            switch_recent: () => {
-                this.expand_recent(!this._recent_expanded);
+            switch_recent: async () => {
+                await this.expand_recent(!this._recent_expanded);
             },
             context_my_repositories: (e) => {
                 context_menu_my_repositories();
@@ -65,8 +65,6 @@ class SideBar {
                 this._my_repos_loaded.delete(repository.id);
             }
         });
-
-        this.expand_my_repositories(true);
     }
 
     async expand_my_repositories(expanded) {
