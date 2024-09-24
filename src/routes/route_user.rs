@@ -14,6 +14,7 @@ use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
+use log::info;
 
 pub struct UserRoutes {}
 
@@ -66,6 +67,14 @@ async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateU
         new_user.login = payload.username;
         new_user.email = payload.email;
         new_user.user_role = UserRole::Guest;
+
+        if let Some(admin_user_name) = &ctx.config.admin_user_name {
+            if new_user.login.plain()? == *admin_user_name && !User::has_admin(&ctx.database).await? {
+                new_user.user_role = UserRole::Admin;
+                info!("Created default administrator")
+            }
+        }
+
         match new_user.create_or_reset_password(&ctx.database, &PasswordHash::new(&payload.password)?).await {
             Ok(_) => {}
             Err(err) => {

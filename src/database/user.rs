@@ -119,6 +119,15 @@ impl User {
         Ok(!query_objects!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE login = $1 OR email = $2"#, login, email).is_empty())
     }
 
+    pub async fn has_admin(db: &Database) -> Result<bool, Error> {
+        let admins = query_objects!(db, User, "SELECT * FROM SCHEMA_NAME.users WHERE user_role = 'admin'");
+        if admins.is_empty() {
+            Ok(false)
+        } else {
+            Ok(true)
+        }
+    }
+    
     pub async fn from_credentials(db: &Database, login: &EncString, password: &EncString) -> Result<Self, Error> {
         let user = query_object!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE login = $1 OR email = $1"#, login.encoded()).ok_or(Error::msg("User not found"))?;
         if bcrypt::verify(password.encoded(), user.password_hash.0.as_str())? {

@@ -2,7 +2,6 @@ mod static_file_server;
 
 use std::{env, fs};
 use std::collections::VecDeque;
-use std::path::PathBuf;
 use std::process::{Stdio};
 use std::sync::Arc;
 use anyhow::Error;

@@ -38,16 +38,30 @@ const Authentication = {
     },
     signup: async () => {
         return await new Promise((success, fail) => {
-            MODAL.open(require('./signup.hbs')({}, {
-                signup: (event) => {
+            const signup_div = require('./signup.hbs')({},  {
+                signup: async (event) => {
                     event.preventDefault();
-                    console.assert(false, "TODO !!!!")
-                    fail("TODO : not finished here");
+                    await fetch_api('user/create/', 'POST', {
+                        username: EncString.from_client(signup_div.elements.login.value),
+                        email: EncString.from_client(signup_div.elements.email.value),
+                        password: EncString.from_client(signup_div.elements.password.value)
+                    }).catch(error => fail(`Authentication failed : ${error.message}`));
+
+                    let login_result = await fetch_api('user/login/', 'POST', {
+                        login: EncString.from_client(signup_div.elements.login.value),
+                        password: EncString.from_client(signup_div.elements.password.value),
+                        device: EncString.from_client(navigator.userAgent)
+                    }).catch(error => fail(`Authentication failed : ${error.message}`));
+                    APP_COOKIES.login(login_result.token);
+                    APP_CONFIG.set_connected_user(login_result.user)
+                    success();
+                    MODAL.close();
                 },
                 login: () => {
                     Authentication.login().then(success).catch(fail);
                 }
-            }), {
+            });
+            MODAL.open(signup_div, {
                 custom_width: '500px', custom_height: '450px', on_close: () => {
                     fail("Authentification annulée");
                 }

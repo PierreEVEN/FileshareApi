@@ -51,7 +51,8 @@ pub struct Config {
     pub server_mail_server: ServiceEmailConfig,
     pub web_client_config: WebClientConfig,
     pub tls_config: TlsConfig,
-    pub use_tls: bool
+    pub use_tls: bool,
+    pub admin_user_name: Option<String>
 }
 
 impl Default for Config {
@@ -89,6 +90,7 @@ impl Default for Config {
                 private_key: PathBuf::from("/Path/To/private_key.pem"),
             },
             use_tls: true,
+            admin_user_name: Some(String::from("admin")),
         }
     }
 }
