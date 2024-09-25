@@ -56,7 +56,10 @@ class FileshareApp {
             if (await APP_CONFIG.display_item()) {
                 await this.set_display_item(await APP_CONFIG.display_item());
             } else if (APP_CONFIG.display_repository()) {
-                await this.set_display_repository(APP_CONFIG.display_repository());
+                if (APP_CONFIG.in_trash())
+                    await this.set_display_trash(APP_CONFIG.display_repository());
+                else
+                    await this.set_display_repository(APP_CONFIG.display_repository());
             } else if (APP_CONFIG.display_user()) {
 
             }
@@ -73,18 +76,8 @@ class FileshareApp {
         if (!this._viewport)
             this._viewport = new Viewport(this._elements.viewport);
         await this.state.open_repository(repository);
-        await this._viewport.set_displayed_repository(repository);
-    }
-
-    set_connected_user(user) {
-        this._global_header.set_connected_user(user);
-
-        if (user) {
-            if (!this._side_bar) {
-                this._side_bar = new SideBar(this, this._elements.side_bar);
-            }
-        }
-        this._side_bar.refresh(user);
+        const viewport = await this._viewport.set_displayed_repository(repository);
+        await viewport.open_root();
     }
 
     /**
@@ -99,6 +92,30 @@ class FileshareApp {
         await viewport.open_item(item);
         await this.state.open_item(item);
     }
+
+    /**
+     * @param repository {Repository}
+     * @return {Promise<void>}
+     */
+    async set_display_trash(repository) {
+        if (!this._viewport)
+            this._viewport = new Viewport(this._elements.viewport);
+        const viewport = await this._viewport.set_displayed_repository(repository);
+        await viewport.open_trash();
+        await this.state.open_trash(repository);
+    }
+
+    set_connected_user(user) {
+        this._global_header.set_connected_user(user);
+
+        if (user) {
+            if (!this._side_bar) {
+                this._side_bar = new SideBar(this, this._elements.side_bar);
+            }
+        }
+        this._side_bar.refresh(user);
+    }
+
 }
 
 const APP = new FileshareApp();

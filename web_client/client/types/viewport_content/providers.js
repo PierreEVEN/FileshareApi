@@ -59,4 +59,34 @@ class DirectoryContentProvider extends ContentProvider {
     }
 }
 
-export {DirectoryContentProvider, RepositoryRootProvider}
+class TrashContentProvider extends ContentProvider {
+    /**
+     * @param repository {Repository}
+     */
+    constructor(repository) {
+        super();
+        this.repository = repository;
+    }
+
+    async get_content() {
+        const items = [];
+        for (const item_id of await this.repository.content.root_content()) {
+            const item = await this.repository.content.fetch_item(item_id);
+            if (item.in_trash)
+                items.push(item);
+        }
+        return items;
+    }
+
+    _internal_add_item(item) {
+        super._internal_add_item(item);
+        if (item.in_trash && item.parent_item === this.repository.id)
+            this.events.broadcast('add', item);
+    }
+
+    delete() {
+        super.delete();
+    }
+}
+
+export {DirectoryContentProvider, RepositoryRootProvider, TrashContentProvider}

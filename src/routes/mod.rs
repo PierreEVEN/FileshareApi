@@ -116,6 +116,12 @@ macro_rules! require_display_repository {
     }};
 }
 
+#[macro_export]
+macro_rules! get_action {
+    ($request:expr) => (
+        $request.extensions().get::<std::sync::Arc<crate::routes::RequestContext>>().unwrap().action().await
+    );
+}
 
 #[derive(Default, Debug)]
 pub struct RequestContext {
@@ -123,6 +129,7 @@ pub struct RequestContext {
     pub display_user: tokio::sync::RwLock<Option<User>>,
     pub display_repository: tokio::sync::RwLock<Option<Repository>>,
     pub display_item: tokio::sync::RwLock<Option<Item>>,
+    pub action: tokio::sync::RwLock<Option<String>>,
 }
 
 impl RequestContext {
@@ -152,6 +159,10 @@ impl RequestContext {
     }
     pub async fn display_item_mut(&self) -> tokio::sync::RwLockWriteGuard<Option<Item>> {
         self.display_item.write().await
+    }
+
+    pub async fn action(&self) -> Option<String> {
+        self.action.read().await.clone()
     }
 }
 

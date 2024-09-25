@@ -1,7 +1,7 @@
-use crate::database::object::ObjectId;
+use crate::database::object::{Object, ObjectId};
 use crate::database::repository::RepositoryId;
 use crate::database::user::UserId;
-use crate::database::{Database, DatabaseIdTrait};
+use crate::database::{Database, DatabaseId, DatabaseIdTrait};
 use crate::utils::enc_path::EncPath;
 use crate::utils::enc_string::EncString;
 use crate::{make_database_id, query_fmt, query_object, query_objects};
@@ -10,6 +10,7 @@ use postgres_from_row::FromRow;
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
 use std::fmt::{Display, Formatter};
+use log::{error, info};
 use tokio_postgres::Row;
 
 make_database_id!(ItemId);
@@ -188,7 +189,25 @@ impl Item {
     }
 
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
-        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.items WHERE id = $1;"#, self.id);
+
+        let query = db.db().query(&r#"SELECT SCHEMA_NAME.remove_item($1) AS id;"#.replace("SCHEMA_NAME", &db.schema_name), &[&self.id]).await?;
+        for row in query {
+            let val: i64 = match row.try_get::<&str, i64>("id") {
+                Ok(val) => {val}
+                Err(err) => {
+                    error!("Failed to get : {}", err);
+                    return Err(err)?;
+                }
+            };
+            info!("val  : {val}")
+        }
+        return Ok(());
+
+
+        for object in query_objects!(db, ObjectId, r#"SELECT SCHEMA_NAME.remove_item($1) AS id;"#, self.id) {
+            println!("DELETE {}", object);
+            Object::from_id(db, &object).await?.delete(db).await?;
+        }
         Ok(())
     }
 

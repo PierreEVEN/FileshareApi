@@ -77,7 +77,7 @@ class User {
         const current = User._LOCAL_CACHE.get(id);
         if (current)
             return current;
-        let user = await fetch_api("/user/find/", "POST", [id]);
+        let user = await fetch_api("user/find/", "POST", [id]);
         if (user)
             return new User(user);
         return null;

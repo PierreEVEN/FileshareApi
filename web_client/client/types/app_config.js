@@ -30,6 +30,10 @@ class AppConfig {
          * @type {String}
          */
         this._origin = data.origin;
+        /**
+         * @type {boolean}
+         */
+        this._in_trash = data.in_trash;
     }
 
     set_connected_user(new_user) {
@@ -50,6 +54,10 @@ class AppConfig {
 
     connected_user() {
         return this._connected_user;
+    }
+
+    in_trash() {
+        return this._in_trash;
     }
 
     display_user() {

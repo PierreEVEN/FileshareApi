@@ -1,5 +1,9 @@
 import {ViewportContent} from "../../../types/viewport_content/viewport_content";
-import {DirectoryContentProvider, RepositoryRootProvider} from "../../../types/viewport_content/providers";
+import {
+    DirectoryContentProvider,
+    RepositoryRootProvider,
+    TrashContentProvider
+} from "../../../types/viewport_content/providers";
 import {ItemView} from "./content/item_view";
 import {context_menu_repository} from "../../context_menu/contexts/context_repository";
 import {Uploader} from "./upload/uploader";
@@ -72,6 +76,12 @@ class RepositoryViewport extends MemoryTracker {
     async open_root() {
         if (this.content && (!this.content.get_content_provider() || !(this.content.get_content_provider() instanceof RepositoryRootProvider))) {
             await this.content.set_content_provider(new RepositoryRootProvider(this.repository));
+        }
+    }
+
+    async open_trash() {
+        if (this.content && (!this.content.get_content_provider() || !(this.content.get_content_provider() instanceof TrashContentProvider))) {
+            await this.content.set_content_provider(new TrashContentProvider(this.repository));
         }
     }
 

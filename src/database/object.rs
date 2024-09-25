@@ -46,10 +46,15 @@ impl Object {
     }
 
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
-        // Dereference from files
-        for item in Item::from_object(db, &self.id, Trash::Both).await? {
-            item.delete(db).await?
+
+        if self.data_path(db).exists() {
+            fs::remove_file(self.data_path(db))?;
         }
+
+        if self.thumbnail_path(db).exists() {
+            fs::remove_file(self.thumbnail_path(db))?;
+        }
+
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.objects WHERE id = $1;"#, *self.id);
         Ok(())
     }

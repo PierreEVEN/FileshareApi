@@ -40,13 +40,11 @@ impl Upload {
         item.in_trash = false;
         item.repository = RepositoryId::from(DatabaseId::from_str(headers.get("Content-Repository").ok_or(Error::msg("missing Content-Repository header"))?.to_str()?)?);
 
-        info!("headers : {:?}", headers);
         item.parent_item = match headers.get("Content-Parent") {
-            None => {
-                info!("no parent");None }
+            None => { None }
             Some(header) => {
-                info!("upload : {:?}", header);
-                Some(ItemId::from(DatabaseId::from_str(header.to_str()?)?)) }
+                Some(ItemId::from(DatabaseId::from_str(header.to_str()?)?))
+            }
         };
         item.owner = owner.clone();
 

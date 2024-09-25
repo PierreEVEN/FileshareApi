@@ -1,8 +1,6 @@
 
 CREATE OR REPLACE FUNCTION SCHEMA_NAME.trigger_drop_item() RETURNS TRIGGER AS $$
 	BEGIN
-	    DELETE FROM SCHEMA_NAME.items WHERE parent_item = OLD.id;
-
 		IF OLD.is_regular_file THEN
 			DELETE FROM SCHEMA_NAME.file WHERE id = OLD.id;
 		ELSE

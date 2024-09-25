@@ -154,6 +154,9 @@ class RepositoryTree {
             const trash_txt = document.createElement('p');
             trash_txt.innerText = "corbeille";
             trash_div.append(trash_txt);
+            trash_div.onclick = async () => {
+                await APP.set_display_trash(this.repository)
+            }
             this._elements.content.append(trash_div);
             this._elements.category.classList.add('expand');
         } else {

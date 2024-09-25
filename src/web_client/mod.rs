@@ -20,7 +20,7 @@ use crate::app_ctx::AppCtx;
 use crate::config::WebClientConfig;
 use crate::database::repository::Repository;
 use crate::database::user::User;
-use crate::{get_connected_user, get_display_item, get_display_repository, get_display_user};
+use crate::{get_action, get_connected_user, get_display_item, get_display_repository, get_display_user};
 use crate::database::item::{Item, Trash};
 use crate::routes::RequestContext;
 use crate::utils::enc_path::EncPath;
@@ -125,18 +125,21 @@ pub async fn middleware_get_path_context(State(ctx): State<Arc<AppCtx>>, Path(Pa
 
     if let Some(repository) = repository_id {
         let mut path: VecDeque<&str> = request.uri().path().split("/").filter(|&x| !x.is_empty()).collect();
-        if path.len() > 3 {
+        if path.len() >= 3 {
             path.pop_front().ok_or(Error::msg("Expected user in path"))?;
             path.pop_front().ok_or(Error::msg("Expected repository in path"))?;
-            let _action = path.pop_front().ok_or(Error::msg("Expected action in path"))?;
+            let action = path.pop_front().ok_or(Error::msg("Expected action in path"))?;
+            *context.action.write().await = Some(action.into());            
+            
+            if path.len() > 3 {
+                let mut enc_path = vec![];
+                for item in path {
+                    enc_path.push(EncString::from_url_path(item.to_string())?);
+                }
 
-            let mut enc_path = vec![];
-            for item in path {
-                enc_path.push(EncString::from_url_path(item.to_string())?);
+                let item = Item::from_path(&ctx.database, &EncPath::from(enc_path), &repository, Trash::Both).await?;
+                *context.display_item.write().await = Some(item);
             }
-
-            let item = Item::from_path(&ctx.database, &EncPath::from(enc_path), &repository, Trash::Both).await?;
-            *context.display_item.write().await = Some(item);
         }
     }
 
@@ -150,6 +153,7 @@ struct ClientAppConfig {
     pub display_user: Option<User>,
     pub display_repository: Option<Repository>,
     pub display_item: Option<Item>,
+    pub in_trash: bool
 }
 
 async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
@@ -170,6 +174,10 @@ async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<i
     get_display_item!(request, item, {
         client_config.display_item = Some(item.clone());
     });
+    
+    if let Some(action) = get_action!(request) {
+        client_config.in_trash = action == "trash";
+    }
 
     let index_path_buf = ctx.config.web_client_config.client_path.join("public").join("index.html");
     let index_path = index_path_buf.to_str().unwrap();
