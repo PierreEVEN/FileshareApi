@@ -73,7 +73,10 @@ class State {
             await this.app.set_display_item(await repository.content.fetch_item(state.item));
         } else if (state.repository) {
             let repository = await Repository.find(state.repository);
-            await this.app.set_display_repository(repository);
+            if (state.trash)
+                await this.app.set_display_trash(repository);
+            else
+                await this.app.set_display_repository(repository);
         }
         this._disable_state = false;
     }

@@ -122,6 +122,13 @@ class FilesystemItem {
         const fs = this.filesystem();
         await fs.remove_item(this);
     }
+
+    /**
+     * @return {Promise<void>}
+     */
+    async download() {
+        window.open(`/api/item/get/${this.id}/`);
+    }
 }
 
 class FilesystemStream {

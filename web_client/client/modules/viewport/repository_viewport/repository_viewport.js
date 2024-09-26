@@ -11,6 +11,7 @@ import {DropBox} from "./upload/drop_box";
 import {MemoryTracker} from "../../../types/memory_handler";
 import {context_menu_item} from "../../context_menu/contexts/context_item";
 import {APP} from "../../../app";
+import {ViewportToolbar} from "./toolbar/toolbar";
 
 require('./repository_viewport.scss')
 
@@ -46,7 +47,9 @@ class RepositoryViewport extends MemoryTracker {
                     await APP.set_display_item(item);
                 }
             }))
-        })
+        });
+
+        this.toolbar = new ViewportToolbar(div.elements.toolbar, this.repository);
 
         this.content.events.add('remove', (item) => {
             const div = this._visible_items.get(item.id);
@@ -70,18 +73,21 @@ class RepositoryViewport extends MemoryTracker {
     async open_item(item) {
         if (!item.is_regular_file)
            await this.content.set_content_provider(new DirectoryContentProvider(item));
+        await this.toolbar.set_path_to(item, false);
     }
 
 
     async open_root() {
         if (this.content && (!this.content.get_content_provider() || !(this.content.get_content_provider() instanceof RepositoryRootProvider))) {
             await this.content.set_content_provider(new RepositoryRootProvider(this.repository));
+            await this.toolbar.set_path_to(null, false);
         }
     }
 
     async open_trash() {
         if (this.content && (!this.content.get_content_provider() || !(this.content.get_content_provider() instanceof TrashContentProvider))) {
             await this.content.set_content_provider(new TrashContentProvider(this.repository));
+            await this.toolbar.set_path_to(null, true);
         }
     }
 

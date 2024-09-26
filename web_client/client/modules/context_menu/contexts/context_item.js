@@ -14,6 +14,9 @@ function context_menu_item(item) {
             create_directory(item.repository, item.id);
         }, false))
     }
+    ctx.add_action(new MenuAction("Télécharger", "/public/images/icons/icons8-download-96.png", async () => {
+        await item.download();
+    }, false));
     ctx.add_action(new MenuAction("Supprimer", "/public/images/icons/icons8-trash-96.png", async () => {
         await delete_item(item, !item.in_trash);
     }, false));

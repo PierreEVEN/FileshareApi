@@ -20,7 +20,7 @@ use serde::Deserialize;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio_util::io::ReaderStream;
-use crate::database::object::Object;
+use crate::database::object::{Object, ObjectId};
 
 pub struct ItemRoutes {}
 
@@ -35,6 +35,7 @@ impl ItemRoutes {
             .route("/directory-content/", post(directory_content).with_state(ctx.clone()))
             .route("/thumbnail/:id/", get(thumbnail).with_state(ctx.clone()))
             .route("/send/", post(send).with_state(ctx.clone()))
+            .route("/get/:path/", get(download).with_state(ctx.clone()))
         )
     }
 }
@@ -164,7 +165,7 @@ async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -
     let body = Body::from_stream(stream);
 
     let headers = [
-        (header::CONTENT_TYPE, file.mimetype.plain()?),
+        (header::CONTENT_TYPE, "image/webp".to_string()),
         (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", item.name.encoded()))
     ];
     Ok((headers, body))
@@ -191,4 +192,24 @@ async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
         state = ctx.finalize_upload(id, &ctx.database).await?;
     }
     Ok(Json(state))
+}
+
+async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let item = Item::from_id(&ctx.database, &ItemId::from(id), Trash::Both).await?;
+
+    if let Some(file) = item.file {
+        let object = Object::from_id(&ctx.database, &file.object).await?;
+        
+        let stream = ReaderStream::new(tokio::fs::File::open(object.data_path(&ctx.database)).await?);
+        let body = Body::from_stream(stream);
+
+        let headers = [
+            (header::CONTENT_TYPE, file.mimetype.plain()?),
+            (header::CONTENT_LENGTH, file.size.to_string()),
+            (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", item.name.encoded()))
+        ];
+        return Ok((headers, body));
+    }
+    
+    Err(Error::msg("Not handled yet"))?
 }
