@@ -20,6 +20,7 @@ use serde::Deserialize;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio_util::io::ReaderStream;
+use crate::database::object::Object;
 
 pub struct ItemRoutes {}
 
@@ -157,11 +158,7 @@ async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -
         Some(f) => { f }
     };
 
-    //@TODO : move this method inside the Object file
-    let thumbnail_path = Thumbnail::find_or_create(
-        ctx.config.backend_config.file_storage_path.join(file.object.to_string()).as_path(),
-        ctx.config.backend_config.thumbnail_storage_path.as_path(),
-        &file.mimetype, 100)?;
+    let thumbnail_path = Thumbnail::find_or_create(&ctx.database, &Object::from_id(&ctx.database, &file.object).await?, &file.mimetype, 100)?;
 
     let stream = ReaderStream::new(tokio::fs::File::open(thumbnail_path).await?);
     let body = Body::from_stream(stream);

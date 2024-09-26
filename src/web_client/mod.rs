@@ -131,7 +131,7 @@ pub async fn middleware_get_path_context(State(ctx): State<Arc<AppCtx>>, Path(Pa
             let action = path.pop_front().ok_or(Error::msg("Expected action in path"))?;
             *context.action.write().await = Some(action.into());            
             
-            if path.len() > 3 {
+            if !path.is_empty() {
                 let mut enc_path = vec![];
                 for item in path {
                     enc_path.push(EncString::from_url_path(item.to_string())?);

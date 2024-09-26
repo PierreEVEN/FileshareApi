@@ -189,23 +189,7 @@ impl Item {
     }
 
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
-
-        let query = db.db().query(&r#"SELECT SCHEMA_NAME.remove_item($1) AS id;"#.replace("SCHEMA_NAME", &db.schema_name), &[&self.id]).await?;
-        for row in query {
-            let val: i64 = match row.try_get::<&str, i64>("id") {
-                Ok(val) => {val}
-                Err(err) => {
-                    error!("Failed to get : {}", err);
-                    return Err(err)?;
-                }
-            };
-            info!("val  : {val}")
-        }
-        return Ok(());
-
-
-        for object in query_objects!(db, ObjectId, r#"SELECT SCHEMA_NAME.remove_item($1) AS id;"#, self.id) {
-            println!("DELETE {}", object);
+        for object in query_objects!(db, ObjectId, r#"SELECT UNNEST(fileshare_v3.remove_item($1)) AS id GROUP BY id;"#, self.id) {
             Object::from_id(db, &object).await?.delete(db).await?;
         }
         Ok(())

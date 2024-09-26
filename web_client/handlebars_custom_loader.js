@@ -32,8 +32,8 @@ function loader_function(source) {
     const ast = hbs.parse(source, opts);
     const template = hbs.precompile(ast);
     let data_text = fs.readFileSync("./handlebars_loader_function.js").toString()
-        .replace("'{{template}}'", template.toString())
-        .replace("'{{mime_icons}}'", "'" + JSON.stringify(get_available_mime_icons()) + "'");
+        .replaceAll("'{{template}}'", template.toString())
+        .replaceAll("'{{mime_icons}}'", "'" + JSON.stringify(get_available_mime_icons()) + "'");
     const slug = template ? data_text : `module.exports = function() { return null; };`;
 
     this.async()(null, slug);

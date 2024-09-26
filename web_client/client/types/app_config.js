@@ -6,7 +6,7 @@ class AppConfig {
     constructor() {
         const data = JSON.parse(document.body.dataset['app_config']);
         console.assert(data, "Invalid application configuration data")
-
+        
         /**
          * @type {User}
          */

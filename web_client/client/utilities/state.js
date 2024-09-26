@@ -1,6 +1,7 @@
 import {User} from "../types/user";
 import {Repository} from "../types/repository";
 import {FilesystemItem, FilesystemStream} from "../types/filesystem_stream";
+import {APP_CONFIG} from "../types/app_config";
 
 class State {
     /**
@@ -25,7 +26,7 @@ class State {
         history.pushState({
             app_action: true,
             repository: repository.id
-        }, "", `/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/`);
+        }, "", `${APP_CONFIG.origin()}/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/`);
     }
 
     /**
@@ -40,7 +41,7 @@ class State {
             app_action: true,
             item: item.id,
             repository: item.repository
-        }, "", `/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/tree${item.absolute_path.encoded()}${item.is_regular_file ? "" : "/"}`);
+        }, "", `${APP_CONFIG.origin()}/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/tree${item.absolute_path.encoded()}${item.is_regular_file ? "" : "/"}`);
     }
 
     /**
@@ -53,7 +54,7 @@ class State {
             app_action: true,
             repository: repository.id,
             trash: true
-        }, "", `/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/trash/`);
+        }, "", `${APP_CONFIG.origin()}/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/trash/`);
     }
 
     async open_user(user) {
@@ -62,7 +63,7 @@ class State {
         history.pushState({
             app_action: true,
             user: user.id
-        }, "", `/${user.name.encoded()}/`);
+        }, "", `${APP_CONFIG.origin()}/${user.name.encoded()}/`);
     }
 
     async _handle_state(state) {

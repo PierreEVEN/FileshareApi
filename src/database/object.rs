@@ -51,7 +51,9 @@ impl Object {
             fs::remove_file(self.data_path(db))?;
         }
 
+        println!("remove thumb {:?}", self.thumbnail_path(db));
         if self.thumbnail_path(db).exists() {
+            println!("remove thumb 2 {:?}", self.thumbnail_path(db));
             fs::remove_file(self.thumbnail_path(db))?;
         }
 

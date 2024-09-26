@@ -2,6 +2,7 @@ import {print_message} from "../../layout/widgets/components/message_box.js";
 import {REPOS_BUILDER} from "../../layout/widgets/viewport/repos_builder"
 import {FilesystemObject} from "../../types/filesystem_v2";
 import {PAGE_CONTEXT} from "./utils";
+import {EncString} from "../../types/encstring";
 
 class TransferStats {
     constructor() {
@@ -282,7 +283,7 @@ class UploadStream {
 
         this._request.open("POST", this._url);
         if (!this._stream_id) {
-            this._request.setRequestHeader('content-name', encodeURIComponent(this._file_stream.file.name));
+            this._request.setRequestHeader('content-name', EncString.from_client(this._file_stream.file.name).encoded());
             this._request.setRequestHeader('content-size', this._file_stream.file.size);
             this._request.setRequestHeader('content-timestamp', this._file_stream.file.timestamp);
             this._request.setRequestHeader('content-mimetype', this._file_stream.file.mimetype);

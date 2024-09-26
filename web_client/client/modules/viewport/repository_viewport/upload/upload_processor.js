@@ -1,6 +1,7 @@
 import {print_message} from "../../../../layout/widgets/components/message_box";
 import {FilesystemItem} from "../../../../types/filesystem_stream";
 import {UploadItem} from "./upload_item";
+import {EncString} from "../../../../types/encstring";
 
 class UploadState {
     constructor(data) {
@@ -82,10 +83,10 @@ class UploadProcessor {
 
         this._request.open("POST", '/api/item/send/');
         if (!this.state) {
-            this._request.setRequestHeader('Content-Name', encodeURIComponent(this.item.name));
+            this._request.setRequestHeader('Content-Name', EncString.from_client(this.item.name).encoded());
             this._request.setRequestHeader('Content-Size', this.item.file.size.toString());
             this._request.setRequestHeader('Content-Timestamp', this.item.file.lastModified.toString());
-            this._request.setRequestHeader('Content-Mimetype', encodeURIComponent(this.item.mimetype));
+            this._request.setRequestHeader('Content-Mimetype', EncString.from_client(this.item.mimetype).encoded());
             this._request.setRequestHeader('Content-Repository', this.repository.id.toString());
             if (this.item.parent.directory) {
                 this._request.setRequestHeader('Content-Parent', this.item.parent.directory.id.toString());
