@@ -74,7 +74,7 @@ impl Subscription {
     }
 
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
-        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.repository WHERE repository = $1 AND owner = $2;"#, self.repository, self.owner);
+        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.subscriptions WHERE repository = $1 AND owner = $2;"#, self.repository, self.owner);
         Ok(())
     }
 }

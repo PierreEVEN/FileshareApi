@@ -109,13 +109,16 @@ impl Repository {
     }
 
     pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
+        println!("AH");
         for item in Item::from_repository(db, &self.id, Both).await? {
             item.delete(db).await?;
         }
+        println!("B");
         for subscriptions in Subscription::from_repository(db, &self.id).await? {
             subscriptions.delete(db).await?
         }
 
+        println!("C, {}", self.id);
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.repository WHERE id = $1;"#, self.id);
         Ok(())
     }
