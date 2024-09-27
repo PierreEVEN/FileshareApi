@@ -1,5 +1,6 @@
-import {humanFileSize, PAGE_CONTEXT} from "../../../../../common/tools/utils";
+import {humanFileSize} from "../../../../../common/tools/utils";
 import {print_message} from "../../../../../layout/widgets/components/message_box";
+import {APP_CONFIG} from "../../../../../types/app_config";
 
 class CarouselOverlay {
     /**
@@ -19,10 +20,10 @@ class CarouselOverlay {
                 carousel.close();
             },
             download: () => {
-                window.open(`${PAGE_CONTEXT.repos_path()}/file/${item.id}`, '_blank').focus();
+                window.open(`${APP_CONFIG.origin()}/api/item/${item.id}/`, '_blank').focus();
             },
             share: async () => {
-                let url = `${location.origin}${PAGE_CONTEXT.repos_path()}/file/${item.id}`;
+                let url = `${APP_CONFIG.origin()}/api/item/${item.id}/`;
                 await navigator.clipboard.writeText(url);
                 print_message('info', 'Lien copié dans le presse - papier', url)
             }

@@ -132,6 +132,9 @@ class RepositoryViewport extends MemoryTracker {
         item_list.build_visual(container.list_container)
         Carousel.get_fullscreen_container().root.style.display = 'flex';
         this.carousel = new Carousel(this.content, Carousel.get_fullscreen_container().background_container, item);
+        this.carousel.on_close = () => {
+            this.close_carousel()
+        }
     }
 
     close_carousel() {

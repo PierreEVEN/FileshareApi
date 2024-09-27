@@ -1,5 +1,4 @@
 import {get_mime_icon_path} from "./mime_utils";
-import {PAGE_CONTEXT} from "./utils";
 
 function from_distant_repos(item) {
     const thumbnail_url = `/api/item/thumbnail/${item.id}/`;

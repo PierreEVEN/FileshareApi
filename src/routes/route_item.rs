@@ -20,7 +20,7 @@ use serde::Deserialize;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio_util::io::ReaderStream;
-use crate::database::object::{Object, ObjectId};
+use crate::database::object::{Object};
 
 pub struct ItemRoutes {}
 
@@ -36,6 +36,7 @@ impl ItemRoutes {
             .route("/thumbnail/:id/", get(thumbnail).with_state(ctx.clone()))
             .route("/send/", post(send).with_state(ctx.clone()))
             .route("/get/:path/", get(download).with_state(ctx.clone()))
+            .route("/preview/:path/", get(download).with_state(ctx.clone()))
         )
     }
 }

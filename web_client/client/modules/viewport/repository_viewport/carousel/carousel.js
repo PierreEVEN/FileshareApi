@@ -36,10 +36,15 @@ class Carousel extends MemoryTracker {
         return FULLSCREEN_CONTAINER;
     }
 
+    delete() {
+        super.delete();
+        this.container.innerHTML = null;
+    }
+
     close() {
         if (this.on_close)
             this.on_close();
-        this.container.innerHTML = null;
+        this.delete();
     }
 }
 
