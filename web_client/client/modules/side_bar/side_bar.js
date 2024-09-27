@@ -50,11 +50,15 @@ class SideBar {
         });
         this.refresh(APP_CONFIG.connected_user());
 
+        /**
+         * @type {Map<number, RepositoryTree>}
+         * @private
+         */
         this._my_repos_loaded = new Map();
 
         this._add_repository = GLOBAL_EVENTS.add('add_repository', async (repository) => {
             if (!this._my_repos_loaded.has(repository.id) && APP_CONFIG.connected_user() && repository.owner === APP_CONFIG.connected_user().id) {
-                this._my_repos_loaded.set(repository.id, new RepositoryTree(this._elements.my_repositories, repository));
+                this._my_repos_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
             }
         });
 
@@ -65,38 +69,40 @@ class SideBar {
                 this._my_repos_loaded.delete(repository.id);
             }
         });
+
+        this.selected_div = null;
     }
 
     async expand_my_repositories(expanded) {
+        if (this._my_repos_expanded === expanded)
+            return;
         this._elements.my_repositories.innerHTML = '';
         this._my_repos_loaded = new Map()
         this._my_repos_expanded = expanded;
         if (expanded) {
             this._elements.div_my_repositories.classList.add('expand');
-            const my_repos = await fetch_api('repository/owned/');
-            for (const repository of my_repos) {
-                new Repository(repository);
-            }
+            await Repository.my_repositories();
         } else {
             this._elements.div_my_repositories.classList.remove('expand');
         }
     }
 
     async expand_shared(expanded) {
+        if (this._shared_expanded === expanded)
+            return;
         this._elements.shared.innerHTML = '';
         this._shared_expanded = expanded;
         if (expanded) {
             this._elements.div_shared.classList.add('expand');
-            const my_repos = await fetch_api('repository/shared/');
-            for (const repos of my_repos) {
-                new RepositoryTree(this._elements.shared, new Repository(repos));
-            }
+            await Repository.shared_repositories();
         } else {
             this._elements.div_shared.classList.remove('expand');
         }
     }
 
     expand_recent(expanded) {
+        if (this._recent_expanded === expanded)
+            return;
         this._elements.recent.innerHTML = '';
         this._recent_expanded = expanded;
     }
@@ -129,6 +135,28 @@ class SideBar {
             this._remove_repository.remove();
         delete this._remove_repository;
         delete this._add_repository;
+    }
+
+    /**
+     * @param target_repository {Repository}
+     * @param item {FilesystemItem|null}
+     * @param trash {boolean}
+     * @return {Promise<void>}
+     */
+    async expand_to(target_repository, item, trash) {
+        await Repository.my_repositories();
+        await Repository.shared_repositories();
+        let tree = this._my_repos_loaded.get(target_repository.id);
+        if (!tree)
+            return;
+        await tree.expand_to_item(item, trash)
+    }
+
+    select_div(div) {
+        if (this.selected_div)
+            this.selected_div.classList.remove('side-bar-selected');
+        this.selected_div = div;
+        this.selected_div.classList.add('side-bar-selected');
     }
 }
 

@@ -5,22 +5,30 @@ import {APP} from "../../../app";
 
 class RepositoryNode {
     /**
+     * @param side_bar {SideBar}
      * @param repository {Repository}
      * @param container {HTMLElement}
      * @param id {number}
      */
-    constructor(repository, container, id) {
+    constructor(side_bar, repository, container, id) {
         this._repository = repository;
         this._id = id;
         this._expanded = false;
         this._container = container;
+        this.side_bar = side_bar;
     }
 
     async init() {
         const data = await this._repository.content.fetch_item(this._id);
         const div = require('./repository_tree.hbs')(data.display_data(), {
             expand: async () => {
-                await this.expand_node(!this._expanded);
+                if (this.side_bar.selected_div === div) {
+                    await this.expand_node(!this._expanded);
+                } else {
+                    await APP.set_display_item(this.data);
+                    this.side_bar.select_div(div);
+                    await this.expand_node(true);
+                }
             },
             context: (e) => {
                 context_menu_item(data);
@@ -38,16 +46,22 @@ class RepositoryNode {
      * @param expanded {boolean}
      */
     async expand_node(expanded) {
-        await APP.set_display_item(this.data);
+        if (this._expanded === expanded)
+            return;
+
         this._expanded = expanded;
         this._elements.content.innerHTML = '';
         if (expanded) {
 
+            /**
+             * @type {Map<number, RepositoryNode>}
+             * @private
+             */
             this._items = new Map();
 
             const add_item = async (item_id) => {
                 if (!this._items.has(item_id))
-                    this._items.set(item_id, await new RepositoryNode(this._repository, this._elements.content, item_id).init());
+                    this._items.set(item_id, await new RepositoryNode(this.side_bar, this._repository, this._elements.content, item_id).init());
             }
             if (!this._listener_add)
                 this._listener_add = GLOBAL_EVENTS.add('add_item', async (item) => {
@@ -82,21 +96,50 @@ class RepositoryNode {
             this._elements.category.classList.remove('expand');
         }
     }
+
+    async expand_to_item(item) {
+        if (item.id === this.data.id) {
+            this.side_bar.select_div(this._div);
+            return;
+        }
+        await this.expand_node(true);
+
+        let test_item = item;
+        while (test_item) {
+            const node = this._items.get(test_item.id)
+            if (node) {
+                await node.expand_to_item(item);
+                return
+            }
+            test_item = test_item.parent_item ? await item.filesystem().fetch_item(test_item.parent_item) : null;
+        }
+    }
 }
 
 class RepositoryTree {
 
     /**
+     * @param side_bar {SideBar}
      * @param container {HTMLElement}
      * @param repository {Repository}
      */
-    constructor(container, repository) {
+    constructor(side_bar, container, repository) {
         this.repository = repository;
         this._expanded = false;
 
         const root_div = require('./repository_tree_root.hbs')(repository.display_data(), {
             expand: async () => {
-                await this.expand_node(!this._expanded)
+                if (this.side_bar.selected_div === root_div) {
+                    await this.expand_node(!this._expanded);
+                } else {
+                    await APP.set_display_repository(this.repository);
+                    this.side_bar.select_div(root_div);
+                    await this.expand_node(true);
+                }
+            },
+            trash: async () => {
+                await APP.set_display_trash(this.repository);
+                this.side_bar.select_div(root_div.elements.trash);
             },
             context: (e) => {
                 context_menu_repository(repository);
@@ -105,23 +148,47 @@ class RepositoryTree {
         });
         this._elements = root_div.elements;
         this.root = root_div;
+        this.side_bar = side_bar;
         container.append(root_div);
+    }
+
+    async expand_to_item(item, trash) {
+        await this.expand_node(true);
+
+        if (!item) {
+            this.side_bar.select_div(trash ? this._elements.trash : this.root);
+            return;
+        }
+
+        let test_item = item;
+        while (test_item) {
+            const node = this._items.get(test_item.id)
+            if (node) {
+                await node.expand_to_item(item);
+                return
+            }
+            test_item = test_item.parent_item ? await item.filesystem().fetch_item(test_item.parent_item) : null;
+        }
     }
 
     /**
      * @param expanded {boolean}
      */
     async expand_node(expanded) {
-        await APP.set_display_repository(this.repository);
+        if (this._expanded === expanded)
+            return;
         this._expanded = expanded;
         this._elements.content.innerHTML = '';
         if (expanded) {
-
+            /**
+             * @type {Map<number, RepositoryNode>}
+             * @private
+             */
             this._items = new Map();
 
             const add_item = async (item_id) => {
                 if (!this._items.has(item_id))
-                    this._items.set(item_id, await new RepositoryNode(this.repository, this._elements.content, item_id).init());
+                    this._items.set(item_id, await new RepositoryNode(this.side_bar, this.repository, this._elements.content, item_id).init());
             }
 
             if (!this._listener_add) {
@@ -147,19 +214,10 @@ class RepositoryTree {
                     await add_item(item.id);
             }
 
-            const trash_div = document.createElement('button');
-            const trash_img = document.createElement('img');
-            trash_img.src = "/public/images/icons/icons8-full-trash-96.png";
-            trash_div.append(trash_img);
-            const trash_txt = document.createElement('p');
-            trash_txt.innerText = "corbeille";
-            trash_div.append(trash_txt);
-            trash_div.onclick = async () => {
-                await APP.set_display_trash(this.repository)
-            }
-            this._elements.content.append(trash_div);
+            this._elements.trash.style.display = 'flex';
             this._elements.category.classList.add('expand');
         } else {
+            this._elements.trash.style.display = 'none';
             if (this._listener_add)
                 this._listener_add.remove();
             delete this._listener_add;

@@ -2,6 +2,7 @@ import {EncString} from "./encstring";
 import {FilesystemStream} from "./filesystem_stream";
 import {fetch_api} from "../utilities/request";
 import {GLOBAL_EVENTS} from "./event_manager";
+import {RepositoryTree} from "../modules/side_bar/repository_tree/repository_tree";
 
 class RepositoryStatus {
     constructor(data) {
@@ -122,6 +123,30 @@ class Repository {
                 data[key] = value;
         }
         return data;
+    }
+
+    /**
+     * @return {Promise<Repository[]>}
+     */
+    static async my_repositories() {
+        const my_repositories = await fetch_api('repository/owned/');
+        const repositories = [];
+        for (const repository of my_repositories) {
+            repositories.push(new Repository(repository));
+        }
+        return repositories;
+    }
+
+    /**
+     * @return {Promise<Repository[]>}
+     */
+    static async shared_repositories() {
+        const shared_repositories = await fetch_api('repository/shared/');
+        const repositories = [];
+        for (const repos of shared_repositories) {
+            new RepositoryTree(this._elements.shared, new Repository(repos));
+        }
+        return repositories;
     }
 }
 

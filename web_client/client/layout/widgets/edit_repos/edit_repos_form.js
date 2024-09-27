@@ -1,6 +1,5 @@
 import {close_modal, open_modal} from "../../../modules/modal/modal.js";
 import {delete_repos} from "../delete_repos/delete_repos_form";
-import {ClientString} from "../../../common/tools/client_string";
 import {parse_fetch_result} from "../components/message_box";
 
 require('./edit-repos.scss')

@@ -1,4 +1,3 @@
-import {ClientString} from "./client_string";
 const dayjs = require("dayjs")
 const utc = require("dayjs/plugin/utc");
 dayjs.extend(utc);

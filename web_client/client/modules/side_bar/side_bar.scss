@@ -34,4 +34,14 @@
       }
     }
   }
+
+  .content {
+    .trash {
+      display: none;
+    }
+  }
+}
+
+.side-bar-selected > .field {
+  border: 1px solid gray;
 }

@@ -12,6 +12,9 @@ import {MemoryTracker} from "../../../types/memory_handler";
 import {context_menu_item} from "../../context_menu/contexts/context_item";
 import {APP} from "../../../app";
 import {ViewportToolbar} from "./toolbar/toolbar";
+import {Carousel} from "./carousel/carousel";
+import {Repository} from "../../../types/repository";
+import {CarouselList} from "./carousel/list/carousel_list";
 
 require('./repository_viewport.scss')
 
@@ -71,13 +74,25 @@ class RepositoryViewport extends MemoryTracker {
      * @return {Promise<void>}
      */
     async open_item(item) {
-        if (!item.is_regular_file)
-           await this.content.set_content_provider(new DirectoryContentProvider(item));
+        if (!item.is_regular_file) {
+            this.close_carousel();
+            await this.content.set_content_provider(new DirectoryContentProvider(item));
+        }
+        else {
+            if (item.parent_item) {
+                await this.content.set_content_provider(new DirectoryContentProvider(await item.filesystem().fetch_item(item.parent_item)));
+            }
+            else {
+                await this.content.set_content_provider(new RepositoryRootProvider(await Repository.find(item.repository)));
+            }
+            this.open_carousel(item);
+        }
         await this.toolbar.set_path_to(item, false);
     }
 
 
     async open_root() {
+        this.close_carousel();
         if (this.content && (!this.content.get_content_provider() || !(this.content.get_content_provider() instanceof RepositoryRootProvider))) {
             await this.content.set_content_provider(new RepositoryRootProvider(this.repository));
             await this.toolbar.set_path_to(null, false);
@@ -85,6 +100,7 @@ class RepositoryViewport extends MemoryTracker {
     }
 
     async open_trash() {
+        this.close_carousel();
         if (this.content && (!this.content.get_content_provider() || !(this.content.get_content_provider() instanceof TrashContentProvider))) {
             await this.content.set_content_provider(new TrashContentProvider(this.repository));
             await this.toolbar.set_path_to(null, true);
@@ -105,6 +121,26 @@ class RepositoryViewport extends MemoryTracker {
         super.delete();
         if (this.content)
             this.content.delete();
+        this.close_carousel();
+    }
+
+    open_carousel(item) {
+        this.close_carousel();
+
+        const container = Carousel.get_fullscreen_container();
+        const item_list = new CarouselList(this.content);
+        item_list.build_visual(container.list_container)
+        Carousel.get_fullscreen_container().root.style.display = 'flex';
+        this.carousel = new Carousel(this.content, Carousel.get_fullscreen_container().background_container, item);
+    }
+
+    close_carousel() {
+        if (this.carousel) {
+            this.carousel.delete();
+            Carousel.get_fullscreen_container().background_container.innerHTML = '';
+            Carousel.get_fullscreen_container().root.style.display = 'none';
+        }
+        this.carousel = null;
     }
 }
 

@@ -55,11 +55,13 @@ class FileshareApp {
         (async () => {
             if (await APP_CONFIG.display_item()) {
                 await this.set_display_item(await APP_CONFIG.display_item());
+                await this._side_bar.expand_to(APP_CONFIG.display_repository(), await APP_CONFIG.display_item(), false);
             } else if (APP_CONFIG.display_repository()) {
                 if (APP_CONFIG.in_trash())
                     await this.set_display_trash(APP_CONFIG.display_repository());
                 else
                     await this.set_display_repository(APP_CONFIG.display_repository());
+                await this._side_bar.expand_to(APP_CONFIG.display_repository(), null, APP_CONFIG.in_trash());
             } else if (APP_CONFIG.display_user()) {
 
             }

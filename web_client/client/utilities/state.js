@@ -36,7 +36,7 @@ class State {
     async open_item(item) {
         if (this._disable_state)
             return;
-        let repository = await Repository.find(item.repository)
+        let repository = await Repository.find(item.repository);
         history.pushState({
             app_action: true,
             item: item.id,

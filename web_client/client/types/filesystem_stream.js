@@ -233,8 +233,9 @@ class FilesystemStream {
         if (item.parent_item !== undefined) {
             const parent = await this.fetch_item(item.parent_item);
             if (!parent.children)
-                parent.children = new Set();
-            parent.children.add(item.id);
+                await parent.filesystem().directory_content(parent.id);
+            else
+                parent.children.add(item.id);
         } else if (this._roots) {
             this._roots.add(item.id);
         }

@@ -40,17 +40,19 @@ class ViewportToolbar {
             let first = true;
             let item = current_item;
             while (item) {
-                const current_item = item;
-                const div = require('./toolbar_path_btn.hbs')(item.display_data(), {
-                    select: async () => {
-                        await APP.set_display_item(current_item);
+                if (!item.is_regular_file) {
+                    const current_item = item;
+                    const div = require('./toolbar_path_btn.hbs')(item.display_data(), {
+                        select: async () => {
+                            await APP.set_display_item(current_item);
+                        }
+                    });
+                    if (first) {
+                        first = false;
+                        div.style['margin-right'] = 'auto';
                     }
-                });
-                if (first) {
-                    first = false;
-                    div.style['margin-right'] = 'auto';
+                    this.elements.path.append(div);
                 }
-                this.elements.path.append(div);
                 item = item.parent_item ? await item.filesystem().fetch_item(item.parent_item) : null;
             }
         }

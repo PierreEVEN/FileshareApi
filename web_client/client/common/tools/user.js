@@ -1,5 +1,4 @@
 import {parse_fetch_result} from "../../layout/widgets/components/message_box";
-import {ClientString} from "./client_string";
 
 const dayjs = require('dayjs')
 const utc = require("dayjs/plugin/utc");

@@ -1,6 +1,5 @@
 import Handlebars from "handlebars";
 import {get_mime_icon_path, is_mimetype_valid, UNDEFINED_MIME_STRING} from "../common/tools/mime_utils";
-import {ClientString} from "../common/tools/client_string";
 
 /* ################## HELPER {ITEM_THUMBNAIL} ################## */
 const get_item_thumbnail = require('../common/tools/get_item_thumbnail')

@@ -1,8 +1,6 @@
 # Bugs
 
 - supprimer un item qui n'est pas racine n'est pas visible dans la corbeille
-- sidebar : cliquer selectionne puis étend / rétracte
-- sidebar : étendre à l'ouverture au chemin courant
 - faire le design de la toolbar
 - upload : actualiser la progression
 - upload : mode die and retry
