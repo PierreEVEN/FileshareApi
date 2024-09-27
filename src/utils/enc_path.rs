@@ -1,11 +1,25 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use anyhow::Error;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::Visitor;
 use crate::utils::enc_string::EncString;
 
 #[derive(Default, Debug, Clone)]
 pub struct EncPath(Vec<EncString>);
+
+impl EncPath {
+    pub fn plain(&self) -> Result<String, Error> {
+        let mut res = String::new();
+        
+        for item in &self.0 {
+            res += "/";
+            res += item.plain()?.as_str();
+        }
+        
+        Ok(res)
+    }
+}
 
 impl Display for EncPath {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

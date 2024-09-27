@@ -1,5 +1,5 @@
-    import {get_mime_icon_path} from "../common/tools/mime_utils";
-    import {APP_CONFIG} from "../types/app_config";
+import {get_mime_icon_path} from "../common/tools/mime_utils";
+import {APP_CONFIG} from "../types/app_config";
 
 function get(item) {
     const url = `${APP_CONFIG.origin()}/api/item/preview/${item.id}/`;
@@ -24,9 +24,6 @@ function get(item) {
                 case 'json':
                 case 'x-json':
                     return `<document-code src="${url}" class="language-json"></document-code>`
-                case 'javascript':
-                case 'x-javascript':
-                    return `<document-code src="${url}" class="language-js"></document-code>`
             }
             break;
         case 'text':
@@ -48,8 +45,11 @@ function get(item) {
                 case 'css':
                 case 'x-css':
                     return `<document-code src="${url}" class="language-css"></document-code>`
+                case 'javascript':
+                case 'x-javascript':
+                    return `<document-code src="${url}" class="language-js"></document-code>`
             }
-            return `<document-embed src="${url}"></document-embed>`
+            return `<document-embed src="${url}" class="language-plain"></document-embed>`
     }
 
     return `<img class="item-small" src="${get_mime_icon_path(item.mimetype)}" alt="document: ${item.name}"/>`;

@@ -68,6 +68,9 @@ impl Thumbnail {
             "image/svg+xml" => {
                 "image/svg"
             }
+            "image/x-canon-cr2" => {
+                "image/cr2"
+            }
             plain => { plain }
         };
         let mut mime = mime_plain.split("/");
