@@ -266,7 +266,6 @@ impl AsyncDirectoryZip {
                 crc
             } else { 0 };
 
-
             blocs.push((location, item.clone(), crc32));
 
             // Write local header
@@ -282,6 +281,7 @@ impl AsyncDirectoryZip {
                     location += size;
                     sink.write_all(&buf[..size]).await?;
                 }
+                sink.flush().await?;
             }
         }
         let central_directory_start = location;

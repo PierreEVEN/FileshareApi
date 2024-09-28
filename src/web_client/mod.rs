@@ -157,8 +157,9 @@ struct ClientAppConfig {
 }
 
 async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    
     let mut client_config = ClientAppConfig {
-        origin: format!("{}://{}", if ctx.config.use_tls { "https" } else { "http" }, request.headers().get("host").ok_or(ServerError::msg(StatusCode::INTERNAL_SERVER_ERROR, "invalid host in request headers"))?.to_str()?),
+        origin: format!("{}://{}", if ctx.config.use_tls { "https" } else { "http" }, ctx.config.address),//request.headers().get("host").ok_or(ServerError::msg(StatusCode::INTERNAL_SERVER_ERROR, format!("invalid host in request headers : {:?}", request.headers())))?.to_str()?),
         ..Default::default()
     };
 

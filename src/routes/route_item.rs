@@ -1,3 +1,4 @@
+use std::fs::File;
 use crate::app_ctx::AppCtx;
 use crate::database::item::{DirectoryData, Item, ItemId, Trash};
 use crate::database::object::Object;
@@ -13,7 +14,7 @@ use crate::utils::upload::Upload;
 use anyhow::Error;
 use axum::body::Body;
 use axum::extract::{FromRequest, Path, Request, State};
-use axum::http::{header, StatusCode};
+use axum::http::{header, HeaderName, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -212,19 +213,19 @@ async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) ->
         ];
         Ok((headers, body))
     } else {
-
         let mut zip = AsyncDirectoryZip::new(ctx.clone());
         zip.push_item(item.clone()).await?;
 
         let size = zip.size()?;
-        
+
         let (w, r) = tokio::io::duplex(4096);
         tokio::spawn(async move {
             zip.finalize(w).await
         });
+
         let body = Body::from_stream(ReaderStream::new(r));
         let headers = [
-            (header::CONTENT_TYPE, String::from("application/zip")),
+            (header::CONTENT_TYPE, "application/zip".to_string()),
             (header::CONTENT_LENGTH, size.to_string()),
             (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", item.name.encoded()))
         ];
