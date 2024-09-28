@@ -1,4 +1,4 @@
-use crate::database::item::{Item, ItemId, Trash};
+use crate::database::item::{ItemId, Trash};
 use crate::database::Database;
 use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;

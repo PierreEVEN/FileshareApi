@@ -13,7 +13,6 @@ use futures::{io, TryStreamExt};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::str::FromStr;
-use log::info;
 use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
 use tokio_util::io::StreamReader;

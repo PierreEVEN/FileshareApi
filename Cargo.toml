@@ -32,6 +32,3 @@ tokio-stream = "0.1.16"
 sha2 = "0.10.8"
 log = "0.4.22"
 http-body-util = "0.1.0"
-zipit = { version = "0.4.0", features = ["tokio-async-io"] }
-zip = "2.2.0"
-async_zip = "0.0.17"
