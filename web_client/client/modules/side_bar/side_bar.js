@@ -57,7 +57,7 @@ class SideBar {
         this._my_repos_loaded = new Map();
 
         this._add_repository = GLOBAL_EVENTS.add('add_repository', async (repository) => {
-            if (!this._my_repos_loaded.has(repository.id) && APP_CONFIG.connected_user() && repository.owner === APP_CONFIG.connected_user().id) {
+            if (!APP_CONFIG.connected_user() && repository.owner === APP_CONFIG.connected_user().id) {
                 this._my_repos_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
             }
         });
@@ -81,7 +81,9 @@ class SideBar {
         this._my_repos_expanded = expanded;
         if (expanded) {
             this._elements.div_my_repositories.classList.add('expand');
-            await Repository.my_repositories();
+            for (const repository of await Repository.my_repositories()) {
+                this._my_repos_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
+            }
         } else {
             this._elements.div_my_repositories.classList.remove('expand');
         }

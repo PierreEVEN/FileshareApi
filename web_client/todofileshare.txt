@@ -2,13 +2,10 @@
 
 - sidebar
     - cacher les fleches si pas d'enfants
-- trash
-    - supprimer un item qui n'est pas racine n'est pas visible dans la corbeille
 - toolbar
     - faire le design de la toolbar
 - upload
-    - upload : actualiser la progression
-    - upload : mode die and retry
+    - upload : mode die
 
 # TODO
 - Download multiple items

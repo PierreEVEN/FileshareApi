@@ -18,7 +18,7 @@ class AppConfig {
         /**
          * @type {Repository}
          */
-        this._display_repository = data['display_repository'] ? new Repository(data['display_repository']) : null;
+        this._display_repository = data['display_repository'] ? Repository.new(data['display_repository']) : null;
         /**
          * @type {Promise<FilesystemItem>}
          */

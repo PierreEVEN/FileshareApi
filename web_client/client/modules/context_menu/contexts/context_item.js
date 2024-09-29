@@ -1,6 +1,6 @@
 import {ContextMenu, MenuAction} from "../context_menu";
 import {create_directory} from "../../tools/create_directory/create_directory";
-import {delete_item} from "../../tools/delete_item/delete_item";
+import {delete_item, restore_item} from "../../tools/delete_item/delete_item";
 
 /**
  * @param item {FilesystemItem}
@@ -17,6 +17,10 @@ function context_menu_item(item) {
     ctx.add_action(new MenuAction("Télécharger", "/public/images/icons/icons8-download-96.png", async () => {
         await item.download();
     }, false));
+    if (item.in_trash)
+        ctx.add_action(new MenuAction("Restorer", "/public/images/icons/icons8-restore-96.png", async () => {
+            await restore_item(item);
+        }, false));
     ctx.add_action(new MenuAction("Supprimer", "/public/images/icons/icons8-trash-96.png", async () => {
         await delete_item(item, !item.in_trash);
     }, false));

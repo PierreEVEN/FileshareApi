@@ -186,6 +186,10 @@ impl Item {
         Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE parent_item IS NULL and repository = $1 {filter}"), repository))
     }
 
+    pub async fn repository_trash_root(db: &Database, repository: &RepositoryId) -> Result<Vec<Self>, Error> {
+        Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE in_trash AND repository = $1 AND (parent_item IS NULL OR parent_item IN (SELECT id FROM SCHEMA_NAME.item_full_view WHERE repository = $1 AND NOT in_trash))", repository))
+    }
+    
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
         for object in query_objects!(db, ObjectId, r#"SELECT UNNEST(fileshare_v3.remove_item($1)) AS id GROUP BY id;"#, self.id) {
             Object::from_id(db, &object).await?.delete(db).await?;

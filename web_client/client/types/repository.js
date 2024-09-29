@@ -77,11 +77,20 @@ class Repository {
         this.content = new FilesystemStream(this)
 
         if (Repository._LOCAL_CACHE.has(this.id))
-            this.remove();
+            console.error("Don't use new constructor on repository")
 
         Repository._LOCAL_CACHE.set(this.id, this);
 
         GLOBAL_EVENTS.broadcast('add_repository', this);
+    }
+
+    static new(data) {
+        console.log("add", data.id)
+        const existing = Repository._LOCAL_CACHE.get(data.id);
+        if (existing)
+            return existing;
+        return new Repository(data)
+
     }
 
     /**
@@ -106,7 +115,7 @@ class Repository {
         console.assert(id, "Invalid repository ID !");
         let repositories = await fetch_api('repository/find/', 'POST', [id]);
         for (const repository of repositories)
-            new Repository(repository);
+            Repository.new(repository);
 
         return Repository._LOCAL_CACHE.get(id);
     }
@@ -132,7 +141,7 @@ class Repository {
         const my_repositories = await fetch_api('repository/owned/');
         const repositories = [];
         for (const repository of my_repositories) {
-            repositories.push(new Repository(repository));
+            repositories.push(Repository.new(repository));
         }
         return repositories;
     }
@@ -143,8 +152,8 @@ class Repository {
     static async shared_repositories() {
         const shared_repositories = await fetch_api('repository/shared/');
         const repositories = [];
-        for (const repos of shared_repositories) {
-            new RepositoryTree(this._elements.shared, new Repository(repos));
+        for (const repository of shared_repositories) {
+            repositories.push(Repository.new(repository));
         }
         return repositories;
     }

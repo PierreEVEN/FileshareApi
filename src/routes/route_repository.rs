@@ -28,14 +28,15 @@ impl RepositoryRoutes {
             .route("/public/", get(get_public_repositories).with_state(ctx.clone()))
             .route("/create/", post(create_repository).with_state(ctx.clone()))
             .route("/delete/", post(delete_repository).with_state(ctx.clone()))
-            .route("/root-content/", post(root_content).with_state(ctx.clone()));
+            .route("/root-content/", post(root_content).with_state(ctx.clone()))
+            .route("/trash-content/", post(trash_content).with_state(ctx.clone()));
         Ok(router)
     }
 }
 
 async fn find_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<Json<Vec<Repository>>, ServerError> {
     let permission = Permissions::new(&request)?;
-    let json = Json::<Vec<RepositoryId>>::from_request(request, &ctx).await.map_err(|err| {Error::msg(format!("Invalid body, {err} : expected Vec<RepositoryId>"))}) ?;
+    let json = Json::<Vec<RepositoryId>>::from_request(request, &ctx).await.map_err(|err| { Error::msg(format!("Invalid body, {err} : expected Vec<RepositoryId>")) })?;
     let mut repositories = vec![];
     for repository in &json.0 {
         if permission.view_repository(&ctx.database, repository).await?.granted() {
@@ -47,11 +48,11 @@ async fn find_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> 
 
 async fn create_repository(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let user = require_connected_user!(request);
-    
+
     if !user.can_create_repository() {
         return Err(ServerError::msg(StatusCode::FORBIDDEN, "Missing permissions"));
     }
-    
+
     #[derive(Deserialize)]
     pub struct CreateReposData {
         name: EncString,
@@ -102,7 +103,7 @@ async fn delete_repository(State(ctx): State<Arc<AppCtx>>, request: axum::http::
     let from_creds = User::from_credentials(&ctx.database, &data.credentials.login, &data.credentials.password).await?;
 
     let mut deleted_ids = vec![];
-    
+
     for repository in &data.repositories {
         if connected_user.id() != from_creds.id() || !permission.edit_repository(&ctx.database, repository).await?.granted() {
             continue;
@@ -117,11 +118,24 @@ pub async fn root_content(State(ctx): State<Arc<AppCtx>>, request: axum::http::R
     let permission = Permissions::new(&request)?;
 
     let data = Json::<Vec<RepositoryId>>::from_request(request, &ctx).await?;
-    
+
     let mut result = vec![];
     for repository in data.0 {
         permission.view_repository(&ctx.database, &repository).await?.require()?;
         result.append(&mut Item::repository_root(&ctx.database, &repository, Trash::Both).await?);
+    }
+    Ok(Json(result))
+}
+
+pub async fn trash_content(State(ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<impl IntoResponse, ServerError> {
+    let permission = Permissions::new(&request)?;
+
+    let data = Json::<Vec<RepositoryId>>::from_request(request, &ctx).await?;
+
+    let mut result = vec![];
+    for repository in data.0 {
+        permission.view_repository(&ctx.database, &repository).await?.require()?;
+        result.append(&mut Item::repository_trash_root(&ctx.database, &repository).await?);
     }
     Ok(Json(result))
 }

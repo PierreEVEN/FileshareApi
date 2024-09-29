@@ -1,5 +1,7 @@
 import {EventManager, GLOBAL_EVENTS} from "../event_manager";
 import {MemoryTracker} from "../memory_handler";
+import {DirectoryContentProvider, RepositoryRootProvider} from "./providers";
+import {Repository} from "../repository";
 
 class ContentFilter extends MemoryTracker {
     constructor() {
@@ -41,8 +43,8 @@ class ContentProvider extends MemoryTracker {
         super(ContentProvider)
 
         this.events = new EventManager();
-        this._add_event = GLOBAL_EVENTS.add('add_item', (item) => {
-            this._internal_add_item(item)
+        this._add_event = GLOBAL_EVENTS.add('add_item', async (item) => {
+            await this._internal_add_item(item)
         })
     }
 
@@ -53,7 +55,7 @@ class ContentProvider extends MemoryTracker {
         return [];
     }
 
-    _internal_add_item(item) {
+    async _internal_add_item(item) {
 
     }
 
@@ -122,6 +124,11 @@ class ViewportContent extends MemoryTracker {
 
         this._listener_remove = GLOBAL_EVENTS.add('remove_item', async (item) => {
             this._remove_entry(item);
+
+            if (this._provider instanceof DirectoryContentProvider) {
+                if (await this._provider.directory.is_in_parents(item.id) || this._provider.directory.id === item.id)
+                    await this.set_content_provider(new RepositoryRootProvider(await Repository.find(this._provider.directory.repository)))
+            }
         })
     }
 
@@ -171,8 +178,7 @@ class ViewportContent extends MemoryTracker {
             if (this._filter) {
                 if (this._filter.test(item))
                     this._add(item)
-            }
-            else
+            } else
                 this._add(item)
         })
         await this._regen_content();

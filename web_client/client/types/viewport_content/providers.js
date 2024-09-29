@@ -1,5 +1,4 @@
 import {ContentProvider} from "./viewport_content";
-import {APP} from "../../app";
 
 class RepositoryRootProvider extends ContentProvider {
     /**
@@ -34,6 +33,9 @@ class DirectoryContentProvider extends ContentProvider {
     constructor(directory) {
         super();
         console.assert(!directory.is_regular_file, "Cannot open a file as a directory");
+        /**
+         * @type {FilesystemItem}
+         */
         this.directory = directory;
     }
 
@@ -70,18 +72,19 @@ class TrashContentProvider extends ContentProvider {
 
     async get_content() {
         const items = [];
-        for (const item_id of await this.repository.content.root_content()) {
+        for (const item_id of await this.repository.content.trash_content()) {
             const item = await this.repository.content.fetch_item(item_id);
-            if (item.in_trash)
-                items.push(item);
+            items.push(item);
         }
         return items;
     }
 
-    _internal_add_item(item) {
-        super._internal_add_item(item);
-        if (item.in_trash && item.parent_item === this.repository.id)
-            this.events.broadcast('add', item);
+    async _internal_add_item(item) {
+        await super._internal_add_item(item);
+        if (item.in_trash && item.repository === this.repository.id) {
+            if (!item.parent_item || !(await item.filesystem().fetch_item(item.parent_item)).in_trash)
+                this.events.broadcast('add', item);
+        }
     }
 
     delete() {

@@ -13,7 +13,8 @@ async function delete_item(item, move_to_trash) {
     );
     if (move_to_trash)
         for (const item_id of items) {
-            set_item_to_trash(await fs.fetch_item(item_id), true);
+            item.in_trash = true;
+            await set_item_to_trash(await fs.fetch_item(item_id), true);
             await item.refresh();
         }
     else
@@ -30,7 +31,8 @@ async function restore_item(item) {
         [item.id]
     );
     for (const item_id of items) {
-        set_item_to_trash(await fs.fetch_item(item_id), false);
+        item.in_trash = false;
+        await set_item_to_trash(await fs.fetch_item(item_id), false);
         await item.refresh();
     }
 }
@@ -39,11 +41,15 @@ async function restore_item(item) {
  * @param item {FilesystemItem}
  * @param in_trash
  */
-function set_item_to_trash(item, in_trash) {
+async function set_item_to_trash(item, in_trash) {
     item.in_trash = in_trash;
     if (item.children)
         for (const child of item.children)
-            set_item_to_trash(item.filesystem().find(child), in_trash);
+            await set_item_to_trash(item.filesystem().find(child), in_trash);
+
+    if (in_trash && (await item.filesystem().trash_content()).has(item.id)) {
+        await item.refresh();
+    }
 }
 
 export {delete_item, restore_item}

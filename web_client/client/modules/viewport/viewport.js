@@ -25,6 +25,7 @@ class Viewport {
      */
     async set_displayed_repository(repository) {
         if (!this._viewport_object || repository !== this._viewport_object.repository) {
+            if (this._viewport_object)
             this.clear();
             this._viewport_object = new RepositoryViewport(repository, this._container);
         }
@@ -35,6 +36,7 @@ class Viewport {
         this._container.innerHTML = '';
         if (this._viewport_object)
             this._viewport_object.delete();
+        this._viewport_object = null;
     }
 }
 

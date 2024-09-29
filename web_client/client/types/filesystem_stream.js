@@ -105,6 +105,18 @@ class FilesystemItem {
         return result
     }
 
+    /**
+     * @param item_id {number}
+     * @return {Promise<boolean>}
+     */
+    async is_in_parents(item_id) {
+        if (item_id === this.parent_item)
+            return true;
+        if (this.parent_item)
+            return await (await this.filesystem().fetch_item(this.parent_item)).is_in_parents(item_id);
+        return false;
+    }
+
     async refresh() {
         const storage = this.filesystem();
         if (storage)
@@ -164,6 +176,12 @@ class FilesystemStream {
          * @private
          */
         this._roots = null;
+
+        /**
+         * @type {Set<number>}
+         * @private
+         */
+        this._trash_roots = null;
     }
 
     /**
@@ -223,6 +241,19 @@ class FilesystemStream {
     }
 
     /**
+     * @return {Promise<Set<number>>}
+     */
+    async trash_content() {
+        if (!this._trash_roots) {
+            this._trash_roots = new Set();
+            for (const item of await fetch_api(`repository/trash-content/`, 'POST', [this._repository.id])) {
+                await this.set_or_update_item(new FilesystemItem(item));
+            }
+        }
+        return this._trash_roots
+    }
+
+    /**
      * @param item {FilesystemItem}
      */
     async set_or_update_item(item) {
@@ -232,24 +263,35 @@ class FilesystemStream {
         this._items.set(item.id, item);
         if (item.parent_item !== undefined) {
             const parent = await this.fetch_item(item.parent_item);
+            if (item.in_trash && !parent.in_trash && this._trash_roots)
+                this._trash_roots.add(item.id);
             if (!parent.children)
                 await parent.filesystem().directory_content(parent.id);
             else
                 parent.children.add(item.id);
-        } else if (this._roots) {
-            this._roots.add(item.id);
+        } else {
+            if (item.in_trash) {
+                if (this._trash_roots)
+                    this._trash_roots.add(item.id);
+            }
+            if (this._roots)
+                this._roots.add(item.id);
         }
         GLOBAL_EVENTS.broadcast('add_item', item);
     }
+
 
     /**
      * @param item {FilesystemItem}
      * @return {Promise<void>}
      */
     async remove_item(item) {
+        if (this._trash_roots)
+            this._trash_roots.delete(item.id);
         if (item.parent_item) {
             const parent = await this.fetch_item(item.parent_item);
-            parent.children.delete(item.id);
+            if (parent.children)
+                parent.children.delete(item.id);
         } else if (this._roots) {
             this._roots.delete(item.id);
         }

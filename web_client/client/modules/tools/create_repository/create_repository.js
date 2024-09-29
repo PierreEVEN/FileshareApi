@@ -15,7 +15,7 @@ async function create_repository() {
             );
 
             for (const repository of repositories) {
-                new Repository(repository);
+                Repository.new(repository);
             }
 
             MODAL.close();
