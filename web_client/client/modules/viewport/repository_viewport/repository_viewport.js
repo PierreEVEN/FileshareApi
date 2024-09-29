@@ -19,6 +19,10 @@ import {CarouselList} from "./carousel/list/carousel_list";
 require('./repository_viewport.scss')
 
 class RepositoryViewport extends MemoryTracker {
+    /**
+     * @param repository {Repository}
+     * @param container {HTMLElement}
+     */
     constructor(repository, container) {
         super(RepositoryViewport);
         const div = require('./repository_viewport.hbs')({}, {
@@ -37,6 +41,9 @@ class RepositoryViewport extends MemoryTracker {
             }
         });
 
+        /**
+         * @type {Repository}
+         */
         this.repository = repository;
         this._elements = div.elements;
 

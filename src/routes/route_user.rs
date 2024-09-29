@@ -14,7 +14,7 @@ use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
-use log::info;
+use tracing::log::info;
 
 pub struct UserRoutes {}
 

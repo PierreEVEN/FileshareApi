@@ -1,4 +1,3 @@
-use std::fs::File;
 use crate::app_ctx::AppCtx;
 use crate::database::item::{DirectoryData, Item, ItemId, Trash};
 use crate::database::object::Object;
@@ -14,13 +13,12 @@ use crate::utils::upload::Upload;
 use anyhow::Error;
 use axum::body::Body;
 use axum::extract::{FromRequest, Path, Request, State};
-use axum::http::{header, HeaderName, StatusCode};
+use axum::http::{header, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use regex::Regex;
 use serde::Deserialize;
-use std::str::FromStr;
 use std::sync::Arc;
 use tokio_util::io::ReaderStream;
 
@@ -178,7 +176,7 @@ async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
     let connected_user = require_connected_user!(request);
     let headers = request.headers().clone();
     let id = if let Some(content_id) = headers.get("Content-Id") {
-        usize::from_str(content_id.to_str()?)?
+        content_id.to_str()?.to_string()
     } else {
         let upload = Upload::new(headers, connected_user.id().clone())?;
         ctx.add_upload(upload).await?
@@ -186,13 +184,13 @@ async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
 
 
     let mut state = {
-        let found_upload = ctx.get_upload(id).await?;
+        let found_upload = ctx.get_upload(&id).await?;
         let mut upload = found_upload.write().await;
         upload.push_data(request.into_body()).await?;
         upload.get_state()
     };
     if state.finished {
-        state = ctx.finalize_upload(id, &ctx.database).await?;
+        state = ctx.finalize_upload(&id, &ctx.database).await?;
     }
     Ok(Json(state))
 }

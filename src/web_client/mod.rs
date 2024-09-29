@@ -7,7 +7,7 @@ use std::sync::Arc;
 use anyhow::Error;
 use axum::body::Body;
 use axum::extract::{Path, Request, State};
-use axum::http::StatusCode;
+use axum::http::{StatusCode};
 use axum::middleware::Next;
 use axum::response::{Html, IntoResponse, Response};
 use axum::{middleware, Router};
@@ -129,8 +129,8 @@ pub async fn middleware_get_path_context(State(ctx): State<Arc<AppCtx>>, Path(Pa
             path.pop_front().ok_or(Error::msg("Expected user in path"))?;
             path.pop_front().ok_or(Error::msg("Expected repository in path"))?;
             let action = path.pop_front().ok_or(Error::msg("Expected action in path"))?;
-            *context.action.write().await = Some(action.into());            
-            
+            *context.action.write().await = Some(action.into());
+
             if !path.is_empty() {
                 let mut enc_path = vec![];
                 for item in path {
@@ -153,13 +153,15 @@ struct ClientAppConfig {
     pub display_user: Option<User>,
     pub display_repository: Option<Repository>,
     pub display_item: Option<Item>,
-    pub in_trash: bool
+    pub in_trash: bool,
 }
 
 async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
-    
     let mut client_config = ClientAppConfig {
-        origin: format!("{}://{}", if ctx.config.use_tls { "https" } else { "http" }, ctx.config.address),//request.headers().get("host").ok_or(ServerError::msg(StatusCode::INTERNAL_SERVER_ERROR, format!("invalid host in request headers : {:?}", request.headers())))?.to_str()?),
+        origin: format!("{}://{}", if ctx.config.use_tls { "https" } else { "http" }, match request.headers().get("host") {
+            None => { ctx.config.address.as_str() }
+            Some(host) => { host.to_str()? }
+        }),
         ..Default::default()
     };
 
@@ -175,7 +177,7 @@ async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<i
     get_display_item!(request, item, {
         client_config.display_item = Some(item.clone());
     });
-    
+
     if let Some(action) = get_action!(request) {
         client_config.in_trash = action == "trash";
     }

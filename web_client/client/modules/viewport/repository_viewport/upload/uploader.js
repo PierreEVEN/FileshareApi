@@ -90,9 +90,19 @@ class Uploader {
             if (!found_item)
                 break;
 
-            this.processor = new UploadProcessor(found_item, this.viewport.repository);
             found_item.remove();
-            await this.processor.upload();
+
+            if (found_item.parent instanceof UploadItem) {
+                await found_item.parent.create_directory(this.viewport.repository.content);
+            }
+            const existing = await this.viewport.repository.content.find_child(found_item.name, found_item.parent.directory);
+            if (existing) {
+                console.warn("Existe deja !!")
+                continue
+            }
+
+            this.processor = new UploadProcessor(found_item, this.viewport.repository);
+            await this.processor.upload().catch(() => {});
         } while (true);
         this.viewport.close_upload_container();
     }

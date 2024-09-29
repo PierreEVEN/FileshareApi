@@ -8,9 +8,7 @@ mod compatibility_upgrade;
 
 use std::{env, thread};
 use std::net::{SocketAddr};
-use std::ops::Deref;
 use std::str::FromStr;
-use std::string::FromUtf8Error;
 use std::sync::Arc;
 use axum::{middleware, Router};
 use axum::body::{Body, Bytes};

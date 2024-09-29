@@ -9,6 +9,9 @@ const mime = require('mime');
 class UploadItem {
     constructor(data) {
         this.is_regular_file = data.is_regular_file;
+        /**
+         * @type {String}
+         */
         this.name = data.name;
         /**
          * @type {File}
@@ -17,7 +20,13 @@ class UploadItem {
         this.children = new Map();
         this.expanded = false;
         this.mimetype = data.mimetype;
+        /**
+         * @type {UploadItem|Uploader}
+         */
         this.parent = null;
+        /**
+         * @type {FilesystemItem}
+         */
         this.directory = data.directory
     }
 

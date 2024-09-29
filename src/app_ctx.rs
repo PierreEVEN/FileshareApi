@@ -10,7 +10,7 @@ use std::sync::Arc;
 pub struct AppCtx {
     pub config: Config,
     pub database: Database,
-    uploads: tokio::sync::RwLock<HashMap<usize, Arc<tokio::sync::RwLock<Upload>>>>,
+    uploads: tokio::sync::RwLock<HashMap<String, Arc<tokio::sync::RwLock<Upload>>>>,
 }
 
 impl AppCtx {
@@ -24,34 +24,34 @@ impl AppCtx {
         })
     }
 
-    pub async fn add_upload(&self, mut upload: Upload) -> Result<usize, Error> {
+    pub async fn add_upload(&self, mut upload: Upload) -> Result<String, Error> {
         let mut uploads = self.uploads.write().await;
 
         let mut id;
         loop {
-            id = random::<usize>();
+            id = random::<usize>().to_string();
             if !uploads.contains_key(&id) {
                 break;
             }
         }
 
-        upload.id = id;
+        upload.id = id.clone();
         if upload.get_file_path().exists() {
             fs::remove_file(upload.get_file_path())?;
         }
-        uploads.insert(id, Arc::new(tokio::sync::RwLock::new(upload)));
+        uploads.insert(id.clone(), Arc::new(tokio::sync::RwLock::new(upload)));
         Ok(id)
     }
 
-    pub async fn get_upload(&self, id: usize) -> Result<Arc<tokio::sync::RwLock<Upload>>, Error> {
-        match self.uploads.read().await.get(&id) {
+    pub async fn get_upload(&self, id: &String) -> Result<Arc<tokio::sync::RwLock<Upload>>, Error> {
+        match self.uploads.read().await.get(id) {
             None => { Err(Error::msg("Upload not found")) }
             Some(upload) => { Ok(upload.clone()) }
         }
     }
 
-    pub async fn finalize_upload(&self, id: usize, db: &Database) -> Result<UploadState, Error> {
-        let item = self.uploads.write().await.remove(&id).ok_or(Error::msg("Upload not found"))?;
+    pub async fn finalize_upload(&self, id: &String, db: &Database) -> Result<UploadState, Error> {
+        let item = self.uploads.write().await.remove(id).ok_or(Error::msg("Upload not found"))?;
         let mut upload = item.write().await;
         upload.store(db).await?;
         Ok(upload.get_state())

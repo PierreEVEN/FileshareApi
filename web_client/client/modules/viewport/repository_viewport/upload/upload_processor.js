@@ -68,7 +68,7 @@ class UploadProcessor {
     }
 
     _fail(message) {
-        print_message("error", `Error`, message);
+        print_message("error", `Failed tu upload ${this.item.name}`, message);
         this.upload_failed();
     }
 

@@ -118,7 +118,9 @@ macro_rules! make_wrapped_db_type {
 #[macro_export]
 macro_rules! make_database_id {
     ($T:ident) => {
-        crate::make_wrapped_db_type!($T, crate::database::DatabaseId, serde::Serialize, serde::Deserialize, Default, std::fmt::Debug, Clone);
+        crate::make_wrapped_db_type!($T, crate::database::DatabaseId, Default, std::fmt::Debug, Clone);
+
+
         impl std::ops::Deref for $T {
             type Target = crate::database::DatabaseId;
             fn deref(&self) -> &Self::Target {
@@ -156,6 +158,35 @@ macro_rules! make_database_id {
         impl std::fmt::Display for $T {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 <crate::database::DatabaseId as std::fmt::Display>::fmt(&self.0, f)
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for $T {
+            fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<$T, D::Error> {
+                struct DbIdVisitor;
+                impl<'de> serde::de::Visitor<'de> for DbIdVisitor {
+                    type Value = $T;
+
+                    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        formatter.write_str("`int64 id in string`")
+                    }
+
+                    fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<$T, E> {
+                        use std::str::FromStr;
+                        Ok($T(match crate::database::DatabaseId::from_str(value) {
+                            Ok(id) => { id }
+                            Err(err) => { return Err(serde::de::Error::custom(format!("Failed to parse id : {}", err))) }
+                        }))
+                    }
+                }
+                deserializer.deserialize_string(DbIdVisitor)
+            }
+        }
+
+
+        impl serde::Serialize for $T {
+            fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                serializer.serialize_str(self.0.to_string().as_str())
             }
         }
     };

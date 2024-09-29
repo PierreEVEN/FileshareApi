@@ -14,7 +14,6 @@ use tokio_postgres::Row;
 
 make_database_id!(ItemId);
 
-
 #[derive(Debug, FromRow, Serialize, Clone)]
 pub struct FileData {
     pub size: i64,
@@ -145,15 +144,15 @@ impl Serialize for Item {
 pub enum Trash {
     Yes,
     No,
-    Both
+    Both,
 }
 
 impl Display for Trash {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Trash::Yes => {"AND in_trash"}
-            Trash::No => {"AND NOT in_trash"}
-            Trash::Both => {""}
+            Trash::Yes => { "AND in_trash" }
+            Trash::No => { "AND NOT in_trash" }
+            Trash::Both => { "" }
         })
     }
 }

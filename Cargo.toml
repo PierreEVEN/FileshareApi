@@ -10,7 +10,7 @@ axum-server = { version = "0.7.1", features = ["tls-rustls"] }
 serde = { version = "1.0.209", features = ["derive"] }
 serde_json = "1.0.128"
 tracing-subscriber = "0.3.18"
-tokio = { version = "1.40.0", features = ["rt", "rt-multi-thread", "macros", "process"] }
+tokio = { version = "1.40.0", features = ["rt-multi-thread", "macros", "process"] }
 anyhow = "1.0.86"
 rustls = "0.23.12"
 tracing = "0.1.40"
@@ -25,10 +25,7 @@ which = "6.0.3"
 tokio-util = "0.7.12"
 mime_guess = "2.0.5"
 regex = "1.10.6"
-jobsys = "0.2.0"
 num_cpus = "1.16.0"
 futures = "0.3.30"
-tokio-stream = "0.1.16"
 sha2 = "0.10.8"
-log = "0.4.22"
-http-body-util = "0.1.0"
+http-body-util = "0.1.2"

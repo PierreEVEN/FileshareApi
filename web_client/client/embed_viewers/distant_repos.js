@@ -45,11 +45,14 @@ function get(item) {
                 case 'css':
                 case 'x-css':
                     return `<document-code src="${url}" class="language-css"></document-code>`
+                case 'rust':
+                case 'x-rust':
+                    return `<document-code src="${url}" class="language-rust"></document-code>`
                 case 'javascript':
                 case 'x-javascript':
                     return `<document-code src="${url}" class="language-js"></document-code>`
             }
-            return `<document-embed src="${url}" class="language-plain"></document-embed>`
+            return `<document-code src="${url}" class="language-plain"></document-code>`
     }
 
     return `<img class="item-small" src="${get_mime_icon_path(item.mimetype)}" alt="document: ${item.name}"/>`;

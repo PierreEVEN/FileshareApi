@@ -18,7 +18,7 @@ use tokio::io::AsyncReadExt;
 use tokio_util::io::StreamReader;
 
 pub struct Upload {
-    pub id: usize,
+    pub id: String,
     item: Item,
     file: FileData,
     bytes_read: usize,
@@ -48,7 +48,7 @@ impl Upload {
         item.owner = owner.clone();
 
         Ok(Self {
-            id: 0,
+            id: String::default(),
             item,
             file: FileData {
                 size: i64::from_str(headers.get("Content-Size").ok_or(Error::msg("missing Content-Size header"))?.to_str()?)?,
@@ -109,7 +109,7 @@ impl Upload {
     pub fn get_state(&self) -> UploadState {
         let finished = self.bytes_read == self.file.size as usize;
         UploadState {
-            id: self.id,
+            id: self.id.clone(),
             finished,
             item: if finished { Some(self.item.clone()) } else { None },
         }
@@ -142,7 +142,7 @@ impl Upload {
 
 #[derive(Serialize, Debug)]
 pub struct UploadState {
-    pub id: usize,
+    pub id: String,
     pub finished: bool,
     pub item: Option<Item>,
 }
