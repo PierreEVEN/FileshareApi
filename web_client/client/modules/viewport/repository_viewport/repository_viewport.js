@@ -116,18 +116,28 @@ class RepositoryViewport extends MemoryTracker {
 
     close_upload_container() {
         this._elements.upload_button.style.display = 'flex';
+        this._elements.upload_container.innerHTML = '';
+        if (this.uploader)
+            this.uploader.delete();
+        this.uploader = null;
     }
 
     open_upload_container() {
         this._elements.upload_container.innerHTML = '';
+        if (this.uploader)
+            this.uploader.delete();
         this.uploader = new Uploader(this._elements.upload_container, this)
         this.uploader.expand(true);
     }
 
     delete() {
         super.delete();
+        if (this.uploader)
+            this.uploader.delete();
+        this.uploader = null;
         if (this.content)
             this.content.delete();
+        this.content = null;
         this.close_carousel();
     }
 

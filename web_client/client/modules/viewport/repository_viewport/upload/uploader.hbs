@@ -1,7 +1,7 @@
 <div id="uploader-container">
     <div id="uploader" {{object "uploader"}}>
         <div class="header" onclick="{{ctx "expand(event)"}}">
-            <p>120 fichiers (256Go)</p>
+            <p {{object "infos"}}></p>
             <div class="details">
                 <p class="speed">2.5Mo/s</p>
                 <p class="time">~2h</p>
@@ -20,16 +20,17 @@
             <div class="infos">
                 <div class="title">
                     <div class="name-line">
-                        <p class="name">La fête du slip.mp3</p>
-                        <button class="close"><img src="/public/images/icons/icons8-pause-30.png"></button>
+                        <p class="name" {{object "upload_file_name"}}></p>
+                        <button class="close" onclick="{{ctx "pause()"}}"><img src="/public/images/icons/icons8-pause-30.png" {{object "pause_img"}}></button>
                     </div>
-                    <p class="size">50Mo</p>
+                    <p class="size" {{object "upload_file_size"}}></p>
                 </div>
                 <div class="progress">
                     <div class="progress-bar">
-                        <div class="progress-status"></div>
+                        <div class="progress-status-after" {{object "progress_after"}}></div>
+                        <div class="progress-status" {{object "progress"}}></div>
                     </div>
-                    <p class="progress-percents">75%</p>
+                    <p class="progress-percents" {{object "percents"}}></p>
                 </div>
             </div>
         </div>

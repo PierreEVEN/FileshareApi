@@ -27,13 +27,19 @@ class UploadItem {
         /**
          * @type {FilesystemItem}
          */
-        this.directory = data.directory
+        this.directory = data.directory;
+
+        this.total_items = this.file ? 1 : 0;
+        this.total_size = this.file ? this.file.size : 0;
     }
 
     instantiate(container) {
         this.div = require("./item.hbs")({data: this, directory: !this.is_regular_file}, {
             expand: () => {
                 this.set_expanded(!this.expanded)
+            },
+            remove: () => {
+                this.remove();
             }
         });
         this._elements = this.div.elements;
@@ -113,6 +119,13 @@ class UploadItem {
         if (this.expanded) {
             item.instantiate(this._elements.content)
         }
+        this.parent_add_stats(item.total_size, item.total_items);
+    }
+
+    parent_add_stats(size, count) {
+        this.parent.parent_add_stats(size, count);
+        this.total_items += count;
+        this.total_size += size;
     }
 
     _remove_child(name) {
@@ -125,6 +138,7 @@ class UploadItem {
         if (this.div)
             this.div.remove();
         this.parent._remove_child(this.name);
+        this.parent_add_stats(-this.total_size, -this.total_items);
     }
 
     /**

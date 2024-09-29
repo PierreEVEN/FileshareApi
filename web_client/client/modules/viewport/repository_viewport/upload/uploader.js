@@ -1,15 +1,19 @@
 import {UploadItem} from "./upload_item";
 import {DirectoryContentProvider} from "../../../../types/viewport_content/providers";
 import {UploadProcessor} from "./upload_processor";
+import {EventManager} from "../../../../types/event_manager";
+import {MemoryTracker} from "../../../../types/memory_handler";
+import {humanFileSize} from "../../../../common/tools/utils";
 
 require("./uploader.scss")
 
-class Uploader {
+class Uploader extends MemoryTracker {
     /**
      * @param container {HTMLElement}
      * @param viewport {RepositoryViewport}
      */
     constructor(container, viewport) {
+        super(Uploader);
         this.expanded = false;
         this.viewport = viewport;
         let div = require("./uploader.hbs")({}, {
@@ -17,18 +21,27 @@ class Uploader {
             expand: (e) => {
                 e.preventDefault();
                 this.expand(!this.expanded)
+            },
+            pause: () => {
+                this.set_pause(!this.pause);
             }
         });
+        this.pause = false;
         this._elements = div.elements;
+        this.total_items = 0;
+        this.total_size = 0;
         container.append(div);
         /**
          * @type {Map<string, UploadItem>}
          */
         this.children = new Map();
+        this.handled_directories = new Map();
 
         this.uploading = false;
-
-        this.handled_directories = new Map();
+        this.pause = false;
+        this.event = new EventManager();
+        this.total_to_upload = 0;
+        this.uploaded = 0;
     }
 
     expand(expanded) {
@@ -41,6 +54,14 @@ class Uploader {
             this._elements.uploader.classList.remove("expanded")
     }
 
+    set_pause(pause) {
+        if (this.pause === pause)
+            return;
+        this._elements.pause_img.src = pause ? "/public/images/icons/icons8-play-64.png" : "/public/images/icons/icons8-pause-30.png";
+        this.pause = pause;
+        this.event.broadcast('pause', this.pause);
+    }
+
     set_uploading(uploading) {
         if (this.uploading === uploading)
             return;
@@ -49,7 +70,7 @@ class Uploader {
         if (uploading) {
             this._elements.upload_button.style.display = 'none';
             this._elements.upload_in_progress.style.display = 'flex';
-            this.start_upload();
+            this.start_upload().catch(err => console.error("upload failed :", err));
         } else {
             this._elements.upload_in_progress.style.display = 'none';
             if (this.children.size > 0)
@@ -57,7 +78,10 @@ class Uploader {
         }
     }
 
+
     async start_upload() {
+
+        this.total_to_upload = this.total_size;
 
         /**
          * @param root {UploadItem}
@@ -101,20 +125,36 @@ class Uploader {
                 continue
             }
 
-            this.processor = new UploadProcessor(found_item, this.viewport.repository);
-            await this.processor.upload().catch(() => {});
+            if (this.processor)
+                this.processor.delete()
+            this.processor = new UploadProcessor(found_item, this);
+            this._elements.upload_file_name.innerText = found_item.name;
+            this._elements.upload_file_size.innerText = humanFileSize(found_item.file.size);
+            await this.processor.upload().catch(() => {
+            });
+            this.uploaded += found_item.file.size;
         } while (true);
         this.viewport.close_upload_container();
+    }
+
+    /**
+     * @param uploaded {number}
+     * @param total {number}
+     */
+    progress(uploaded, total) {
+        const current = (this.uploaded + uploaded) / this.total_to_upload;
+        const after = (this.uploaded + total) / this.total_to_upload;
+        this._elements.progress.style.width = `${current * 100}%`;
+        this._elements.progress_after.style.width = `${after * 100}%`;
+        this._elements.percents.innerText = `${Math.trunc(current * 100)}%`
     }
 
     /**
      * @param item {UploadItem}
      */
     async add_item(item) {
-
         const provider = this.viewport.content.get_content_provider();
         if (provider && provider instanceof DirectoryContentProvider) {
-
             /**
              * @type {FilesystemItem}
              */
@@ -127,10 +167,17 @@ class Uploader {
             item.parent = this;
             this.children.set(item.name, item);
             item.instantiate(this._elements.file_list);
+            this.parent_add_stats(item.total_size, item.total_items);
         }
 
         if (this.children.size > 0 && !this.uploading)
             this._elements.upload_button.style.display = 'flex';
+    }
+
+    parent_add_stats(size, count) {
+        this.total_items += count;
+        this.total_size += size;
+        this._elements.infos.innerText = `${this.total_items} fichiers (${humanFileSize(this.total_size)})`;
     }
 
     /**

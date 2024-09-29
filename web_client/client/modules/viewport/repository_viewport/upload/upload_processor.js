@@ -2,6 +2,7 @@ import {print_message} from "../../../../layout/widgets/components/message_box";
 import {FilesystemItem} from "../../../../types/filesystem_stream";
 import {UploadItem} from "./upload_item";
 import {EncString} from "../../../../types/encstring";
+import {MemoryTracker} from "../../../../types/memory_handler";
 
 class UploadState {
     constructor(data) {
@@ -12,13 +13,14 @@ class UploadState {
     }
 }
 
-class UploadProcessor {
+class UploadProcessor extends MemoryTracker {
 
     /**
      * @param item {UploadItem}
-     * @param repository {Repository}
+     * @param uploader {Uploader}
      */
-    constructor(item, repository) {
+    constructor(item, uploader) {
+        super(UploadProcessor);
         /**
          * @type {UploadItem}
          */
@@ -26,7 +28,8 @@ class UploadProcessor {
         /**
          * @type {Repository}
          */
-        this.repository = repository;
+        this.repository = uploader.viewport.repository;
+        this.uploader = uploader;
 
         this.upload_signal = new Promise((resolve, reject) => {
             this.upload_finished = resolve;
@@ -34,6 +37,18 @@ class UploadProcessor {
         })
 
         this._cursor = 0;
+
+        this.waiting_unpause = false;
+        this.pause_event = uploader.event.add('pause', (pause) => {
+            if (!pause && this.waiting_unpause) {
+                this._send_next();
+            }
+        })
+    }
+
+    delete() {
+        super.delete();
+        this.pause_event.remove();
     }
 
     _init() {
@@ -53,6 +68,7 @@ class UploadProcessor {
                     return this._fail(this._request.response)
                 this.state = new UploadState(JSON.parse(this._request.response));
                 if (this.state.finished) {
+                    this.uploader.progress(this.item.file.size, this.item.file.size);
                     return this.upload_finished();
                 }
                 else {
@@ -62,8 +78,9 @@ class UploadProcessor {
         };
 
         this._request.upload.addEventListener("progress", (event) => {
+            this.uploader.progress(event.loaded, event.total);
+            event.loaded
         });
-
         this._send_next();
     }
 
@@ -75,7 +92,11 @@ class UploadProcessor {
 
     static MAX_BATCH_SIZE = 50 * 1024 * 1024;
     _send_next() {
-
+        if (this.uploader.pause) {
+            this.waiting_unpause = true;
+            return;
+        }
+        this.waiting_unpause = false;
         const start = this._cursor;
         this._cursor = Math.min(this._cursor + UploadProcessor.MAX_BATCH_SIZE, this.item.file.size)
 
