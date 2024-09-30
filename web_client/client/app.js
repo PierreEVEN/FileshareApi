@@ -23,7 +23,11 @@ class FileshareApp {
          * @type {HTMLElement}
          * @private
          */
-        const layout = require('./app.hbs')({}, {});
+        const layout = require('./app.hbs')({}, {
+            close_mobile: () => {
+                this._side_bar.show_mobile();
+            }
+        });
         document.body.append(layout);
 
         /**
@@ -49,6 +53,13 @@ class FileshareApp {
          * @private
          */
         this._side_bar = new SideBar(this, this._elements.side_bar);
+
+        this._side_bar.events.add('show_mobile', (show) => {
+            if (show)
+                layout.elements.mobile_bg.classList.add('selected')
+            else
+                layout.elements.mobile_bg.classList.remove('selected')
+        })
 
         this.state = new State(this);
 

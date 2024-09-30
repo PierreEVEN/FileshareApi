@@ -4,7 +4,7 @@ import {Repository} from "../../types/repository";
 import {User} from "../../types/user";
 import {RepositoryTree} from "./repository_tree/repository_tree";
 import {context_menu_my_repositories} from "../context_menu/contexts/context_my_repositories";
-import {GLOBAL_EVENTS} from "../../types/event_manager";
+import {EventManager, GLOBAL_EVENTS} from "../../types/event_manager";
 
 require('./side_bar.scss')
 
@@ -76,7 +76,10 @@ class SideBar {
             }
         });
 
+        this.show_menu_mobile = false;
         this.selected_div = null;
+
+        this.events = new EventManager();
     }
 
     async expand_my_repositories(expanded) {
@@ -120,7 +123,12 @@ class SideBar {
     }
 
     show_mobile() {
-        this.div.parentElement.style.display = 'flex';
+        this.show_menu_mobile = !this.show_menu_mobile;
+        if (this.show_menu_mobile)
+            this.div.parentElement.style.display = 'flex';
+        else
+            this.div.parentElement.style.display = 'none';
+        this.events.broadcast('show_mobile', this.show_menu_mobile);
     }
 
     /**

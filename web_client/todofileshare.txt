@@ -2,8 +2,6 @@
 
 - sidebar
     - cacher les fleches si pas d'enfants
-- toolbar
-    - faire le design de la toolbar
 - upload
     - upload : mode die
 
