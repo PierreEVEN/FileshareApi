@@ -96,6 +96,8 @@ async fn new_directory(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
         item.owner = user.id().clone();
         item.directory = Some(DirectoryData {
             open_upload: false,
+            num_items: 0,
+            content_size: 0,
         });
 
         item.push(&ctx.database).await?;

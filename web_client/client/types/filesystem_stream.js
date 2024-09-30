@@ -69,11 +69,31 @@ class FilesystemItem {
              * @type number
              */
             this.timestamp = data.timestamp;
+
+            /**
+             * @type number
+             */
+            this.num_items = 1;
+
+            /**
+             * @type number
+             */
+            this.content_size = data.size;
         } else {
             /**
              * @type boolean
              */
             this.open_upload = data.open_upload;
+
+            /**
+             * @type number
+             */
+            this.num_items = data.num_items;
+
+            /**
+             * @type number
+             */
+            this.content_size = data.content_size;
         }
 
 

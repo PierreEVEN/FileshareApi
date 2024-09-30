@@ -25,6 +25,8 @@ pub struct FileData {
 #[derive(Debug, FromRow, Serialize, Clone)]
 pub struct DirectoryData {
     pub open_upload: bool,
+    pub num_items: i64,
+    pub content_size: i64,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -64,7 +66,9 @@ impl FromRow for Item {
             })
         } else if let Ok(open_upload) = row.try_get::<&str, bool>("open_upload") {
             item.directory = Some(DirectoryData {
-                open_upload
+                open_upload,
+                num_items: row.get::<&str, i64>("num_items"),
+                content_size: row.get::<&str, i64>("content_size"),
             })
         } else {
             panic!("Parsed item is neither a file or a directory : missing data");
@@ -95,7 +99,9 @@ impl FromRow for Item {
             })
         } else if let Ok(open_upload) = row.try_get::<&str, bool>("open_upload") {
             item.directory = Some(DirectoryData {
-                open_upload
+                open_upload,
+                num_items: row.try_get::<&str, i64>("num_items")?,
+                content_size: row.try_get::<&str, i64>("content_size")?,
             })
         }
         Ok(item)
@@ -123,6 +129,8 @@ impl Serialize for Item {
         state.serialize_field("in_trash", &self.in_trash)?;
         if let Some(directory) = &self.directory {
             state.serialize_field("open_upload", &directory.open_upload)?;
+            state.serialize_field("content_size", &directory.content_size)?;
+            state.serialize_field("num_items", &directory.num_items)?;
             state.serialize_field("is_regular_file", &false)?;
         } else {
             match &self.file {

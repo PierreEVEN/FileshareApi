@@ -15,6 +15,7 @@ import {ViewportToolbar} from "./toolbar/toolbar";
 import {Carousel} from "./carousel/carousel";
 import {Repository} from "../../../types/repository";
 import {CarouselList} from "./carousel/list/carousel_list";
+import {humanFileSize} from "../../../common/tools/utils";
 
 require('./repository_viewport.scss')
 
@@ -51,12 +52,19 @@ class RepositoryViewport extends MemoryTracker {
 
         this._visible_items = new Map();
 
+        let content_num_items = 0;
+        let content_total_size = 0;
+
         this.content.events.add('add', (item) => {
             this._visible_items.set(item.id, new ItemView(item, this._elements.content, {
                 clicked: async () => {
                     await APP.set_display_item(item);
                 }
             }))
+
+            content_total_size += item.content_size;
+            content_num_items += item.num_items;
+            this._elements.footer_text.innerText = `${content_num_items} fichiers - ${humanFileSize(content_total_size)}`
         });
 
         this.toolbar = new ViewportToolbar(div.elements.toolbar, this.repository);
@@ -65,6 +73,10 @@ class RepositoryViewport extends MemoryTracker {
             const div = this._visible_items.get(item.id);
             if (div)
                 div.remove();
+
+            content_total_size -= item.content_size;
+            content_num_items -= item.num_items;
+            this._elements.footer_text.innerText = `${content_num_items} fichiers - ${humanFileSize(content_total_size)}`
         })
 
         container.append(div);
