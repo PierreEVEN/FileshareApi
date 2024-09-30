@@ -75,8 +75,8 @@ impl Object {
     pub async fn equals_to_file(&self, db: &Database, file: PathBuf) -> Result<bool, Error> {
         if !self.data_path(db).exists() {
             error!("The object {:?} is not pointing to a valid file", self);
-            self.delete(db).await?;
-            return Ok(false);
+            fs::copy(file, self.data_path(db))?;
+            return Ok(true);
         }
 
         let mut reader1 = BufReader::new(File::open(self.data_path(db)).map_err(|err| Error::msg(format!("Cannot open object data : {err}")))?);
