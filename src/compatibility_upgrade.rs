@@ -1,6 +1,7 @@
 use anyhow::Error;
 use tracing::info;
 use crate::database::Database;
+use crate::database::object::ObjectId;
 use crate::query_fmt;
 
 #[macro_export]
@@ -28,9 +29,9 @@ impl Upgrade {
     }
 
     async fn clean_local_data(db: &Database) -> Result<(), Error> {
-        query_fmt!(db, "DELETE FROM SCHEMA_NAME.file");
-        query_fmt!(db, "DELETE FROM SCHEMA_NAME.directory_data");
-        query_fmt!(db, "DELETE FROM SCHEMA_NAME.items WHERE id IN (SELECT id FROM SCHEMA_NAME.items WHERE parent_item IS NULL)");
+        query_fmt!(db, "DELETE FROM SCHEMA_NAME.files");
+        query_fmt!(db, "DELETE FROM SCHEMA_NAME.directories");
+        query_fmt!(db, "DELETE FROM SCHEMA_NAME.items");
         query_fmt!(db, "DELETE FROM SCHEMA_NAME.objects");
         query_fmt!(db, "DELETE FROM SCHEMA_NAME.subscriptions");
         query_fmt!(db, "DELETE FROM SCHEMA_NAME.repository");
@@ -54,6 +55,9 @@ impl Upgrade {
                     SCHEMA_NAME.repository(id, url_name, owner, description, status, display_name, max_file_size, visitor_file_lifetime, allow_visitor_upload)
                     (SELECT id, name, owner, description, cast(status::TEXT AS SCHEMA_NAME.repository_status), display_name, max_file_size, visitor_file_lifetime, allow_visitor_upload
                     FROM OLD_SCHEMA_NAME.repos)");
+        let min_object = query_upgrade!(db, old_schema_name, "SELECT max(id) AS id FROM OLD_SCHEMA_NAME.repos;");
+        let min_object = min_object[0].try_get::<&str, ObjectId>("id")?;
+        query_fmt!(db, format!("ALTER SEQUENCE SCHEMA_NAME.repository_id_seq RESTART WITH {min_object}"));
         info!("Successfully upgraded 'repository' table");
         Ok(())
     }
@@ -72,6 +76,9 @@ impl Upgrade {
                     SCHEMA_NAME.items(id, repository, owner, name, is_regular_file, description, parent_item, absolute_path, in_trash)
                     (SELECT id, repos, owner, name, is_regular_file, description, parent_item, absolute_path, in_trash
                     FROM OLD_SCHEMA_NAME.items)");
+        let min_object = query_upgrade!(db, old_schema_name, "SELECT max(id) AS id FROM OLD_SCHEMA_NAME.items;");
+        let min_object = min_object[0].try_get::<&str, ObjectId>("id")?;
+        query_fmt!(db, format!("ALTER SEQUENCE SCHEMA_NAME.items_id_seq RESTART WITH {min_object}"));
 
         query_upgrade!(db, old_schema_name, "INSERT INTO
                     SCHEMA_NAME.objects(id, hash)
@@ -79,12 +86,15 @@ impl Upgrade {
                     FROM OLD_SCHEMA_NAME.file_data)");
 
         query_upgrade!(db, old_schema_name, "INSERT INTO
-                    SCHEMA_NAME.file(id, size, mimetype, timestamp, object)
+                    SCHEMA_NAME.files(id, size, mimetype, timestamp, object)
                     (SELECT id, size, mimetype, timestamp, id
                     FROM OLD_SCHEMA_NAME.file_data)");
+        let min_object = query_upgrade!(db, old_schema_name, "SELECT max(id) AS id FROM OLD_SCHEMA_NAME.file_data;");
+        let min_object = min_object[0].try_get::<&str, ObjectId>("id")?;
+        query_fmt!(db, format!("ALTER SEQUENCE SCHEMA_NAME.objects_id_seq RESTART WITH {min_object}"));
 
         query_upgrade!(db, old_schema_name, "INSERT INTO
-                    SCHEMA_NAME.directory_data(id, open_upload)
+                    SCHEMA_NAME.directories(id, open_upload)
                     (SELECT id, open_upload
                     FROM OLD_SCHEMA_NAME.directory_data)");
         

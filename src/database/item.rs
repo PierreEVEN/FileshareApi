@@ -175,7 +175,7 @@ impl Item {
     }
 
     pub async fn from_object(db: &Database, id: &ObjectId, filter: Trash) -> Result<Vec<Self>, Error> {
-        Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE id IN (SELECT id FROM SCHEMA_NAME.file WHERE object = $1) {filter}"), id))
+        Ok(query_objects!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE id IN (SELECT id FROM SCHEMA_NAME.files WHERE object = $1) {filter}"), id))
     }
 
     pub async fn from_parent(db: &Database, parent_directory: &ItemId, filter: Trash) -> Result<Vec<Self>, Error> {
@@ -220,14 +220,14 @@ impl Item {
         }
 
         if let Some(file) = &self.file {
-            query_fmt!(db, "INSERT INTO SCHEMA_NAME.file
+            query_fmt!(db, "INSERT INTO SCHEMA_NAME.files
                         (id, size, mimetype, timestamp, object) VALUES
                         ($1, $2, $3, $4, $5)
                         ON CONFLICT(id) DO UPDATE SET
                         id = $1, size = $2, mimetype = $3, timestamp = $4, object = $5;",
                 self.id, file.size, file.mimetype, file.timestamp, file.object);
         } else if let Some(directory) = &self.directory {
-            query_fmt!(db, "INSERT INTO SCHEMA_NAME.directory_data
+            query_fmt!(db, "INSERT INTO SCHEMA_NAME.directories
                         (id, open_upload) VALUES
                         ($1, $2)
                         ON CONFLICT(id) DO UPDATE SET

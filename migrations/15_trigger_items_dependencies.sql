@@ -2,9 +2,9 @@
 CREATE OR REPLACE FUNCTION SCHEMA_NAME.trigger_drop_item() RETURNS TRIGGER AS $$
 	BEGIN
 		IF OLD.is_regular_file THEN
-			DELETE FROM SCHEMA_NAME.file WHERE id = OLD.id;
+			DELETE FROM SCHEMA_NAME.files WHERE id = OLD.id;
 		ELSE
-			DELETE FROM SCHEMA_NAME.directory_data WHERE id = OLD.id;
+			DELETE FROM SCHEMA_NAME.directories WHERE id = OLD.id;
 		END IF;
 
 	    RETURN OLD;

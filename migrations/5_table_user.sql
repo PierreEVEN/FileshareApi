@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS SCHEMA_NAME.users (
-        id BIGSERIAL PRIMARY KEY,
+        id BIGINT PRIMARY KEY,
         email VARCHAR(200) UNIQUE,
         name VARCHAR(200) UNIQUE,
         login VARCHAR(200) UNIQUE,

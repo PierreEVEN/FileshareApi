@@ -9,11 +9,11 @@ CREATE OR REPLACE FUNCTION SCHEMA_NAME.remove_item(item BIGINT) RETURNS BIGINT[]
 			removed_objects := removed_objects || SCHEMA_NAME.remove_item(entry.id);
 		END LOOP;
 
-		SELECT object INTO removed_file FROM SCHEMA_NAME.file WHERE id = item;
+		SELECT object INTO removed_file FROM SCHEMA_NAME.files WHERE id = item;
 		DELETE FROM SCHEMA_NAME.items WHERE id = item;
 
 		IF removed_file IS NOT NULL THEN
-			SELECT id INTO entry FROM SCHEMA_NAME.file WHERE object = removed_file;
+			SELECT id INTO entry FROM SCHEMA_NAME.files WHERE object = removed_file;
 			IF entry IS NULL THEN
 				removed_objects := ARRAY_APPEND(removed_objects, removed_file);
 			END IF;
