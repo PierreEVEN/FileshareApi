@@ -154,7 +154,6 @@ class RepositoryTree {
 
     async expand_to_item(item, trash) {
         await this.expand_node(true);
-
         if (!item) {
             this.side_bar.select_div(trash ? this._elements.trash : this.root);
             return;

@@ -54,19 +54,25 @@ class SideBar {
          * @type {Map<number, RepositoryTree>}
          * @private
          */
-        this._my_repos_loaded = new Map();
+        this._my_repositories_loaded = new Map();
+
+        /**
+         * @type {Map<number, RepositoryTree>}
+         * @private
+         */
+        this._shared_repositories_loaded = new Map();
 
         this._add_repository = GLOBAL_EVENTS.add('add_repository', async (repository) => {
-            if (!APP_CONFIG.connected_user() && repository.owner === APP_CONFIG.connected_user().id) {
-                this._my_repos_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
+            if (!this._my_repositories_loaded.has(repository.id) && !APP_CONFIG.connected_user() && repository.owner === APP_CONFIG.connected_user().id) {
+                this._my_repositories_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
             }
         });
 
         this._remove_repository = GLOBAL_EVENTS.add('remove_repository', async (repository) => {
-            const my_repos_loaded = this._my_repos_loaded.get(repository.id);
+            const my_repos_loaded = this._my_repositories_loaded.get(repository.id);
             if (my_repos_loaded) {
                 my_repos_loaded.root.remove();
-                this._my_repos_loaded.delete(repository.id);
+                this._my_repositories_loaded.delete(repository.id);
             }
         });
 
@@ -77,12 +83,13 @@ class SideBar {
         if (this._my_repos_expanded === expanded)
             return;
         this._elements.my_repositories.innerHTML = '';
-        this._my_repos_loaded = new Map()
+        this._my_repositories_loaded = new Map()
         this._my_repos_expanded = expanded;
         if (expanded) {
             this._elements.div_my_repositories.classList.add('expand');
             for (const repository of await Repository.my_repositories()) {
-                this._my_repos_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
+                if (!this._my_repositories_loaded.has(repository.id))
+                    this._my_repositories_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
             }
         } else {
             this._elements.div_my_repositories.classList.remove('expand');
@@ -96,7 +103,10 @@ class SideBar {
         this._shared_expanded = expanded;
         if (expanded) {
             this._elements.div_shared.classList.add('expand');
-            await Repository.shared_repositories();
+            for (const repository of await Repository.shared_repositories()) {
+                if (!this._shared_repositories_loaded.has(repository.id))
+                    this._shared_repositories_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
+            }
         } else {
             this._elements.div_shared.classList.remove('expand');
         }
@@ -146,12 +156,11 @@ class SideBar {
      * @return {Promise<void>}
      */
     async expand_to(target_repository, item, trash) {
-        await Repository.my_repositories();
-        await Repository.shared_repositories();
-        let tree = this._my_repos_loaded.get(target_repository.id);
+        await this.expand_my_repositories(true);
+        let tree = this._my_repositories_loaded.get(target_repository.id);
         if (!tree)
             return;
-        await tree.expand_to_item(item, trash)
+        await tree.expand_to_item(item, trash);
     }
 
     select_div(div) {

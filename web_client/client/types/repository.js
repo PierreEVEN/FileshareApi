@@ -85,7 +85,6 @@ class Repository {
     }
 
     static new(data) {
-        console.log("add", data.id)
         const existing = Repository._LOCAL_CACHE.get(data.id);
         if (existing)
             return existing;
