@@ -46,7 +46,7 @@ pub struct BackendConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
-    pub address: String,
+    pub addresses: Vec<String>,
     pub backend_config: BackendConfig,
     pub server_mail_server: ServiceEmailConfig,
     pub web_client_config: WebClientConfig,
@@ -58,7 +58,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            address: String::from("127.0.0.1:3000"),
+            addresses: vec!["127.0.0.1:3000".to_string()],
             backend_config: BackendConfig {
                 file_storage_path: PathBuf::from("data").join("files"),
                 thumbnail_storage_path: PathBuf::from("data").join("thumbnails"),

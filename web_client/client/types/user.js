@@ -78,8 +78,8 @@ class User {
         if (current)
             return current;
         let user = await fetch_api("user/find/", "POST", [id]);
-        if (user)
-            return new User(user);
+        if (user.length !== 0)
+            return new User(user[0]);
         return null;
     }
 }

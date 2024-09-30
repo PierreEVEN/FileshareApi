@@ -18,6 +18,7 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::CookieJar;
 use axum_server::tls_rustls::RustlsConfig;
+use axum_server_dual_protocol::ServerExt;
 use tracing::{error, info, warn};
 use http_body_util::BodyExt;
 use crate::app_ctx::AppCtx;
@@ -38,6 +39,70 @@ async fn start_web_client(config: WebClientConfig) {
     };
 }
 
+#[derive(Default)]
+struct Server {
+    listeners: Vec<SocketAddr>,
+}
+
+impl Server {
+    pub fn add_listener(&mut self, addr: SocketAddr) {
+        self.listeners.push(addr);
+    }
+
+    pub async fn start(&self, config: &Config, router: Router) {
+        let mut spawned_threads = vec![];
+
+        let tls_config = if config.use_tls {
+            if !config.tls_config.certificate.exists() || !config.tls_config.private_key.exists() {
+                error!("Invalid tls certificate paths : cert:'{}' / key:'{}'", config.tls_config.certificate.display(), config.tls_config.private_key.display());
+                return;
+            }
+
+            Some(match RustlsConfig::from_pem_file(config.tls_config.certificate.clone(), config.tls_config.private_key.clone()).await {
+                Ok(config) => { config }
+                Err(err) => {
+                    error!("Invalid tls configuration : {err}");
+                    return;
+                }
+            })
+        } else {
+            None
+        };
+
+        for addr in self.listeners.clone() {
+            let router = router.clone();
+            let tls_config = tls_config.clone();
+            spawned_threads.push(tokio::spawn(async move {
+                if let Some(tls_config) = &tls_config {
+                    match axum_server_dual_protocol::bind_dual_protocol(addr, tls_config.clone())
+                        .set_upgrade(true)
+                        .serve(router.into_make_service())
+                        .await {
+                        Ok(_) => {}
+                        Err(err) => {
+                            error!("Cannot start secured web server : {err}");
+                        }
+                    };
+                } else {
+                    axum::serve(match tokio::net::TcpListener::bind(addr).await {
+                        Ok(listener) => { listener }
+                        Err(error) => {
+                            error!("Cannot start unsecured web server : {error}");
+                            return;
+                        }
+                    }, router).await.unwrap();
+                }
+            }))
+        }
+
+        for thread in spawned_threads {
+            match thread.await {
+                Ok(_) => {}
+                Err(err) => { error!("Server thread ended : {err}") }
+            };
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -101,42 +166,15 @@ async fn main() {
         .layer(middleware::from_fn(print_request_response));
 
     // Create http server
-    let addr = match SocketAddr::from_str(config.address.as_str()) {
-        Ok(addr) => { addr }
-        Err(err) => {
-            error!("Invalid server address '{}' : {err}", config.address);
-            return;
-        }
-    };
-    if config.use_tls {
-        if !config.tls_config.certificate.exists() || !config.tls_config.private_key.exists() {
-            error!("Invalid tls certificate paths : cert:'{}' / key:'{}'", config.tls_config.certificate.display(), config.tls_config.private_key.display());
-            return;
-        }
-
-        info!("listening on {}", addr);
-        let tls_config = match RustlsConfig::from_pem_file(config.tls_config.certificate.clone(), config.tls_config.private_key.clone()).await {
-            Ok(config) => { config }
-            Err(err) => {
-                error!("Invalid tls configuration : {err}");
-                return;
-            }
+    let mut server = Server::default();
+    for address in &config.addresses {
+        match SocketAddr::from_str(address.as_str()) {
+            Ok(addr) => { server.add_listener(addr); }
+            Err(err) => { error!("Invalid server address '{}' : {err}", address); }
         };
-        match axum_server::bind_rustls(addr, tls_config).serve(router.into_make_service()).await {
-            Ok(_) => {}
-            Err(err) => { error!("Failed to start server : {err}"); }
-        };
-    } else {
-        info!("[unsecured] listening on {}", addr);
-        let listener = match tokio::net::TcpListener::bind(addr).await {
-            Ok(listener) => { listener }
-            Err(error) => {
-                error!("Cannot start web server : {error}");
-                return;
-            }
-        };
-        axum::serve(listener, router).await.unwrap();
     }
+    server.start(&ctx.config, router).await;
+
     info!("Server closed !");
 }
 
@@ -167,18 +205,17 @@ async fn print_request_response(req: Request<Body>, next: Next) -> Result<impl I
     let path = req.uri().path().to_string();
     let mut res = next.run(req).await;
     if !res.status().is_success() {
-
         let (parts, body) = res.into_parts();
         let bytes = buffer_and_print("response", body).await?;
         let data_string = match String::from_utf8(bytes.as_ref().to_vec()) {
-            Ok(data) => {data}
+            Ok(data) => { data }
             Err(err) => {
                 error!("Failed to convert body to string : {}", err);
                 return Ok(Response::from_parts(parts, Body::from(bytes)));
             }
         };
         res = Response::from_parts(parts, Body::from(bytes));
-        
+
         warn!("{} ({}) : {}", res.status().to_string(), path, data_string);
     }
     Ok(res)
