@@ -113,12 +113,12 @@ class FilesystemItem {
     }
 
     /**
-     * @return {Repository}
+     * @return {FilesystemItem}
      */
     display_data() {
         const result = JSON.parse(JSON.stringify(this));
         result.name = this.name.plain()
-        result.description = this.description.plain()
+        result.description = this.description ? this.description.plain() : '';
         result.absolute_path = this.absolute_path.plain()
         if (this.mimetype)
             result.mimetype = this.mimetype.plain()

@@ -1,6 +1,7 @@
 import {ContextMenu, MenuAction} from "../context_menu";
 import {create_directory} from "../../tools/create_directory/create_directory";
 import {delete_item, restore_item} from "../../tools/delete_item/delete_item";
+import {edit_item} from "../../tools/edit_item/edit_item";
 
 /**
  * @param item {FilesystemItem}
@@ -8,6 +9,7 @@ import {delete_item, restore_item} from "../../tools/delete_item/delete_item";
 function context_menu_item(item) {
     const ctx = new ContextMenu();
     ctx.add_action(new MenuAction("Modifier", "/public/images/icons/icons8-edit-96.png", async () => {
+        await edit_item(item);
     }, false));
     if (!item.is_regular_file) {
         ctx.add_action(new MenuAction("Nouveau Dossier", "/public/images/icons/icons8-add-folder-48.png", async () => {

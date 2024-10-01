@@ -69,7 +69,7 @@ impl FromRow for Item {
                 open_upload,
                 num_items: row.get::<&str, i64>("num_items"),
                 content_size: row.get::<&str, i64>("content_size"),
-            })
+            });
         } else {
             panic!("Parsed item is neither a file or a directory : missing data");
         }
@@ -102,7 +102,7 @@ impl FromRow for Item {
                 open_upload,
                 num_items: row.try_get::<&str, i64>("num_items")?,
                 content_size: row.try_get::<&str, i64>("content_size")?,
-            })
+            });
         }
         Ok(item)
     }

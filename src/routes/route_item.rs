@@ -37,6 +37,7 @@ impl ItemRoutes {
             .route("/send/", post(send).with_state(ctx.clone()))
             .route("/get/:path/", get(download).with_state(ctx.clone()))
             .route("/preview/:path/", get(download).with_state(ctx.clone()))
+            .route("/update/", post(edit).with_state(ctx.clone()))
         )
     }
 }
@@ -231,4 +232,38 @@ async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) ->
         ];
         Ok((headers, body))
     }
+}
+
+async fn edit(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    require_connected_user!(request);
+
+    #[derive(Deserialize, Debug)]
+    struct Data {
+        id: ItemId,
+        name: EncString,
+        description: Option<EncString>,
+        open_upload: Option<bool>
+    }
+
+    let permissions = Permissions::new(&request)?;
+    let json = Json::<Vec<Data>>::from_request(request, &ctx).await?;
+    let mut items = vec![];
+    for data in json.0 {
+        if permissions.edit_item(&ctx.database, &data.id).await?.granted() {
+            if let Ok(mut item) = Item::from_id(&ctx.database, &data.id, Trash::Both).await {
+                item.name = data.name;
+                item.description = data.description;
+
+                if let Some(open_upload) = data.open_upload {
+                    if let Some(directory) = &mut item.directory {
+                        directory.open_upload = open_upload
+                    }
+                }
+
+                item.push(&ctx.database).await?;
+                items.push(item.id().clone());
+            }
+        }
+    }
+    Ok(Json(items))
 }
