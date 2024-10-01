@@ -1,5 +1,5 @@
 use crate::app_ctx::AppCtx;
-use crate::database::item::{Item, Trash};
+use crate::database::item::{Item, ItemId, Trash};
 use crate::database::repository::{Repository, RepositoryId, RepositoryStatus};
 use crate::database::user::User;
 use crate::require_connected_user;
@@ -29,6 +29,7 @@ impl RepositoryRoutes {
             .route("/create/", post(create_repository).with_state(ctx.clone()))
             .route("/delete/", post(delete_repository).with_state(ctx.clone()))
             .route("/root-content/", post(root_content).with_state(ctx.clone()))
+            .route("/update/", post(update).with_state(ctx.clone()))
             .route("/trash-content/", post(trash_content).with_state(ctx.clone()));
         Ok(router)
     }
@@ -138,4 +139,40 @@ pub async fn trash_content(State(ctx): State<Arc<AppCtx>>, request: axum::http::
         result.append(&mut Item::repository_trash_root(&ctx.database, &repository).await?);
     }
     Ok(Json(result))
+}
+
+async fn update(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    require_connected_user!(request);
+
+    #[derive(Deserialize, Debug)]
+    struct Data {
+        id: RepositoryId,
+        display_name: EncString,
+        url_name: EncString,
+        max_file_size: Option<i64>,
+        visitor_file_lifetime: Option<i64>,
+        allow_visitor_upload: bool,
+        status: String,
+        description: Option<EncString>
+    }
+
+    let permissions = Permissions::new(&request)?;
+    let json = Json::<Vec<Data>>::from_request(request, &ctx).await?;
+    let mut repositories = vec![];
+    for data in json.0 {
+        if permissions.edit_repository(&ctx.database, &data.id).await?.granted() {
+            if let Ok(mut repository) = Repository::from_id(&ctx.database, &data.id).await {
+                repository.display_name = data.display_name;
+                repository.description = data.description;
+                repository.url_name = data.url_name;
+                repository.max_file_size = data.max_file_size;
+                repository.visitor_file_lifetime = data.visitor_file_lifetime;
+                repository.allow_visitor_upload = data.allow_visitor_upload;
+                repository.status = RepositoryStatus::from(data.status);
+                repository.push(&ctx.database).await?;
+                repositories.push(repository.id().clone());
+            }
+        }
+    }
+    Ok(Json(repositories))
 }

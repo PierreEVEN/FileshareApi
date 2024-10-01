@@ -2,19 +2,19 @@ import {EncString} from "./encstring";
 import {FilesystemStream} from "./filesystem_stream";
 import {fetch_api} from "../utilities/request";
 import {GLOBAL_EVENTS} from "./event_manager";
-import {RepositoryTree} from "../modules/side_bar/repository_tree/repository_tree";
 
 class RepositoryStatus {
     constructor(data) {
+        this._role = '';
         switch (data) {
-            case "private":
-            case "hidden":
-            case "public":
+            case "Private":
+            case "Hidden":
+            case "Public":
                 /**
                  * @type{string}
                  * @private
                  */
-                this._role = data;
+                this._role = data.toString();
                 break;
         }
     }
@@ -89,7 +89,11 @@ class Repository {
         if (existing)
             return existing;
         return new Repository(data)
+    }
 
+    refresh() {
+        GLOBAL_EVENTS.broadcast('remove_repository', this);
+        GLOBAL_EVENTS.broadcast('add_repository', this);
     }
 
     /**

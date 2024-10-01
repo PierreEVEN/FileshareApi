@@ -1,5 +1,4 @@
 import {fetch_api} from "../../../utilities/request";
-import {Repository} from "../../../types/repository";
 import {MODAL} from "../../modal/modal";
 import {EncString} from "../../../types/encstring";
 import {FilesystemItem} from "../../../types/filesystem_stream";

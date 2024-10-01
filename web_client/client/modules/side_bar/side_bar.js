@@ -63,7 +63,7 @@ class SideBar {
         this._shared_repositories_loaded = new Map();
 
         this._add_repository = GLOBAL_EVENTS.add('add_repository', async (repository) => {
-            if (!this._my_repositories_loaded.has(repository.id) && !APP_CONFIG.connected_user() && repository.owner === APP_CONFIG.connected_user().id) {
+            if (!this._my_repositories_loaded.has(repository.id) && APP_CONFIG.connected_user() && repository.owner === APP_CONFIG.connected_user().id) {
                 this._my_repositories_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
             }
         });
