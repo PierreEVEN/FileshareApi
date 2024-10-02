@@ -50,8 +50,11 @@ class Uploader extends MemoryTracker {
         this.expanded = expanded;
         if (this.expanded)
             this._elements.uploader.classList.add("expanded")
-        else
+        else {
             this._elements.uploader.classList.remove("expanded")
+            if (this.children.size === 0)
+                this.viewport.close_upload_container();
+        }
     }
 
     set_pause(pause) {

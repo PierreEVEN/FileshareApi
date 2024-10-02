@@ -91,6 +91,13 @@ class Repository {
         return new Repository(data)
     }
 
+    /**
+     * @return {Promise<void>}
+     */
+    async download() {
+        window.open(`/api/repository/download/${this.id}/`);
+    }
+
     refresh() {
         GLOBAL_EVENTS.broadcast('remove_repository', this);
         GLOBAL_EVENTS.broadcast('add_repository', this);

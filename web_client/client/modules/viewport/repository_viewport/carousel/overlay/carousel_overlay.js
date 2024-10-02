@@ -1,5 +1,5 @@
 import {humanFileSize} from "../../../../../common/tools/utils";
-import {print_message} from "../../../../../layout/widgets/components/message_box";
+import {print_message} from "../../../../tools/message_box/message_box";
 import {APP_CONFIG} from "../../../../../types/app_config";
 
 class CarouselOverlay {

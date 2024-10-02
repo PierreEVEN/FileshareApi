@@ -1,9 +1,9 @@
 use crate::app_ctx::AppCtx;
-use crate::database::item::{DirectoryData, Item, ItemId, Trash};
+use crate::database::item::{DirectoryData, Item, ItemId, ItemSearchData, Trash};
 use crate::database::object::Object;
 use crate::database::repository::RepositoryId;
 use crate::database::DatabaseId;
-use crate::require_connected_user;
+use crate::{require_connected_user};
 use crate::utils::async_zip::AsyncDirectoryZip;
 use crate::utils::enc_string::EncString;
 use crate::utils::permissions::Permissions;
@@ -38,6 +38,7 @@ impl ItemRoutes {
             .route("/get/:path/", get(download).with_state(ctx.clone()))
             .route("/preview/:path/", get(download).with_state(ctx.clone()))
             .route("/update/", post(edit).with_state(ctx.clone()))
+            .route("/search/", post(search).with_state(ctx.clone()))
         )
     }
 }
@@ -242,7 +243,7 @@ async fn edit(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
         id: ItemId,
         name: EncString,
         description: Option<EncString>,
-        open_upload: Option<bool>
+        open_upload: Option<bool>,
     }
 
     let permissions = Permissions::new(&request)?;
@@ -263,6 +264,19 @@ async fn edit(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
                 item.push(&ctx.database).await?;
                 items.push(item.id().clone());
             }
+        }
+    }
+    Ok(Json(items))
+}
+
+async fn search(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let permissions = Permissions::new(&request)?;
+    let data = Json::<ItemSearchData>::from_request(request, &ctx).await?.0;
+    let result = Item::search(&ctx.database, data).await?;
+    let mut items = vec![];
+    for data in result {
+        if permissions.view_item(&ctx.database, data.id()).await?.granted() {
+            items.push(data.id().clone());
         }
     }
     Ok(Json(items))

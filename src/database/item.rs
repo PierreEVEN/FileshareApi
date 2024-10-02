@@ -8,7 +8,7 @@ use crate::{make_database_id, query_fmt, query_object, query_objects};
 use anyhow::Error;
 use postgres_from_row::FromRow;
 use serde::ser::SerializeStruct;
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use std::fmt::{Display, Formatter};
 use tokio_postgres::Row;
 
@@ -165,6 +165,24 @@ impl Display for Trash {
     }
 }
 
+#[derive(Deserialize, Debug)]
+pub struct ItemSearchRepositoryField {
+    pub repository: RepositoryId,
+    pub root_items: Vec<ItemId>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ItemSearchData {
+    pub repositories: Vec<ItemSearchRepositoryField>,
+    pub name_filter: Option<EncString>,
+    pub before: Option<i64>,
+    pub after: Option<i64>,
+    pub max_size: Option<i64>,
+    pub  min_size: Option<i64>,
+    pub mime_type: Option<EncString>,
+    pub owners: Option<Vec<UserId>>,
+}
+
 impl Item {
     pub async fn from_id(db: &Database, id: &ItemId, filter: Trash) -> Result<Self, Error> {
         query_object!(db, Self, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE id = $1 {filter}"), id).ok_or(Error::msg("Failed to find item from id"))
@@ -198,6 +216,56 @@ impl Item {
         Ok(query_objects!(db, Self, "SELECT * FROM SCHEMA_NAME.item_full_view WHERE in_trash AND repository = $1 AND (parent_item IS NULL OR parent_item IN (SELECT id FROM SCHEMA_NAME.item_full_view WHERE repository = $1 AND NOT in_trash))", repository))
     }
     
+    pub async fn search(db: &Database, filter: ItemSearchData) -> Result<Vec<Self>, Error> {
+
+        if filter.repositories.is_empty() {
+            Err(Error::msg("No repository specified"))?;
+        }
+
+        let mut repository_req = String::new();
+        for repository in filter.repositories {
+            repository_req += format!("repository = {} AND ", repository.repository).as_str();
+            let mut item_req = String::new();
+            for (i, item) in repository.root_items.iter().enumerate() {
+                item_req += format!("STARTS_WITH(absolute_path, SELECT(absolute_path FROM item WHERE id = {item}))").as_str();
+                if i != repository.root_items.len() - 1 { item_req += " OR " }
+            }
+            repository_req += format!("({item_req}) AND").as_str();
+        }
+
+        let name = if let Some(name) = filter.name_filter {
+            format!("LOWER(name) LIKE '%' || LOWER('{name}') || '%' AND")
+        } else { String::new() };
+
+        let before = if let Some(before) = filter.before {
+            format!("timestamp <= {before} AND")
+        } else { String::new() };
+
+        let after = if let Some(after) = filter.after {
+            format!("timestamp >= {after} AND")
+        } else { String::new() };
+
+        let max_size = if let Some(max_size) = filter.max_size {
+            format!("size <= {max_size} AND")
+        } else { String::new() };
+
+        let min_size = if let Some(min_size) = filter.min_size {
+            format!("size >= {min_size} AND")
+        } else { String::new() };
+
+        let mimetype = if let Some(mimetype) = filter.mime_type {
+            format!("LOWER(mimetype) LIKE '%' || LOWER('{}') || '%' AND", mimetype.encoded())
+        } else { String::new() };
+
+        let owners = if let Some(owners) = filter.owners {
+            let mut owner_req = String::new();
+            for owner in owners { owner_req += format!("owner = {owner} AND").as_str() }
+            owner_req
+        } else { String::new() };
+
+        Ok(query_objects!(&db, Item, format!("SELECT * FROM SCHEMA_NAME.item_full_view WHERE {repository_req} {name} {before} {after} {max_size} {min_size} {mimetype} {owners} is_regular_file")))
+    }
+
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
         for object in query_objects!(db, ObjectId, r#"SELECT UNNEST(fileshare_v3.remove_item($1)) AS id GROUP BY id;"#, self.id) {
             Object::from_id(db, &object).await?.delete(db).await?;

@@ -1,4 +1,4 @@
-import {print_message} from "../../../../layout/widgets/components/message_box";
+import {print_message} from "../../../tools/message_box/message_box";
 import {FilesystemItem} from "../../../../types/filesystem_stream";
 import {UploadItem} from "./upload_item";
 import {EncString} from "../../../../types/encstring";

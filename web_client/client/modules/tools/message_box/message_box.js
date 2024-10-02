@@ -52,5 +52,12 @@ function close_message() {
     message_timeout = null;
 }
 
-window.message_box = {print_message, parse_fetch_result, close_message}
-export {print_message, parse_fetch_result, close_message}
+class MessageBox {
+    constructor() {
+    }
+}
+
+const MESSAGE_BOX = new MessageBox();
+
+
+export {MESSAGE_BOX, print_message, close_message}

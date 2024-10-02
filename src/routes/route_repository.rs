@@ -9,13 +9,16 @@ use crate::utils::permissions::Permissions;
 use crate::utils::server_error::ServerError;
 use anyhow::Error;
 use axum::body::Body;
-use axum::extract::{FromRequest, Request, State};
-use axum::http::StatusCode;
+use axum::extract::{FromRequest, Path, Request, State};
+use axum::http::{header, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Deserialize;
 use std::sync::Arc;
+use tokio_util::io::ReaderStream;
+use crate::database::DatabaseId;
+use crate::utils::async_zip::AsyncDirectoryZip;
 
 pub struct RepositoryRoutes {}
 
@@ -29,6 +32,7 @@ impl RepositoryRoutes {
             .route("/create/", post(create_repository).with_state(ctx.clone()))
             .route("/delete/", post(delete_repository).with_state(ctx.clone()))
             .route("/root-content/", post(root_content).with_state(ctx.clone()))
+            .route("/download/:id/", get(download).with_state(ctx.clone()))
             .route("/update/", post(update).with_state(ctx.clone()))
             .route("/trash-content/", post(trash_content).with_state(ctx.clone()));
         Ok(router)
@@ -153,7 +157,7 @@ async fn update(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl
         visitor_file_lifetime: Option<i64>,
         allow_visitor_upload: bool,
         status: String,
-        description: Option<EncString>
+        description: Option<EncString>,
     }
 
     let permissions = Permissions::new(&request)?;
@@ -175,4 +179,29 @@ async fn update(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl
         }
     }
     Ok(Json(repositories))
+}
+
+async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -> Result<impl IntoResponse, ServerError> {
+    let mut zip = AsyncDirectoryZip::new(ctx.clone());
+    
+    let repository = Repository::from_id(&ctx.database, &RepositoryId::from(id)).await?;
+    
+    for item in Item::from_repository(&ctx.database, &RepositoryId::from(id), Trash::No).await? {
+        zip.push_item(item).await?;
+    }
+
+    let size = zip.size()?;
+
+    let (w, r) = tokio::io::duplex(4096);
+    tokio::spawn(async move {
+        zip.finalize(w).await
+    });
+
+    let body = Body::from_stream(ReaderStream::new(r));
+    let headers = [
+        (header::CONTENT_TYPE, "application/zip".to_string()),
+        (header::CONTENT_LENGTH, size.to_string()),
+        (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", repository.display_name.encoded()))
+    ];
+    Ok((headers, body))
 }

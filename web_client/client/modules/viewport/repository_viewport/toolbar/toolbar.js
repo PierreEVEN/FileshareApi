@@ -16,7 +16,10 @@ class ViewportToolbar {
                     await APP.set_display_repository(repository);
             },
             download: () => {
-                this.current_item.download();
+                if (this.current_item)
+                    this.current_item.download();
+                else
+                    this.repository.download();
             }
         });
         this.current_item = null;

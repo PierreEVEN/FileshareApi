@@ -1,5 +1,5 @@
 import {human_readable_timestamp, object_to_decoded_string, PAGE_CONTEXT} from "../../../common/tools/utils";
-import {parse_fetch_result, print_message} from "../components/message_box";
+import {parse_fetch_result, print_message} from "../../../modules/tools/message_box/message_box";
 
 require('./user_settings.scss')
 
