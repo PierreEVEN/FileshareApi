@@ -7,14 +7,7 @@ class CarouselList {
      * @param on_select_item
      */
     constructor(directory_content, on_select_item) {
-        return;
         this.directory_content = directory_content;
-        /**
-         * @type {number[]}
-         */
-        this.objects = [];
-        for (const entry of directory_content.objects)
-            this.objects.push(entry.id);
 
         this.on_select_item = on_select_item;
 
@@ -35,7 +28,7 @@ class CarouselList {
 
         if (this.on_select_item)
             this.on_select_item(meta_data);
-        this._last_selected.scrollIntoView({ behavior: "smooth", inline: scroll_center ? 'center' : 'nearest'});
+        this._last_selected.scrollIntoView({behavior: "smooth", inline: scroll_center ? 'center' : 'nearest'});
 
         this.update_left_right_buttons();
     }
@@ -57,8 +50,7 @@ class CarouselList {
     /**
      @param container {HTMLElement}
      */
-    build_visual(container) {
-        return;
+    async build_visual(container) {
         container.innerHTML = '';
         const carousel_list = carousel_list_hbs({}, {
             move_left: () => {
@@ -84,16 +76,19 @@ class CarouselList {
         left_spacer.style.width = '100px';
         carousel_list_div.append(left_spacer);
 
-        for (const object of this.objects) {
-            const meta_data = this.directory_content.navigator.filesystem.get_object_data(object);
-            if (meta_data.is_regular_file) {
+        let provider = this.directory_content.get_content_provider();
+        if (!provider)
+            return;
+
+        for (const object of await provider.get_content()) {
+            if (object.is_regular_file) {
                 const callbacks = {};
-                const item = carousel_list_item_hbs({item: meta_data}, callbacks);
-                this.element_map.set(meta_data.id, item);
+                const item = carousel_list_item_hbs({item: object.display_data()}, callbacks);
+                this.element_map.set(object.id, item);
                 callbacks.on_click = () => {
-                    this.select_item(meta_data)
+                    this.select_item(object)
                 }
-                item.item_id = meta_data.id;
+                item.item_id = object.id;
                 carousel_list_div.append(item);
             }
         }

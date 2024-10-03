@@ -20,19 +20,25 @@ async function fetch_api(path, method = 'GET', body = null) {
         headers: headers
     });
     if (result.status === 401) {
-        await Authentication.login();
+        let error = false;
+        await Authentication.login()
+            .catch(() => {
+                error = true;
+            });
+        if (!error) {
+            return await fetch_api(path, method, body);
+        }
     } else {
         if (result.status.toString().startsWith("2")) {
             let text = await result.text();
             try {
                 return JSON.parse(text);
-            }
-            catch (err) {
+            } catch (err) {
                 return text;
             }
         }
     }
-    throw {message: `${await result.text()}`, code:result.status}
+    throw {message: `${await result.text()}`, code: result.status}
 }
 
 export {fetch_api}

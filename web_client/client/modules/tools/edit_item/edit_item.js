@@ -2,6 +2,7 @@ import {fetch_api} from "../../../utilities/request";
 import {MODAL} from "../../modal/modal";
 import {EncString} from "../../../types/encstring";
 import {FilesystemItem} from "../../../types/filesystem_stream";
+import {Message, NOTIFICATION} from "../message_box/notification";
 
 /**
  * @param item {FilesystemItem}
@@ -22,7 +23,8 @@ async function edit_item(item) {
                 open_upload: item.is_regular_file ? null : document.getElementById('allow_visitor_upload').checked,
             };
 
-            const items = await fetch_api(`item/update/`, 'POST', [new_data]);
+            const items = await fetch_api(`item/update/`, 'POST', [new_data])
+                .catch(error => NOTIFICATION.fatal(new Message(error).title("Impossible de modifier l'object")));
             if (items.length !== 0) {
                 item.name = new_data.name;
                 item.description = new_data.description;

@@ -43,6 +43,8 @@ impl Thumbnail {
             .arg(format!("scale={size}:{size}:force_original_aspect_ratio=decrease"))
             .arg("-vframes")
             .arg("1")
+            .arg("-f")
+            .arg("webp")
             .arg(object.thumbnail_path(db))
             .stderr(Stdio::inherit())
             .spawn() {

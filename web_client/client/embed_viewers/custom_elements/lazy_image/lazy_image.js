@@ -2,8 +2,8 @@ class LazyImage extends HTMLElement {
     constructor() {
         super();
 
-        this.style.maxWidth = '100%';
-        this.style.maxHeight = '100%';
+        this.style.width = '100%';
+        this.style.height = '100%';
         this.style.overflowX = 'hidden';
         this.style.overflowY = 'hidden';
 
@@ -16,7 +16,6 @@ class LazyImage extends HTMLElement {
             tmp_image.src = this.getAttribute('alternate-src');
             this.append(tmp_image);
         }
-        //onError="this.onError = null; this.src='/public/images/icons/mime-icons/image.png'"
         const image = new Image();
         image.src = this.getAttribute('src');
         image.classList.add('item-large');

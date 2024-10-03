@@ -1,7 +1,6 @@
 import {humanFileSize, PAGE_CONTEXT} from "../../../common/tools/utils";
 import {edit_repos} from "../../../modules/tools/edit_repos/edit_repos_form";
-import {parse_fetch_result, print_message} from "../../../modules/tools/message_box/message_box";
-import {close_modal, open_modal} from "../../../modules/modal/modal";
+import {} from "../../../modules/tools/message_box/notification";
 import {LOCAL_USER} from "../../../common/tools/user";
 
 const authorization_hbs = require('./authorization.hbs')

@@ -1,5 +1,6 @@
 import {EncString} from "./encstring";
 import {fetch_api} from "../utilities/request";
+import {Message, NOTIFICATION} from "../modules/tools/message_box/notification";
 
 class UserRole {
     constructor(data) {
@@ -77,7 +78,8 @@ class User {
         const current = User._LOCAL_CACHE.get(id);
         if (current)
             return current;
-        let user = await fetch_api("user/find/", "POST", [id]);
+        let user = await fetch_api("user/find/", "POST", [id])
+            .catch(error => NOTIFICATION.fatal(new Message(error).title(`Impossible de trouver l'utilisateur ${id}`)));
         if (user.length !== 0)
             return new User(user[0]);
         return null;

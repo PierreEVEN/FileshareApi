@@ -1,8 +1,14 @@
-CREATE OR REPLACE PROCEDURE SCHEMA_NAME.update_all_directory_sizes() AS $$
+CREATE OR REPLACE PROCEDURE SCHEMA_NAME.add_delta_on_directory(item BIGINT, count_delta BIGINT, size_delta BIGINT) AS $$
 	DECLARE
+	    parent_id BIGINT;
 	BEGIN
-		UPDATE SCHEMA_NAME.directories dir SET (num_items, content_size) = (SELECT COUNT(id), SUM(size) FROM SCHEMA_NAME.files
-			WHERE id IN (SELECT id FROM SCHEMA_NAME.items WHERE is_regular_file = true AND STARTS_WITH(absolute_path, (SELECT absolute_path FROM SCHEMA_NAME.items WHERE id = dir.id))));
+	    UPDATE SCHEMA_NAME.directories SET (num_items, content_size) = (count_delta + num_items, size_delta + content_size) WHERE id = item;
+
+	    SELECT parent_item INTO parent_id FROM SCHEMA_NAME.items WHERE id = item;
+	    IF parent_id IS NOT NULL THEN
+	        CALL SCHEMA_NAME.add_delta_on_directory(parent_id, count_delta, size_delta);
+	    END IF;
+
 	END;
 	$$ LANGUAGE plpgsql;
 

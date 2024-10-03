@@ -1,5 +1,6 @@
 import {fetch_api} from "../../../utilities/request";
 import {FilesystemItem} from "../../../types/filesystem_stream";
+import {Message, NOTIFICATION} from "../message_box/notification";
 
 /**
  * @param item {FilesystemItem}
@@ -10,7 +11,7 @@ async function delete_item(item, move_to_trash) {
     const fs = item.filesystem();
     const items = await fetch_api(`item/${move_to_trash ? 'move-to-trash' : 'delete'}/`, 'POST',
         [item.id]
-    );
+    ).catch(error => NOTIFICATION.fatal(new Message(error).title("Impossible de supprimer le fichier")));
     if (move_to_trash)
         for (const item_id of items) {
             item.in_trash = true;
@@ -29,7 +30,7 @@ async function restore_item(item) {
     const fs = item.filesystem();
     const items = await fetch_api(`item/restore/`, 'POST',
         [item.id]
-    );
+    ).catch(error => NOTIFICATION.fatal(new Message(error).title("Impossible de restorer le fichier")));
     for (const item_id of items) {
         item.in_trash = false;
         await set_item_to_trash(await fs.fetch_item(item_id), false);

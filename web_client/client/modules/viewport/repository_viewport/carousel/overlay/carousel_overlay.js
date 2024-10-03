@@ -1,5 +1,4 @@
 import {humanFileSize} from "../../../../../common/tools/utils";
-import {print_message} from "../../../../tools/message_box/message_box";
 import {APP_CONFIG} from "../../../../../types/app_config";
 
 class CarouselOverlay {
@@ -25,7 +24,6 @@ class CarouselOverlay {
             share: async () => {
                 let url = `${APP_CONFIG.origin()}/api/item/${item.id}/`;
                 await navigator.clipboard.writeText(url);
-                print_message('info', 'Lien copié dans le presse - papier', url)
             }
         });
         container.firstChild.before(this.carousel_overlay)

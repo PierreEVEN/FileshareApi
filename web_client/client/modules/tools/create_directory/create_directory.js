@@ -2,6 +2,7 @@ import {fetch_api} from "../../../utilities/request";
 import {EncString} from "../../../types/encstring";
 import {FilesystemItem, FilesystemStream} from "../../../types/filesystem_stream";
 import {overwrite_or_restore} from "../item_conflict/item_conflict";
+import {Message, NOTIFICATION} from "../message_box/notification";
 
 const {MODAL} = require("../../modal/modal");
 
@@ -29,7 +30,7 @@ function create_directory(repository, parent_item = null) {
                     repository: repository,
                     parent_item: parent_item
                 }]
-            );
+            ).catch(error => NOTIFICATION.fatal(new Message(error).title("Impossible de créer le dossier")));
 
             for (const item of directories) {
                 await FilesystemItem.new(item);

@@ -2,6 +2,7 @@ import {fetch_api} from "../../../utilities/request";
 import {Repository} from "../../../types/repository";
 import {MODAL} from "../../modal/modal";
 import {EncString} from "../../../types/encstring";
+import {Message, NOTIFICATION} from "../message_box/notification";
 
 /**
  * @param repository
@@ -23,7 +24,7 @@ async function delete_repository(repository) {
                     },
                     repositories: [repository.id]
                 }
-            );
+            ).catch(error => NOTIFICATION.fatal(new Message(error).title("Impossible de supprimer le dépôt")));
             for (const repository_id of repositories) {
                 (await Repository.find(repository_id)).remove();
             }

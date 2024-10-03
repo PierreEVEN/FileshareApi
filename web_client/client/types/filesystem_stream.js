@@ -2,6 +2,7 @@ const {EncString} = require("./encstring");
 const {User} = require("./user");
 const {fetch_api} = require("../utilities/request");
 const {GLOBAL_EVENTS} = require("./event_manager");
+const {NOTIFICATION, Message} = require("../modules/tools/message_box/notification");
 
 /**
  * @type {Map<number, FilesystemStream>}
@@ -215,7 +216,11 @@ class FilesystemStream {
         if (existing) {
             return existing;
         }
-        for (const item of await fetch_api(`item/find/`, 'POST', [item_id])) {
+        for (const item of await fetch_api(`item/find/`, 'POST', [item_id])
+            .catch(error => {
+                NOTIFICATION.warn(new Message(error).title(`L'object ${item_id} n'existe pas`));
+                return [];
+            })) {
             await this.set_or_update_item(new FilesystemItem(item));
         }
         return this._items.get(item_id);
@@ -241,7 +246,11 @@ class FilesystemStream {
             return existing.children;
         }
         existing.children = new Set();
-        for (const item of await fetch_api(`item/directory-content/`, 'POST', [item_id])) {
+        for (const item of await fetch_api(`item/directory-content/`, 'POST', [item_id])
+            .catch(error => {
+                NOTIFICATION.warn(new Message(error).title(`Impossible de lire le contenu de l'objet ${item_id}`))
+                return [];
+            })) {
             await this.set_or_update_item(new FilesystemItem(item));
         }
         return existing.children;
@@ -253,7 +262,11 @@ class FilesystemStream {
     async root_content() {
         if (!this._roots) {
             this._roots = new Set();
-            for (const item of await fetch_api(`repository/root-content/`, 'POST', [this._repository.id])) {
+            for (const item of await fetch_api(`repository/root-content/`, 'POST', [this._repository.id])
+                .catch(error => {
+                    NOTIFICATION.warn(new Message(error).title(`Impossible de lire la racion du dépot ${this._repository.url_name.plain()}`));
+                    return [];
+                })) {
                 await this.set_or_update_item(new FilesystemItem(item));
             }
         }
@@ -266,7 +279,11 @@ class FilesystemStream {
     async trash_content() {
         if (!this._trash_roots) {
             this._trash_roots = new Set();
-            for (const item of await fetch_api(`repository/trash-content/`, 'POST', [this._repository.id])) {
+            for (const item of await fetch_api(`repository/trash-content/`, 'POST', [this._repository.id])
+                .catch(error => {
+                    NOTIFICATION.warn(new Message(error).title(`Impossible de lire le contenu de la corbeille de ${this._repository.url_name.plain()}`));
+                    return [];
+                })) {
                 await this.set_or_update_item(new FilesystemItem(item));
             }
         }

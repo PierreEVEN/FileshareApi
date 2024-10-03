@@ -1,4 +1,4 @@
-import {print_message} from "../../../tools/message_box/message_box";
+import {Message, NOTIFICATION} from "../../../tools/message_box/notification";
 import {FilesystemItem} from "../../../../types/filesystem_stream";
 import {UploadItem} from "./upload_item";
 import {EncString} from "../../../../types/encstring";
@@ -85,7 +85,7 @@ class UploadProcessor extends MemoryTracker {
     }
 
     _fail(message) {
-        print_message("error", `Failed tu upload ${this.item.name}`, message);
+        NOTIFICATION.error(new Message(message).title(`Failed tu upload '${this.item.name}'`));
         this.upload_failed();
     }
 

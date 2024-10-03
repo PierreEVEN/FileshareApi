@@ -1,5 +1,5 @@
 use crate::app_ctx::AppCtx;
-use crate::database::item::{Item, ItemId, Trash};
+use crate::database::item::{Item, Trash};
 use crate::database::repository::{Repository, RepositoryId, RepositoryStatus};
 use crate::database::user::User;
 use crate::require_connected_user;

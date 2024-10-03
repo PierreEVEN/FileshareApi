@@ -3,6 +3,7 @@ import {fetch_api} from "../../../../utilities/request";
 import {EncString} from "../../../../types/encstring";
 import {FilesystemItem} from "../../../../types/filesystem_stream";
 import {overwrite_or_restore} from "../../../tools/item_conflict/item_conflict";
+import {Message, NOTIFICATION} from "../../../tools/message_box/notification";
 
 const mime = require('mime');
 
@@ -185,7 +186,7 @@ class UploadItem {
                 repository: repository_id,
                 parent_item: parent
             }]
-        );
+        ).catch(error => NOTIFICATION.fatal(new Message(error).title("Impossible de créer le dossier")));
         if (directories.length === 1) {
             return await FilesystemItem.new(directories[0]);
         }
