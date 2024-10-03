@@ -2,19 +2,21 @@ use crate::app_ctx::AppCtx;
 use crate::database::user::{AuthToken, PasswordHash, User, UserId, UserRole};
 use crate::utils::enc_string::EncString;
 use crate::utils::server_error::ServerError;
-use crate::require_connected_user;
+use crate::{get_connected_user, require_connected_user};
 use anyhow::Error;
 use axum::body::Body;
-use axum::extract::{FromRequest, State};
-use axum::http::StatusCode;
+use axum::extract::{FromRequest, Path, State};
+use axum::http::{Request, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::log::info;
+use crate::database::DatabaseId;
+use crate::database::repository::{Repository, RepositoryId, RepositoryStatus};
 
 pub struct UserRoutes {}
 
@@ -26,6 +28,7 @@ impl UserRoutes {
             .route("/delete/", post(delete_user).with_state(ctx.clone()))
             .route("/logout/", post(logout).with_state(ctx.clone()))
             .route("/tokens/", post(auth_tokens).with_state(ctx.clone()))
+            .route("/repositories/:user_id/", get(repositories).with_state(ctx.clone()))
             .route("/create/", post(create_user).with_state(ctx.clone()));
 
         Ok(router)
@@ -138,7 +141,7 @@ async fn logout(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, request: axum::h
     }
 }
 
-async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<impl IntoResponse, ServerError> {
+async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
     let connected_user = require_connected_user!(request);
     let data = Json::<UserCredentials>::from_request(request, &ctx).await?;
     let mut from_creds = User::from_credentials(&ctx.database, &data.login, &data.password).await?;
@@ -149,4 +152,26 @@ async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: axum::http::Reques
     } else {
         Err(ServerError::msg(StatusCode::NOT_FOUND, "Not found"))
     }
+}
+
+
+async fn repositories(State(ctx): State<Arc<AppCtx>>, Path(user_id): Path<DatabaseId>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
+    get_connected_user!(request, user, {
+        let desired_user = User::from_id(&ctx.database, &UserId::from(user_id)).await?;
+        if user.id() == desired_user.id() {
+            let mut repositories = vec![];
+            for repository in Repository::from_user(&ctx.database, user.id()).await? {
+                repositories.push(repository.id().clone());
+            }
+            return Ok(Json(repositories))
+        }
+    });
+
+    let mut repositories = vec![];
+    for repository in Repository::from_user(&ctx.database, &UserId::from(user_id)).await? {
+        if let RepositoryStatus::Public = repository.status {
+            repositories.push(repository.id().clone());
+        }
+    }
+    Ok(Json(repositories))
 }

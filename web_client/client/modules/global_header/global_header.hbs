@@ -17,6 +17,6 @@
     </div>
     <div class="user" {{object "user"}}>
         <button onclick="{{ctx 'logout()'}}">Déconnexion</button>
-        <button class="user-button">Pi</button>
+        <button class="user-button" {{object "username"}} onclick="{{ctx 'user()'}}">username</button>
     </div>
 </div>

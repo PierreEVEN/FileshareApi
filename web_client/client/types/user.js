@@ -5,20 +5,36 @@ import {Message, NOTIFICATION} from "../modules/tools/message_box/notification";
 class UserRole {
     constructor(data) {
         switch (data) {
-            case "guest":
-            case "vip":
-            case "admin":
+            case "Guest":
+            case "Vip":
+            case "Admin":
                 /**
                  * @type{string}
                  * @private
                  */
                 this._role = data;
                 break;
+            default:
+                this._role = 'invalid'
+                break;
         }
     }
 
-    to_string() {
+    toString() {
         return this._role;
+    }
+
+    display_data() {
+        switch (this._role) {
+            case "Guest":
+                return 'invité';
+            case "Vip":
+                return 'premium';
+            case "Admin":
+                return 'administrateur';
+            default:
+                return this._role;
+        }
     }
 }
 
@@ -48,10 +64,6 @@ class User {
          * @type {EncString}
          */
         this.login = new EncString(data.login);
-        /**
-         * @type {bool}
-         */
-        this.allow_contact = data.allow_contact;
         /**
          * @type {UserRole}
          */
@@ -83,6 +95,18 @@ class User {
         if (user.length !== 0)
             return new User(user[0]);
         return null;
+    }
+
+    /**
+     * @return {User}
+     */
+    display_data() {
+        const result = JSON.parse(JSON.stringify(this));
+        result.name = this.name.plain()
+        result.login = this.login.plain();
+        result.email = this.email ? this.email.plain() : null;
+        result.user_role = this.user_role.display_data();
+        return result
     }
 }
 

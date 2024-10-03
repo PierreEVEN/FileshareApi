@@ -2,6 +2,7 @@ import {MODAL} from "../modal/modal";
 import {Authentication} from "../tools/authentication/authentication";
 import {APP_CONFIG} from "../../types/app_config";
 import {SIDE_BAR} from "../side_bar/side_bar";
+import {APP} from "../../app";
 
 require('./global_header.scss')
 
@@ -11,7 +12,7 @@ class GlobalHeader {
      */
     constructor(container) {
         /**
-         * @type {null}
+         * @type {User}
          * @private
          */
         this._connected_user = undefined;
@@ -28,6 +29,9 @@ class GlobalHeader {
             },
             menu: () => {
                 SIDE_BAR.show_mobile()
+            },
+            user: async () => {
+                await APP.set_display_user(this._connected_user);
             }
         });
 
@@ -48,6 +52,7 @@ class GlobalHeader {
             if (connected_user) {
                 this._elements.user.style.display = "flex";
                 this._elements.signin.style.display = "none";
+                this._elements.username.innerText = connected_user.name.plain().substring(0, 4) + '..';
             }
             else {
                 this._elements.user.style.display = "none";

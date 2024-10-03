@@ -74,7 +74,7 @@ class FileshareApp {
                 else
                     await this.set_display_repository(APP_CONFIG.display_repository());
             } else if (APP_CONFIG.display_user()) {
-
+                await this.set_display_user(APP_CONFIG.display_user());
             }
         })().catch(error => console.error(`initialization failed :`, error));
     }
@@ -116,6 +116,17 @@ class FileshareApp {
         const viewport = await this._viewport.set_displayed_repository(repository);
         await viewport.open_trash();
         await this.state.open_trash(repository);
+    }
+
+    /**
+     * @param user {User}
+     * @return {Promise<void>}
+     */
+    async set_display_user(user) {
+        if (!this._viewport)
+            this._viewport = new Viewport(this._elements.viewport);
+        await this._viewport.set_display_user(user);
+        await this.state.open_user(user);
     }
 
     set_connected_user(user) {

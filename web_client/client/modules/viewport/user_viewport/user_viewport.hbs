@@ -1,0 +1,7 @@
+<div id='user-settings-root'>
+    <p class="username">{{user.name}}</p>
+    <p class="role">{{user.user_role}}</p>
+    {{#if user.email}}
+        <a href="mailto:{{user.email}}">{{user.email}}</a>
+    {{/if}}
+</div>
