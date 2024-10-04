@@ -1,6 +1,8 @@
 import {EncString} from "./encstring";
 import {fetch_api} from "../utilities/request";
 import {Message, NOTIFICATION} from "../modules/tools/message_box/notification";
+import {EventManager} from "./event_manager";
+import {APP_CONFIG} from "./app_config";
 
 class UserRole {
     constructor(data) {
@@ -48,6 +50,11 @@ class User {
     static _LOCAL_CACHE = new Map();
 
     constructor(data) {
+        this.events = new EventManager();
+        this._build_from_data(data);
+    }
+
+    _build_from_data(data) {
         /**
          * @type {number}
          */
@@ -68,6 +75,10 @@ class User {
          * @type {UserRole}
          */
         this.user_role = new UserRole(data.user_role);
+        /**
+         * @type {boolean}
+         */
+        this.allow_contact = !!data.email;
 
         console.assert(!data['password_hash'])
 
@@ -75,10 +86,39 @@ class User {
     }
 
     /**
-     * @param id {number}
-     * @returns {Promise<User>}
+     * @param data
+     * @return {User}
      */
-    static async find(id) {
+    static new(data) {
+        const existing = this.find(data.id);
+        if (existing) {
+            return existing;
+        }
+        return new User(data);
+    }
+
+
+    remove() {
+        this._build_from_data({id:0});
+        this.events.broadcast('refresh', this);
+        if (APP_CONFIG.connected_user() === this)
+            APP_CONFIG.set_connected_user(null);
+    }
+
+    async refresh() {
+        let data = await fetch_api("user/find/", "POST", [this.id])
+            .catch(error => NOTIFICATION.fatal(new Message(error).title(`Impossible de trouver l'utilisateur ${this.id}`)));
+        if (data.length !== 0) {
+            this._build_from_data(data[0]);
+        }
+        this.events.broadcast('refresh', this);
+    }
+
+    /**
+     * @param id {number}
+     * @returns {User}
+     */
+    static find(id) {
         return User._LOCAL_CACHE.get(id);
     }
 
@@ -93,7 +133,7 @@ class User {
         let user = await fetch_api("user/find/", "POST", [id])
             .catch(error => NOTIFICATION.fatal(new Message(error).title(`Impossible de trouver l'utilisateur ${id}`)));
         if (user.length !== 0)
-            return new User(user[0]);
+            return User.new(user[0]);
         return null;
     }
 

@@ -4,9 +4,14 @@
             <div id="profile">
                 <img class="profile-picture" alt="" src="">
                 <div id="user">
-                    <p class="username">{{user.name}}</p>
+                    <p class="username">{{user.login}}</p>
                     <p class="role">{{user.user_role}}</p>
                 </div>
+                {{#if is_self}}
+                    <button class="edit" onclick="{{ctx "edit()"}}"><img alt="edit"
+                                                                         src="/public/images/icons/icons8-edit-96.png">
+                    </button>
+                {{/if}}
             </div>
             {{#if user.email}}
                 <a href="mailto:{{user.email}}">{{user.email}}</a>
@@ -15,7 +20,6 @@
         <div id="repository-list">
             <h1>Dépôts :</h1>
             <div class="list" {{object "repository_list"}}>
-
             </div>
         </div>
     </div>

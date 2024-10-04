@@ -10,11 +10,11 @@ class AppConfig {
         /**
          * @type {User}
          */
-        this._connected_user = data.connected_user ? new User(data.connected_user) : null;
+        this._connected_user = data.connected_user ? User.new(data.connected_user) : null;
         /**
          * @type {User}
          */
-        this._display_user = data.display_user ? new User(data.display_user) : null;
+        this._display_user = data.display_user ? User.new(data.display_user) : null;
         /**
          * @type {Repository}
          */

@@ -52,7 +52,7 @@ class GlobalHeader {
             if (connected_user) {
                 this._elements.user.style.display = "flex";
                 this._elements.signin.style.display = "none";
-                this._elements.username.innerText = connected_user.name.plain().substring(0, 4) + '..';
+                this._elements.username.innerText = connected_user.login.plain().substring(0, 4) + '..';
             }
             else {
                 this._elements.user.style.display = "none";

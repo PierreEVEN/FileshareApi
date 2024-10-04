@@ -16,7 +16,8 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::log::info;
 use crate::database::DatabaseId;
-use crate::database::repository::{Repository, RepositoryStatus};
+use crate::database::repository::{Repository, RepositoryId, RepositoryStatus};
+use crate::utils::permissions::Permissions;
 
 pub struct UserRoutes {}
 
@@ -28,6 +29,7 @@ impl UserRoutes {
             .route("/delete/", post(delete_user).with_state(ctx.clone()))
             .route("/logout/", post(logout).with_state(ctx.clone()))
             .route("/tokens/", post(auth_tokens).with_state(ctx.clone()))
+            .route("/update/", post(update).with_state(ctx.clone()))
             .route("/repositories/:user_id/", get(repositories).with_state(ctx.clone()))
             .route("/create/", post(create_user).with_state(ctx.clone()));
 
@@ -86,7 +88,7 @@ async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateU
         };
     };
 
-    Ok((StatusCode::FOUND, "Created new user".to_string()))
+    Ok((StatusCode::OK, "Created new user".to_string()))
 }
 
 #[derive(Deserialize)]
@@ -142,16 +144,18 @@ async fn logout(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, request: axum::h
 }
 
 async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
-    let connected_user = require_connected_user!(request);
-    let data = Json::<UserCredentials>::from_request(request, &ctx).await?;
-    let mut from_creds = User::from_credentials(&ctx.database, &data.login, &data.password).await?;
 
-    if connected_user.id() == from_creds.id() {
-        from_creds.delete(&ctx.database).await?;
-        Ok((StatusCode::OK, "Successfully deleted user"))
-    } else {
-        Err(ServerError::msg(StatusCode::NOT_FOUND, "Not found"))
+    let connected_user = require_connected_user!(request);
+
+    let data = Json::<UserCredentials>::from_request(request, &ctx).await?.0;
+    let from_creds = User::from_credentials(&ctx.database, &data.login, &data.password).await?;
+    
+    if *from_creds.id() != *connected_user.id() {
+        return Err(Error::msg("Cannot delete someone else's account"))?;
     }
+
+    from_creds.delete(&ctx.database).await?;
+    Ok(())
 }
 
 
@@ -174,4 +178,29 @@ async fn repositories(State(ctx): State<Arc<AppCtx>>, Path(user_id): Path<Databa
         }
     }
     Ok(Json(repositories))
+}
+
+async fn update(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> Result<impl IntoResponse, ServerError> {
+    let mut user = require_connected_user!(request);
+
+    #[derive(Deserialize, Debug)]
+    struct Data {
+        id: UserId,
+        login: EncString,
+        name: EncString,
+        allow_contact: bool,
+    }
+
+    let json = Json::<Data>::from_request(request, &ctx).await?.0;
+
+    if *user.id() != json.id {
+        return Err(Error::msg("Cannot update information of someone else"))?;
+    }
+
+    user.login = json.login;
+    user.name = json.name;
+    user.allow_contact = json.allow_contact;
+    user.push(&ctx.database).await?;
+
+    Ok(())
 }

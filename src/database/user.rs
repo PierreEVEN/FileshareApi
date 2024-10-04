@@ -9,9 +9,10 @@ use postgres_types::private::BytesMut;
 use postgres_types::{to_sql_checked, IsNull, Type};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::random;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use std::fmt::Debug;
 use std::time::{SystemTime, UNIX_EPOCH};
+use serde::ser::SerializeStruct;
 use crate::database::subscription::Subscription;
 
 make_database_id!(UserId);
@@ -63,19 +64,35 @@ impl postgres_types::ToSql for UserRole {
     to_sql_checked!();
 }
 
-#[derive(Serialize, Debug, Default, FromRow, Clone)]
+#[derive(Debug, Default, FromRow, Clone)]
 pub struct User {
     id: UserId,
     pub email: EncString,
     pub name: EncString,
     pub login: EncString,
-
-    #[serde(skip_serializing)]
     password_hash: PasswordHash,
-
     pub allow_contact: bool,
     pub user_role: UserRole,
 }
+
+impl Serialize for User {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Item", 3)?;
+
+        state.serialize_field("id", &self.id)?;
+        if self.allow_contact {
+            state.serialize_field("email", &self.email)?;
+        }
+        state.serialize_field("name", &self.name)?;
+        state.serialize_field("login", &self.login)?;
+        state.serialize_field("user_role", &self.user_role)?;
+        state.end()
+    }
+}
+
 
 #[derive(Serialize, Deserialize, Debug, Default, FromRow, Clone)]
 pub struct AuthToken {
@@ -127,7 +144,7 @@ impl User {
             Ok(true)
         }
     }
-    
+
     pub async fn from_credentials(db: &Database, login: &EncString, password: &EncString) -> Result<Self, Error> {
         let user = query_object!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE login = $1 OR email = $1"#, login.encoded()).ok_or(Error::msg("User not found"))?;
         if bcrypt::verify(password.encoded(), user.password_hash.0.as_str())? {
@@ -187,8 +204,8 @@ impl User {
         Ok(())
     }
 
-    pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
-        for mut item in Repository::from_user(db, &self.id).await? {
+    pub async fn delete(&self, db: &Database) -> Result<(), Error> {
+        for item in Repository::from_user(db, &self.id).await? {
             item.delete(db).await?;
         }
         for token in AuthToken::from_user(db, self.id()).await? {
@@ -202,9 +219,6 @@ impl User {
     }
 
     pub fn can_create_repository(&self) -> bool {
-        match self.user_role {
-            UserRole::Vip | UserRole::Admin => { true }
-            _ => { false }
-        }
+        matches!(self.user_role, UserRole::Vip | UserRole::Admin)
     }
 }

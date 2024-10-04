@@ -108,7 +108,7 @@ impl Repository {
         Ok(())
     }
 
-    pub async fn delete(&mut self, db: &Database) -> Result<(), Error> {
+    pub async fn delete(&self, db: &Database) -> Result<(), Error> {
         for item in Item::from_repository(db, &self.id, Both).await? {
             item.delete(db).await?;
         }

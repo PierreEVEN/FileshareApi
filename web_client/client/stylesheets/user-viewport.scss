@@ -13,10 +13,12 @@
     border-bottom: 1px #0070f0 solid;
     border-top: 1px #0070f0 solid;
   }
+
   p {
     color: white;
     flex-grow: 1;
   }
+
   button {
     min-width: 50px;
     width: 50px;
@@ -26,32 +28,39 @@
       background-color: #ce0000;
     }
   }
+
   img {
     width: 20px;
   }
+
   .left-fields {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+
     p {
       margin-top: 6px;
       margin-bottom: 6px;
     }
   }
+
   .right-fields {
     display: flex;
     flex-direction: column;
     margin-left: 10px;
     width: 60px;
   }
+
   div div {
     display: flex;
     flex-direction: row;
   }
+
   input {
     margin-bottom: 0;
     width: 100%;
   }
+
   input.item-title {
     height: 30px;
   }

@@ -37,7 +37,7 @@ class Viewport {
      * @return {Promise<RepositoryViewport>}
      */
     async set_display_user(user) {
-        if (!this._viewport_object || !(this._viewport_object instanceof UserViewport)) {
+        if (!this._viewport_object || !(this._viewport_object instanceof UserViewport) || this._viewport_object.user !== user) {
             if (this._viewport_object)
                 this.clear();
             this._viewport_object = new UserViewport(user, this._container);
