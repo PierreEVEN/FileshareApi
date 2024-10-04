@@ -1,7 +1,8 @@
 import {User} from "../types/user";
 import {Repository} from "../types/repository";
-import {FilesystemItem, FilesystemStream} from "../types/filesystem_stream";
+import {FilesystemItem} from "../types/filesystem_stream";
 import {APP_CONFIG} from "../types/app_config";
+import {APP_COOKIES} from "./cookies";
 
 class State {
     /**
@@ -23,6 +24,9 @@ class State {
     async open_repository(repository) {
         if (this._disable_state)
             return;
+
+        APP_COOKIES.push_last_repositories(repository.id);
+
         history.pushState({
             app_action: true,
             repository: repository.id
@@ -36,6 +40,9 @@ class State {
     async open_item(item) {
         if (this._disable_state)
             return;
+
+        APP_COOKIES.push_last_repositories(item.repository);
+
         let repository = await Repository.find(item.repository);
         history.pushState({
             app_action: true,

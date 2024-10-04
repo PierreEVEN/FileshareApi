@@ -43,16 +43,16 @@ class FileshareApp {
         this._viewport = null;
 
         /**
-         * @type {GlobalHeader}
-         * @private
-         */
-        this._global_header = new GlobalHeader(this._elements.global_header);
-
-        /**
          * @type {SideBar}
          * @private
          */
         this._side_bar = new SideBar(this, this._elements.side_bar);
+
+        /**
+         * @type {GlobalHeader}
+         * @private
+         */
+        this._global_header = new GlobalHeader(this._elements.global_header);
 
         this._side_bar.events.add('show_mobile', (show) => {
             if (show)
@@ -139,7 +139,6 @@ class FileshareApp {
         }
         this._side_bar.refresh(user);
     }
-
 }
 
 const APP = new FileshareApp();

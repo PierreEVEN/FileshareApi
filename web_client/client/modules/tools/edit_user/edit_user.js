@@ -36,7 +36,7 @@ function edit_user(user) {
             await delete_user(user);
         }
     });
-    MODAL.open(widget, {custom_width: '500px', custom_height: '450px'})
+    MODAL.open(widget, {custom_width: '800px', custom_height: '550px'})
 }
 
 export {edit_user}

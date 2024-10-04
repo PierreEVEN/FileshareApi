@@ -37,7 +37,7 @@ async function edit_item(item) {
             MODAL.close();
         }
     });
-    MODAL.open(widget, {custom_width: '500px', custom_height: '450px'})
+    MODAL.open(widget, {custom_width: '600px', custom_height: '480px'})
 }
 
 export {edit_item}

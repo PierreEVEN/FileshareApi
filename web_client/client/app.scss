@@ -78,6 +78,14 @@ body {
         height: 100%;
         overflow: scroll;
         z-index: 10;
+        transition-duration: 0.2s;
+
+        &.show {
+          @media (orientation: portrait) {
+            width: 15%;
+            min-width: 200px;
+          }
+        }
 
         .category {
           display: flex;
@@ -91,7 +99,8 @@ body {
         @media (orientation: portrait) {
           & {
             position: absolute;
-            display: none;
+            width: 0;
+            min-width: 0;
             backdrop-filter: blur(20px);
           }
         }

@@ -68,14 +68,14 @@ class AppCookies {
     }
 
     /**
-     * @returns {Promise<[]>}
+     * @returns {number[]}
      */
-    async get_last_repositories() {
-        this._last_repos.split('.').filter(Boolean);
+    get_last_repositories() {
+        return this._last_repos.split('.').filter(Boolean);
     }
 
     /**
-     * @param repos_id {string}
+     * @param repos_id {number}
      */
     push_last_repositories(repos_id) {
         let repos_list = this._last_repos.split('.').filter(Boolean);

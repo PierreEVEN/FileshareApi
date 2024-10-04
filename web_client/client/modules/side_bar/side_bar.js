@@ -5,6 +5,7 @@ import {User} from "../../types/user";
 import {RepositoryTree} from "./repository_tree/repository_tree";
 import {context_menu_my_repositories} from "../context_menu/contexts/context_my_repositories";
 import {EventManager, GLOBAL_EVENTS} from "../../types/event_manager";
+import {APP_COOKIES} from "../../utilities/cookies";
 
 require('./side_bar.scss')
 
@@ -62,6 +63,12 @@ class SideBar {
          */
         this._shared_repositories_loaded = new Map();
 
+        /**
+         * @type {Map<number, RepositoryTree>}
+         * @private
+         */
+        this._recent_repositories_loaded = new Map();
+
         this._add_repository = GLOBAL_EVENTS.add('add_repository', async (repository) => {
             if (!this._my_repositories_loaded.has(repository.id) && APP_CONFIG.connected_user() && repository.owner === APP_CONFIG.connected_user().id) {
                 this._my_repositories_loaded.set(repository.id, new RepositoryTree(this, this._elements.my_repositories, repository));
@@ -115,19 +122,32 @@ class SideBar {
         }
     }
 
-    expand_recent(expanded) {
+    async expand_recent(expanded) {
         if (this._recent_expanded === expanded)
             return;
         this._elements.recent.innerHTML = '';
         this._recent_expanded = expanded;
+        this._recent_repositories_loaded.clear();
+
+        if (expanded) {
+            this._elements.div_recent.classList.add('expand');
+
+            for (const repository_id of APP_COOKIES.get_last_repositories()) {
+                const repository = await Repository.find(repository_id);
+                if (!this._recent_repositories_loaded.has(repository.id))
+                    this._recent_repositories_loaded.set(repository.id, new RepositoryTree(this, this._elements.recent, repository));
+            }
+        } else {
+            this._elements.div_recent.classList.remove('expand');
+        }
     }
 
     show_mobile() {
         this.show_menu_mobile = !this.show_menu_mobile;
         if (this.show_menu_mobile)
-            this.div.parentElement.style.display = 'flex';
+            this.div.parentElement.classList.add('show');
         else
-            this.div.parentElement.style.display = 'none';
+            this.div.parentElement.classList.remove('show');
         this.events.broadcast('show_mobile', this.show_menu_mobile);
     }
 

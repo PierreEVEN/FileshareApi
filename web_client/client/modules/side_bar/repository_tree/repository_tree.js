@@ -79,12 +79,18 @@ class RepositoryNode {
                 })
 
             const content = await this._repository.content.directory_content(this._id);
+            let size = 0;
             for (const id of content) {
                 const item = await this._repository.content.fetch_item(id);
                 if (!item.is_regular_file && !item.in_trash) {
                     await add_item(id);
+                    size++;
                 }
             }
+            if (size === 0) {
+                this._elements.arrow.innerText = '';
+            }
+
             this._elements.category.classList.add('expand');
         } else {
             if (this._listener_add)

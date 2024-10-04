@@ -77,7 +77,7 @@ const Authentication = {
                 }
             });
             MODAL.open(signup_div, {
-                custom_width: '500px', custom_height: '450px', on_close: () => {
+                custom_width: '500px', custom_height: '400px', on_close: () => {
                     fail("Authentification annulée");
                 }
             });

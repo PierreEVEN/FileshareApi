@@ -36,6 +36,17 @@ class GlobalHeader {
             }
         });
 
+        SIDE_BAR.events.add('show_mobile', (show) => {
+            if (show) {
+                div.elements.menu_img.src = "/public/images/icons/icons8-expand-50.png";
+                div.elements.menu_img.style.transform = 'rotate(90deg)';
+            }
+            else {
+                div.elements.menu_img.src = "/public/images/icons/icons8-menu-96.png";
+                div.elements.menu_img.style.transform = 'unset';
+            }
+        })
+
 
         GLOBAL_EVENTS.add('on_connected_user_changed', async (data) => {
             this.refresh(data.new);

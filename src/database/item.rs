@@ -267,7 +267,7 @@ impl Item {
     }
 
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
-        for object in query_objects!(db, ObjectId, r#"SELECT UNNEST(fileshare_v3.remove_item($1)) AS id GROUP BY id;"#, self.id) {
+        for object in query_objects!(db, ObjectId, r#"SELECT UNNEST(SCHEMA_NAME.remove_item($1)) AS id GROUP BY id;"#, self.id) {
             Object::from_id(db, &object).await?.delete(db).await?;
         }
         Ok(())

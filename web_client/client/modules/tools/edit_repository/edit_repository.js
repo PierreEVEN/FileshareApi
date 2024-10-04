@@ -50,7 +50,7 @@ function edit_repository(repository) {
             await delete_repository(repository);
         }
     });
-    MODAL.open(widget, {custom_width: '500px', custom_height: '450px'})
+    MODAL.open(widget, {custom_width: '800px', custom_height: '85%'})
 }
 
 export {edit_repository}

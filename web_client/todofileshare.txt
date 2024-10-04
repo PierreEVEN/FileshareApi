@@ -1,13 +1,22 @@
-# Bugs
+# Bugs avant release V3.0
 
-- sidebar
-    - cacher les fleches si pas d'enfants
 - upload
-    - upload : mode die
+    - mode die
+    - selecteur de fichiers
+    - stats
+- dépot
+    - modifier un dépot / ajouter des users
+- viewport
+    - navigation / selection / menu contextuel
+    - fix taille des dossiers cassée
+- carousel
+    - fix events item list
+    - fix download / share
+- implémenter les filtres
+- fix le client "lourd" (léger pour la nouvelle version)
+
 
 # TODO
-- Download multiple items
-- ajouter des filtres avancés (par auteur, par date précise etc...)
 - supporter plus de 1000 items par dossiers
 - gérer le zoom dans le carousel sur les images / vidéos
 - menu d'action groupée sur plusieurs éléments
