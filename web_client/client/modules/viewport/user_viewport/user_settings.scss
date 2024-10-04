@@ -1,86 +1,108 @@
+@import '../../../stylesheets/palette';
+
 #user-settings-root {
   display: flex;
   flex-direction: row;
   flex-grow: 1;
+  width: 100%;
 
-  .left-bar {
-    width: 250px;
+  #info-section {
     display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: auto;
-    border-right: dashed 1px #4c4c4c;
+    flex-direction: row;
+    border-bottom: dotted 1px $text-secondary;
+    height: fit-content;
+    width: 100%;
 
-    p {
-      font-weight: bold;
-      margin-left: 10px;
+    @media (orientation: portrait) {
+      flex-direction: column;
     }
 
-    button {
-      background-color: #00000000;
-      border-right: 0 #0070f0 solid;
-      border-left: 0 #0070f0 solid;
-      width: 100%;
-
-      &:hover {
-        background-color: rgba(0, 100, 211, 0.37);
-        border-right: 4px #0070f0 solid;
-        border-left: 4px #0070f0 solid;
-      }
-
-      &.selected {
-        background-color: rgba(0, 111, 238, 0.37);
-        border: 1px #0070f0 dashed;
-      }
-    }
-  }
-
-  #user-settings-container {
-    background-color: #202a38;
-    display: flex;
-    flex-grow: 1;
-    flex-direction: column;
-    overflow: auto;
-
-    .table {
-      display: flex;
-      flex-direction: row;
-
-      .fields {
-        display: flex;
-        flex-direction: column;
-        flex-grow: 0.25;
-        border-right: dotted 2px #6a6a6a;
-      }
-
-      .values {
-        display: flex;
-        flex-direction: column;
-        flex-grow: 0.75;
-      }
-    }
-
-    #connected-devices-list {
+    #user-infos {
       display: flex;
       flex-direction: column;
 
-      .device {
+      #profile {
+        margin: 10px 0 0 10px;
         display: flex;
         flex-direction: row;
         align-items: center;
 
-        .device-name {
-          margin-left: 20px;
-          flex-grow: 1;
+        .profile-picture {
+          background-color: red;
+          width: 50px;
+          height: 50px;
+          border-radius: 40px;
+          border: 1px rgba(0, 0, 0, 1) solid;
+          background-color: rgba(255, 255, 255, 0.2);
         }
 
-        button {
-          min-width: unset;
-          width: 50px;
-          margin: 0 30px;
+        p {
+          margin: 0;
+        }
+
+
+        #user {
+          display: flex;
+          flex-direction: column;
+          margin-left: 20px;
+
+          .username {
+            font-size: 20px;
+            font-weight: bolder;
+          }
+
+          .role {
+            font-weight: lighter;
+            font-size: 12px;
+            color: $text-secondary;
+          }
+
+        }
+      }
+
+      a {
+        margin: 10px 10px;
+        width: 100%;
+        text-align: center;
+
+        @media (orientation: portrait) {
+          text-align: left;
+        }
+      }
+    }
+
+    #repository-list {
+      padding-top: 10px;
+      padding-bottom: 10px;
+      margin-left: 20px;
+      min-height: 100%;
+      overflow: scroll;
+      display: flex;
+      flex-direction: column;
+      border-left: dotted 1px $text-secondary;
+
+      @media (orientation: portrait) {
+        border-left: unset;
+        margin-left: 0;
+      }
+
+      h1 {
+        margin: 10px 20px;
+        font-size: 20px;
+        text-decoration: underline;
+      }
+
+      .list {
+        display: flex;
+        flex-direction: row;
+
+        .repository {
+          display: flex;
+          flex-direction: row;
 
           img {
-            width: 30px;
+            width: 20px;
+            margin-right: 10px;
           }
         }
       }

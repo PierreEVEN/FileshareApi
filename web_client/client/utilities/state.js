@@ -78,7 +78,7 @@ class State {
             else
                 await this.app.set_display_repository(repository);
         } else if (state.user) {
-            let user = await User.fetch(state.repository);
+            let user = await User.fetch(state.user);
             await this.app.set_display_user(user);
         }
         this._disable_state = false;

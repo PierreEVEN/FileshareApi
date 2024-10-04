@@ -16,7 +16,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::log::info;
 use crate::database::DatabaseId;
-use crate::database::repository::{Repository, RepositoryId, RepositoryStatus};
+use crate::database::repository::{Repository, RepositoryStatus};
 
 pub struct UserRoutes {}
 

@@ -4,6 +4,7 @@ import {EncString} from "../../../types/encstring";
 import {APP_COOKIES} from "../../../utilities/cookies";
 import {APP_CONFIG} from "../../../types/app_config";
 import {Message, NOTIFICATION} from "../message_box/notification";
+import {User} from "../../../types/user";
 
 const Authentication = {
     login: async () => {
@@ -21,7 +22,7 @@ const Authentication = {
                     if (!result)
                         return;
                     APP_COOKIES.login(result.token);
-                    APP_CONFIG.set_connected_user(result.user);
+                    APP_CONFIG.set_connected_user(new User(result.user));
                     success();
                     MODAL.close();
                 },
@@ -67,7 +68,7 @@ const Authentication = {
                         fail(`Authentication failed : ${error.message}`)
                     });
                     APP_COOKIES.login(login_result.token);
-                    APP_CONFIG.set_connected_user(login_result.user)
+                    APP_CONFIG.set_connected_user(new User(login_result.user))
                     success();
                     MODAL.close();
                 },

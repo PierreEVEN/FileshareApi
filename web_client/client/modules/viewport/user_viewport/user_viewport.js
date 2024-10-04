@@ -2,6 +2,8 @@ import {MemoryTracker} from "../../../types/memory_handler";
 import {fetch_api} from "../../../utilities/request";
 import {Message, NOTIFICATION} from "../../tools/message_box/notification";
 import {Repository} from "../../../types/repository";
+import {User} from "../../../types/user";
+import {APP} from "../../../app";
 
 require('./user_settings.scss')
 
@@ -16,6 +18,7 @@ class UserViewport extends MemoryTracker {
         this.container = container;
         let viewport = require('./user_viewport.hbs')({user: user.display_data()}, {});
         container.append(viewport);
+        this._elements = viewport.elements;
         this._fill_data();
     }
 
@@ -28,8 +31,12 @@ class UserViewport extends MemoryTracker {
 
         for (const repository_id of repositories) {
             let repository = await Repository.find(repository_id);
-            console.log(repository)
-
+            let widget = require('./repository.hbs')({text: repository.display_name.plain()}, {
+                visit: async () => {
+                    APP.set_display_repository(repository);
+                }
+            });
+            this._elements.repository_list.append(widget);
 
         }
     }
