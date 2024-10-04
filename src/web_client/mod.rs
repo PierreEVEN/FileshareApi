@@ -159,8 +159,18 @@ struct ClientAppConfig {
 async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let mut client_config = ClientAppConfig {
         origin: format!("{}://{}", if ctx.config.use_tls { "https" } else { "http" }, match request.headers().get("host") {
-            None => { ctx.config.addresses[0].as_str() }
-            Some(host) => { host.to_str()? }
+            None => {
+                match request.uri().host() {
+                    None => { ctx.config.addresses[0].to_string() }
+                    Some(host) => {
+                        match request.uri().port() {
+                            None => { ctx.config.addresses[0].to_string() }
+                            Some(port) => { format!("{}:{}", host, port.as_str()) }
+                        }
+                    }
+                }
+            }
+            Some(host) => { host.to_str()?.to_string() }
         }),
         ..Default::default()
     };
