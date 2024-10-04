@@ -6,14 +6,15 @@ import {Authentication} from "../modules/tools/authentication/authentication";
  * @param path
  * @param method
  * @param body
+ * @param custom_token
  * @returns {Promise<object|object[]|any>}
  */
-async function fetch_api(path, method = 'GET', body = null) {
+async function fetch_api(path, method = 'GET', body = null, custom_token = null) {
     const headers = new Headers();
     if (body)
         headers.append('Content-Type', 'application/json');
     headers.append('Accept', 'application/json');
-    headers.append('content-authtoken', APP_COOKIES.get_token());
+    headers.append('content-authtoken', custom_token ? custom_token : APP_COOKIES.get_token());
     const result = await fetch(`${APP_CONFIG.origin()}/api/${path}`, {
         method: method,
         body: body ? JSON.stringify(body) : null,

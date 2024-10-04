@@ -2,7 +2,7 @@
 
 #user-settings-root {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   flex-grow: 1;
   width: 100%;
 
@@ -57,11 +57,13 @@
             color: $text-secondary;
           }
         }
+
         .edit {
           padding: 3px 5px;
           margin: 5px 20px 0 20px;
           height: fit-content;
           align-self: start;
+
           img {
             width: 20px;
             margin: 0;
@@ -118,6 +120,38 @@
             margin-right: 10px;
           }
         }
+      }
+    }
+  }
+
+  #tokens {
+    display: flex;
+    flex-direction: column;
+
+    .token {
+      border-bottom: 1px dotted $text-secondary;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+
+      .field {
+        display: flex;
+        flex-grow: 1;
+        width: 10%;
+
+        button {
+          align-self: center;
+          padding: 5px;
+
+          img {
+            width: 30px;
+          }
+        }
+      }
+
+      .device {
+        margin-left: 10px;
+        width: 80%;
       }
     }
   }

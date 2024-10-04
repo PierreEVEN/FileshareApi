@@ -45,8 +45,8 @@ class SideBar {
         this._elements = div['elements'];
         container.append(div);
 
-        document.addEventListener('on_connected_user_changed', async (data) => {
-            this.refresh(data.detail);
+        GLOBAL_EVENTS.add('on_connected_user_changed', async (data) => {
+            this.refresh(data.new);
         });
         this.refresh(APP_CONFIG.connected_user());
 

@@ -5,11 +5,11 @@ class Message {
      * @param text {string}
      */
     constructor(text) {
-        if (text && text['message']) {
-            if (text['code'])
+        if (text && (text['message'] || text['code'])) {
+            if (!text['message'])
+                this._text = text['code'];
+            else
                 this._text = text['message'];
-                else
-            this._text = text['message'];
         } else
             this._text = text.toString();
         this._lifespan = 5000;

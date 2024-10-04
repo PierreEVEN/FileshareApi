@@ -3,6 +3,7 @@ import {Authentication} from "../tools/authentication/authentication";
 import {APP_CONFIG} from "../../types/app_config";
 import {SIDE_BAR} from "../side_bar/side_bar";
 import {APP} from "../../app";
+import {GLOBAL_EVENTS} from "../../types/event_manager";
 
 require('./global_header.scss')
 
@@ -36,8 +37,8 @@ class GlobalHeader {
         });
 
 
-        document.addEventListener('on_connected_user_changed', async (data) => {
-            this.refresh(data.detail);
+        GLOBAL_EVENTS.add('on_connected_user_changed', async (data) => {
+            this.refresh(data.new);
         });
 
         this._elements = div['elements'];

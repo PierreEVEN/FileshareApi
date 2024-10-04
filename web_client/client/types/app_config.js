@@ -1,12 +1,13 @@
 import {User} from "./user";
 import {FilesystemItem} from "./filesystem_stream";
 import {Repository} from "./repository";
+import {GLOBAL_EVENTS} from "./event_manager";
 
 class AppConfig {
     constructor() {
         const data = JSON.parse(document.body.dataset['app_config']);
         console.assert(data, "Invalid application configuration data")
-        
+
         /**
          * @type {User}
          */
@@ -37,8 +38,9 @@ class AppConfig {
     }
 
     set_connected_user(new_user) {
+        const old = this._connected_user;
         this._connected_user = new_user;
-        document.dispatchEvent(new CustomEvent('on_connected_user_changed', {'detail': new_user}));
+        GLOBAL_EVENTS.broadcast('on_connected_user_changed', {old: old, new: new_user});
     }
 
     set_display_repository(display_user, display_repository) {

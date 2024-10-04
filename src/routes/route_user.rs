@@ -16,8 +16,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::log::info;
 use crate::database::DatabaseId;
-use crate::database::repository::{Repository, RepositoryId, RepositoryStatus};
-use crate::utils::permissions::Permissions;
+use crate::database::repository::{Repository, RepositoryStatus};
 
 pub struct UserRoutes {}
 
@@ -28,7 +27,7 @@ impl UserRoutes {
             .route("/login/", post(login).with_state(ctx.clone()))
             .route("/delete/", post(delete_user).with_state(ctx.clone()))
             .route("/logout/", post(logout).with_state(ctx.clone()))
-            .route("/tokens/", post(auth_tokens).with_state(ctx.clone()))
+            .route("/tokens/", get(auth_tokens).with_state(ctx.clone()))
             .route("/update/", post(update).with_state(ctx.clone()))
             .route("/repositories/:user_id/", get(repositories).with_state(ctx.clone()))
             .route("/create/", post(create_user).with_state(ctx.clone()));
@@ -121,16 +120,15 @@ async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) 
     }))
 }
 
-#[axum::debug_handler]
 async fn auth_tokens(State(_ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<Json<Vec<AuthToken>>, ServerError> {
     let connected_user = require_connected_user!(request);
     Ok(Json(AuthToken::from_user(&_ctx.database, connected_user.id()).await?))
 }
 
-async fn logout(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<impl IntoResponse, ServerError> {
-    let token = match jar.get("authtoken") {
-        None => { request.headers().get("content-authtoken").map(EncString::try_from) }
-        Some(token) => { Some(EncString::from_url_path(token.value().to_string())) }
+async fn logout(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
+    let token = match request.headers().get("content-authtoken").map(EncString::try_from) {
+        None => { jar.get("authtoken").map(|token| EncString::from_url_path(token.value().to_string())) }
+        Some(token) => { Some(token) }
     };
 
     match token {
@@ -144,12 +142,11 @@ async fn logout(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, request: axum::h
 }
 
 async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
-
     let connected_user = require_connected_user!(request);
 
     let data = Json::<UserCredentials>::from_request(request, &ctx).await?.0;
     let from_creds = User::from_credentials(&ctx.database, &data.login, &data.password).await?;
-    
+
     if *from_creds.id() != *connected_user.id() {
         return Err(Error::msg("Cannot delete someone else's account"))?;
     }
