@@ -1,5 +1,6 @@
 # Bugs avant release V3.0
 
+- download la racine d'un dépot
 - upload
     - mode die
     - selecteur de fichiers
