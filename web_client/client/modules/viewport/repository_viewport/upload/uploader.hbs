@@ -8,6 +8,10 @@
             </div>
             <button class="expand" {{object "expand"}}><img src="/public/images/icons/icons8-expand-50.png"></button>
         </div>
+        <div class="add-files">
+            <button onclick="{{ctx "add_files()"}}"><img alt="new_file" src="/public/images/icons/icons8-add-properties-96.png"><p> ajouter un fichier</p></button>
+            <button onclick="{{ctx "add_directory()"}}"><img alt="new_file" src="/public/images/icons/icons8-add-folder-48.png"><p> ajouter un dossier</p></button>
+        </div>
         <div class="file-list" {{object "file_list"}}>
         </div>
         <button class="start-upload-button" {{object "upload_button"}} onclick="{{ctx "start_upload()"}}">
@@ -21,7 +25,8 @@
                 <div class="title">
                     <div class="name-line">
                         <p class="name" {{object "upload_file_name"}}></p>
-                        <button class="close" onclick="{{ctx "pause()"}}"><img src="/public/images/icons/icons8-pause-30.png" {{object "pause_img"}}></button>
+                        <button class="close" onclick="{{ctx "pause()"}}"><img
+                                src="/public/images/icons/icons8-pause-30.png" {{object "pause_img"}}></button>
                     </div>
                     <p class="size" {{object "upload_file_size"}}></p>
                 </div>

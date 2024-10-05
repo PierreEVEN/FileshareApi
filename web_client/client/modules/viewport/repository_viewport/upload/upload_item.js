@@ -94,6 +94,29 @@ class UploadItem {
         });
     }
 
+
+    /**
+     * @param file {File|null}
+     * @param name {string}
+     * @return {UploadItem}
+     * @constructor
+     */
+    static FromUploadModal(name, file = null) {
+        if (file) {
+            if (!file.type)
+                file.mimetype = mime.getType(file.name);
+            else
+                file.mimetype = file.type;
+        }
+        return new UploadItem({
+            is_regular_file: !!file,
+            name: name,
+            file: file,
+            mimetype: file ? file.mimetype : null,
+            directory: null
+        });
+    }
+
     /**
      * @param directory {FilesystemItem}
      * @return {UploadItem}
@@ -124,7 +147,8 @@ class UploadItem {
     }
 
     parent_add_stats(size, count) {
-        this.parent.parent_add_stats(size, count);
+        if (this.parent)
+            this.parent.parent_add_stats(size, count);
         this.total_items += count;
         this.total_size += size;
     }

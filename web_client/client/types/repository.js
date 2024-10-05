@@ -93,9 +93,9 @@ class Repository {
     }
 
     /**
-     * @return {Promise<void>}
+     * @return {void}
      */
-    async download() {
+    download() {
         window.open(`/api/repository/download/${this.id}/`);
     }
 

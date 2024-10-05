@@ -7,6 +7,68 @@ import {humanFileSize} from "../../../../common/tools/utils";
 
 require("./uploader.scss")
 
+/**
+ * @param directory {boolean}
+ * @return {Promise<UploadItem[]>}
+ */
+async function open_file_picker(directory) {
+    const inputElement = document.createElement("input");
+    inputElement.type = "file";
+    if (directory) {
+        inputElement.webkitdirectory = true;
+        inputElement.directory = true;
+        inputElement.multiple = true;
+    } else {
+        inputElement.multiple = true;
+    }
+    return await new Promise((resolve) => {
+        inputElement.addEventListener("cancel", () => {
+            resolve([]);
+        });
+        inputElement.addEventListener("change", (e) => {
+            const roots = new Map();
+            const files = [];
+
+            /**
+             * @param remaining_path {string[]}
+             * @param parent {UploadItem|null}
+             * @return {UploadItem|null}
+             */
+            function find_or_create_directory(remaining_path, parent) {
+                if (remaining_path.length === 0)
+                    return null;
+                let dir_name = remaining_path.pop();
+                let available = parent ? parent.children : roots;
+                if (!available.has(dir_name)) {
+                    let directory = UploadItem.FromUploadModal(dir_name);
+                    if (!parent)
+                        files.push(directory);
+                    else
+                        parent.add_child(directory);
+                    available.set(dir_name, directory);
+                }
+                if (remaining_path.length === 0)
+                    return available.get(dir_name);
+                else
+                    return find_or_create_directory(remaining_path, available.get(dir_name));
+            }
+
+            for (const file of e.target['files']) {
+                const directory_path = (file.webkitRelativePath ? file.webkitRelativePath : '').split('/').filter(Boolean);
+                directory_path.pop();
+                let directory = find_or_create_directory(directory_path.reverse(), null);
+                let item = UploadItem.FromUploadModal(file.name, file);
+                if (directory) {
+                    directory.add_child(item);
+                } else
+                    files.push(item);
+            }
+            resolve(files);
+        })
+        inputElement.dispatchEvent(new MouseEvent("click"));
+    })
+}
+
 class Uploader extends MemoryTracker {
     /**
      * @param container {HTMLElement}
@@ -24,6 +86,16 @@ class Uploader extends MemoryTracker {
             },
             pause: () => {
                 this.set_pause(!this.pause);
+            },
+            add_files: async () => {
+                for (const item of await open_file_picker(false)) {
+                    await this.add_item(item)
+                }
+            },
+            add_directory: async () => {
+                for (const item of await open_file_picker(true)) {
+                    await this.add_item(item)
+                }
             }
         });
         this.pause = false;

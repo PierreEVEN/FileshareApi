@@ -45,7 +45,6 @@ class DropBox {
 
             if (event.dataTransfer.items) {
                 const process_entry = async (entry, parent) => {
-
                     if (entry.isDirectory) {
                         const directory = await UploadItem.FromFilesystemDrop(entry);
                         if (parent)
