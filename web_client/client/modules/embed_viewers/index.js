@@ -1,5 +1,5 @@
 import Handlebars from "handlebars";
-import {get_mime_icon_path, is_mimetype_valid} from "../../common/tools/mime_utils";
+import {get_mime_icon_path, is_mimetype_valid} from "../../utilities/mime_utils";
 
 require('./custom_elements/document/code')
 require('./custom_elements/document/markdown')

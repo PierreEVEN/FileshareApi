@@ -15,9 +15,7 @@ $button_1: #2180FF;
 $cancel-background: #9f1600;
 $cancel-border: #f61701;
 
-
 $button_yes: #00ff04;
-
 
 @function item_hover($base) {
   @return adjust-color($base, $hue: -2deg, $lightness: -15%);

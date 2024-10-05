@@ -1,4 +1,4 @@
-import {humanFileSize} from "../../../../../../common/tools/utils";
+import {humanFileSize} from "../../../../../../utilities/utils";
 import {APP_CONFIG} from "../../../../../../types/app_config";
 
 class CarouselOverlay {

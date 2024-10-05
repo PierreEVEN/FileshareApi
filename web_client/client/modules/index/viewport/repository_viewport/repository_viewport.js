@@ -15,7 +15,7 @@ import {ViewportToolbar} from "./toolbar/toolbar";
 import {Carousel} from "./carousel/carousel";
 import {Repository} from "../../../../types/repository";
 import {CarouselList} from "./carousel/list/carousel_list";
-import {humanFileSize} from "../../../../common/tools/utils";
+import {humanFileSize} from "../../../../utilities/utils";
 
 require('./repository_viewport.scss')
 

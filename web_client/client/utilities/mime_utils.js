@@ -1,7 +1,7 @@
 const Handlebars = require('handlebars');
 
 /**
- * @param mimetype {ClientString}
+ * @param mimetype {string}
  * @return {string}
  */
 function get_mime_alias(mimetype) {
@@ -21,7 +21,7 @@ function get_mime_alias(mimetype) {
 }
 
 /**
- * @param mimetype {ClientString}
+ * @param mimetype {string}
  * @return {boolean}
  */
 function is_mimetype_valid(mimetype) {
@@ -39,7 +39,7 @@ function is_mimetype_valid(mimetype) {
 }
 
 /**
- * @param mimetype {ClientString}
+ * @param mimetype {string}
  * @return {string}
  */
 function get_mime_icon_path(mimetype) {

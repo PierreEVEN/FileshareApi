@@ -1,8 +1,8 @@
 import Handlebars from "handlebars";
-import {get_mime_icon_path, is_mimetype_valid, UNDEFINED_MIME_STRING} from "../common/tools/mime_utils";
+import {get_mime_icon_path, is_mimetype_valid, UNDEFINED_MIME_STRING} from "./mime_utils";
 
 /* ################## HELPER {ITEM_THUMBNAIL} ################## */
-const get_item_thumbnail = require('../common/tools/get_item_thumbnail')
+const get_item_thumbnail = require('./get_item_thumbnail')
 Handlebars.registerHelper("item_thumbnail", (item) => {
     // CASE : IS STANDARD FILE
     if (item.is_regular_file) {

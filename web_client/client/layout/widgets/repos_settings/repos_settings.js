@@ -1,4 +1,4 @@
-import {humanFileSize, PAGE_CONTEXT} from "../../../common/tools/utils";
+import {humanFileSize, PAGE_CONTEXT} from "../../../utilities/utils";
 import {edit_repos} from "../../../modules/index/tools/edit_repos/edit_repos_form";
 import {} from "../../../modules/index/tools/message_box/notification";
 

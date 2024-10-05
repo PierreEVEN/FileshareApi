@@ -1,4 +1,4 @@
-import {get_mime_icon_path} from "../../common/tools/mime_utils";
+import {get_mime_icon_path} from "../../utilities/mime_utils";
 import {APP_CONFIG} from "../../types/app_config";
 
 function get(item) {
