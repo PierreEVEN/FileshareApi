@@ -1,6 +1,5 @@
 use std::{env, fs};
 use std::io::Write;
-use std::os::windows::fs::MetadataExt;
 use crate::database::item::{FileData, Item, ItemId};
 use crate::database::object::Object;
 use crate::database::repository::RepositoryId;

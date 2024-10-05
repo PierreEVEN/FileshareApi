@@ -1,5 +1,5 @@
 [package]
-name = "FileshareApi"
+name = "fileshare"
 version = "0.1.0"
 edition = "2021"
 
@@ -25,7 +25,6 @@ which = "6.0.3"
 tokio-util = "0.7.12"
 mime_guess = "2.0.5"
 regex = "1.10.6"
-num_cpus = "1.16.0"
 futures = "0.3.30"
 http-body-util = "0.1.2"
 axum-server-dual-protocol = "0.7.0"
