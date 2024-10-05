@@ -3,12 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "debug": "npm run debug:build",
-    "debug:build": "webpack --watch --config webpack.debug.js",
-    "dev": "npm run dev:build",
-    "dev:build": "webpack --watch --config webpack.dev.js",
-    "prod": "npm run rel:build",
-    "rel:build": "webpack --config webpack.prod.js"
+    "dev:debug": "webpack --watch --config webpack.analyze.dev.js",
+    "prod:debug": "webpack --config webpack.analyze.prod.js",
+    "dev": "webpack --watch --config webpack.dev.js",
+    "prod": "webpack --config webpack.prod.js"
   },
   "dependencies": {
     "@babel/preset-env": "^7.22.20",
