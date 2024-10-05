@@ -9,6 +9,7 @@
 - implémenter les filtres
 - fix le client "lourd" (léger pour la nouvelle version)
 
+- supporter les PDFS
 
 # TODO
 - supporter plus de 1000 items par dossiers

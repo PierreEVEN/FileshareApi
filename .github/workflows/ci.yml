@@ -77,7 +77,7 @@ jobs:
 
       - run: mkdir fileshare
       - run: mkdir fileshare/migrations
-      - run: unzip "./server_artifact/output/fileshare_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
+      - run: unzip "./server_artifact/output/fileshare_x86_64-unknown-linux-musl.zip" -d ./fileshare
       - run: mv ./server_artifact/migrations/* ./fileshare/migrations
       - run: mv ./web_client_artifact/* ./fileshare
       - run: zip -r fileshare_linux.zip ./fileshare/
