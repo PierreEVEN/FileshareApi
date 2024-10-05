@@ -1,4 +1,5 @@
 use std::{env, fs};
+use std::io::Write;
 use crate::database::item::{FileData, Item, ItemId};
 use crate::database::object::Object;
 use crate::database::repository::RepositoryId;
@@ -12,8 +13,7 @@ use futures::{io, TryStreamExt};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::str::FromStr;
-use sha2::{Digest, Sha256};
-use tokio::io::{BufWriter};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 use tokio_util::io::StreamReader;
 
 pub struct Upload {
@@ -21,7 +21,7 @@ pub struct Upload {
     item: Item,
     file: FileData,
     bytes_read: usize,
-    hasher: Sha256,
+    hasher: blake3::Hasher,
 }
 
 impl Upload {
@@ -61,7 +61,7 @@ impl Upload {
                 object: Default::default(),
             },
             bytes_read: 0,
-            hasher: Sha256::new(),
+            hasher: blake3::Hasher::new(),
         })
     }
 
@@ -79,8 +79,20 @@ impl Upload {
             .append(true)
             .open(self.get_file_path()).await.map_err(|err| { Error::msg(format!("Cannot open file sink : {err}")) })?);
 
-        let data_read = tokio::io::copy(&mut read, &mut file).await?;
-        self.bytes_read += data_read as usize;
+        let mut buf = [0u8; 4096];
+        loop {
+            let read_data = read.read(&mut buf).await?;
+            if read_data == 0 {
+                break;
+            }
+            let data_to_write = &buf[..read_data];
+            let hash_data = self.hasher.write(data_to_write)?;
+            let write_data = file.write(data_to_write).await?;
+            if read_data != write_data && read_data != hash_data {
+                return Err(Error::msg(format!("Failed to write the right amount of data (expected {}, got {})", read_data, write_data)));
+            }
+            self.bytes_read += read_data;
+        }
         Ok(())
     }
 
@@ -98,17 +110,19 @@ impl Upload {
     }
 
     pub async fn store(&mut self, db: &Database) -> Result<Item, Error> {
+
+        //use std::time::Instant;
+       // let total_now = Instant::now();
+
         assert_eq!(self.bytes_read, self.file.size as usize);
-
-        let hash = self.hasher.clone().finalize();
-        let hash = format!("{:x}", hash);
-
+        let hash = self.hasher.clone().finalize().to_string();
         for existing in Object::from_hash(db, &hash).await? {
             if existing.equals_to_file(db, self.get_file_path()).await? {
                 fs::remove_file(self.get_file_path())?;
                 self.file.object = existing.id().clone();
                 self.item.file = Some(self.file.clone());
                 self.item.push(db).await?;
+                //println!("Compare existing total (found) : {:.2?}", total_now.elapsed());
                 return Ok(self.item.clone());
             }
         }
@@ -117,7 +131,6 @@ impl Upload {
         self.file.object = object.id().clone();
         self.item.file = Some(self.file.clone());
         self.item.push(db).await?;
-
         Ok(self.item.clone())
     }
 }

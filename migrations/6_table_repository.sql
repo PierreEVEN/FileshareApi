@@ -10,3 +10,5 @@ CREATE TABLE IF NOT EXISTS SCHEMA_NAME.repository (
         allow_visitor_upload BOOLEAN DEFAULT false NOT NULL,
         FOREIGN KEY(owner) REFERENCES SCHEMA_NAME.users(id)
     );
+
+CREATE INDEX IF NOT EXISTS SCHEMA_NAME_repository_url_name_index ON SCHEMA_NAME.repository USING hash(url_name);

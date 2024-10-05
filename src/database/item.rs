@@ -267,9 +267,11 @@ impl Item {
     }
 
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
-        for object in query_objects!(db, ObjectId, r#"SELECT UNNEST(SCHEMA_NAME.remove_item($1)) AS id GROUP BY id;"#, self.id) {
-            Object::from_id(db, &object).await?.delete(db).await?;
-        }
+        println!("AH");
+        let childs = query_objects!(db, ObjectId, r#"SELECT UNNEST(SCHEMA_NAME.remove_item($1)) AS id GROUP BY id;"#, self.id);
+        println!("BH");
+        Object::delete_objects(db, &childs).await?;
+        println!("CH");
         Ok(())
     }
 

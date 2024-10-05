@@ -24,7 +24,8 @@ class ItemView {
 
                 },
                 clicked: () => {
-                    this.events.clicked();
+                    if (!item.in_trash)
+                        this.events.clicked();
                 },
                 context_menu: (e) => {
                     context_menu_item(item);
@@ -41,7 +42,8 @@ class ItemView {
 
                 },
                 clicked: () => {
-                    this.events.clicked();
+                    if (!item.in_trash)
+                        this.events.clicked();
                 },
                 context_menu: (e) => {
                     context_menu_item(item);

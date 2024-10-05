@@ -11,6 +11,16 @@ use tracing::{error};
 
 make_database_id!(ObjectId);
 
+impl ObjectId {
+    pub fn data_path(&self, db: &Database) -> PathBuf {
+        db.file_storage_path.join(self.to_string().as_str())
+    }
+
+    pub fn thumbnail_path(&self, db: &Database) -> PathBuf {
+        db.thumbnail_storage_path.join(self.to_string().as_str())
+    }
+}
+
 #[derive(Debug, FromRow)]
 pub struct Object {
     id: ObjectId,
@@ -46,25 +56,28 @@ impl Object {
     }
 
     pub async fn delete(&self, db: &Database) -> Result<(), Error> {
-
-        if self.data_path(db).exists() {
-            fs::remove_file(self.data_path(db))?;
-        }
-
-        if self.thumbnail_path(db).exists() {
-            fs::remove_file(self.thumbnail_path(db))?;
-        }
-
-        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.objects WHERE id = $1;"#, *self.id);
-        Ok(())
+        Self::delete_objects(db, &vec![self.id.clone()]).await
     }
 
+    pub async fn delete_objects(db: &Database, objects: &Vec<ObjectId>) -> Result<(), Error> {
+        for object in objects {
+            if object.data_path(db).exists() {
+                fs::remove_file(object.data_path(db))?;
+            }
+            if object.thumbnail_path(db).exists() {
+                fs::remove_file(object.thumbnail_path(db))?;
+            }
+        }
+        query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.objects WHERE id = any($1);"#, objects);
+        Ok(())
+    }
+    
     pub fn data_path(&self, db: &Database) -> PathBuf {
-        db.file_storage_path.join(self.id.to_string().as_str())
+        self.id.data_path(db)
     }
 
     pub fn thumbnail_path(&self, db: &Database) -> PathBuf {
-        db.thumbnail_storage_path.join(self.id.to_string().as_str())
+        self.id.thumbnail_path(db)
     }
 
     pub fn id(&self) -> &ObjectId {
