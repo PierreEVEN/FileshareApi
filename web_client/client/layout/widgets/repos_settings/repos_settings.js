@@ -1,6 +1,6 @@
 import {humanFileSize, PAGE_CONTEXT} from "../../../common/tools/utils";
-import {edit_repos} from "../../../modules/tools/edit_repos/edit_repos_form";
-import {} from "../../../modules/tools/message_box/notification";
+import {edit_repos} from "../../../modules/index/tools/edit_repos/edit_repos_form";
+import {} from "../../../modules/index/tools/message_box/notification";
 
 const authorization_hbs = require('./authorization.hbs')
 const infos_hbs = require('./infos.hbs');

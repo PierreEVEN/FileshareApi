@@ -2,7 +2,7 @@ import {EncString} from "./encstring";
 import {FilesystemStream} from "./filesystem_stream";
 import {fetch_api} from "../utilities/request";
 import {GLOBAL_EVENTS} from "./event_manager";
-import {Message, NOTIFICATION} from "../modules/tools/message_box/notification";
+import {Message, NOTIFICATION} from "../modules/index/tools/message_box/notification";
 
 class RepositoryStatus {
     constructor(data) {

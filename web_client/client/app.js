@@ -1,18 +1,18 @@
 import './utilities/handlebars_helpers';
 //@FIX : don't importing this cause a weird issue when rendering pdf...
-require('./embed_viewers/custom_elements/pdf_viewer/pdf-viewer.hbs');
-require('./embed_viewers/custom_elements/document/code');
-require('./embed_viewers/custom_elements/document/markdown');
-require('./embed_viewers/custom_elements/pdf_viewer/pdf-viewer');
+require('./modules/embed_viewers/custom_elements/pdf_viewer/pdf-viewer.hbs');
+require('./modules/embed_viewers/custom_elements/document/code');
+require('./modules/embed_viewers/custom_elements/document/markdown');
+require('./modules/embed_viewers/custom_elements/pdf_viewer/pdf-viewer');
 require('./app.scss');
 
-import {GlobalHeader} from "./modules/global_header/global_header";
-import {SideBar} from "./modules/side_bar/side_bar";
+import {GlobalHeader} from "./modules/index/global_header/global_header";
+import {SideBar} from "./modules/index/side_bar/side_bar";
 
-import "./modules/viewport/repository_viewport/upload/uploader";
+import "./modules/index/viewport/repository_viewport/upload/uploader";
 import {State} from "./utilities/state";
 import {Repository} from "./types/repository";
-import {Viewport} from "./modules/viewport/viewport";
+import {Viewport} from "./modules/index/viewport/viewport";
 import {APP_CONFIG} from "./types/app_config";
 import {FilesystemItem} from "./types/filesystem_stream";
 
@@ -85,7 +85,7 @@ class FileshareApp {
      */
     async set_display_repository(repository) {
         console.assert(repository, "invalid repository");
-        const {Viewport} = require("./modules/viewport/viewport");
+        const {Viewport} = require("./modules/index/viewport/viewport");
         if (!this._viewport)
             this._viewport = new Viewport(this._elements.viewport);
         await this.state.open_repository(repository);

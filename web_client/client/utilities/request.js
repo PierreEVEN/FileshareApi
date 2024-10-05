@@ -1,6 +1,6 @@
 import {APP_CONFIG} from "../types/app_config";
 import {APP_COOKIES} from "./cookies";
-import {Authentication} from "../modules/tools/authentication/authentication";
+import {Authentication} from "../modules/index/tools/authentication/authentication";
 
 /**
  * @param path

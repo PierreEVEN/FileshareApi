@@ -1,6 +1,6 @@
 import {EncString} from "./encstring";
 import {fetch_api} from "../utilities/request";
-import {Message, NOTIFICATION} from "../modules/tools/message_box/notification";
+import {Message, NOTIFICATION} from "../modules/index/tools/message_box/notification";
 import {EventManager} from "./event_manager";
 import {APP_CONFIG} from "./app_config";
 

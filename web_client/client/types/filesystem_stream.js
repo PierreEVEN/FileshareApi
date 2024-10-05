@@ -2,7 +2,7 @@ const {EncString} = require("./encstring");
 const {User} = require("./user");
 const {fetch_api} = require("../utilities/request");
 const {GLOBAL_EVENTS} = require("./event_manager");
-const {NOTIFICATION, Message} = require("../modules/tools/message_box/notification");
+const {NOTIFICATION, Message} = require("../modules/index/tools/message_box/notification");
 
 /**
  * @type {Map<number, FilesystemStream>}
