@@ -3,8 +3,7 @@ import {DirectoryContentProvider} from "../../../../types/viewport_content/provi
 import {UploadProcessor} from "./upload_processor";
 import {EventManager} from "../../../../types/event_manager";
 import {MemoryTracker} from "../../../../types/memory_handler";
-import {human_readable_timestamp, humanFileSize, seconds_to_str} from "../../../../common/tools/utils";
-import {data} from "express-session/session/cookie";
+import {humanFileSize, seconds_to_str} from "../../../../common/tools/utils";
 
 require("./uploader.scss")
 

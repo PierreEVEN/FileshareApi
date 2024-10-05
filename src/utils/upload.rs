@@ -1,5 +1,6 @@
 use std::{env, fs};
 use std::io::Write;
+use std::os::windows::fs::MetadataExt;
 use crate::database::item::{FileData, Item, ItemId};
 use crate::database::object::Object;
 use crate::database::repository::RepositoryId;
@@ -93,6 +94,7 @@ impl Upload {
             }
             self.bytes_read += read_data;
         }
+        file.flush().await?;
         Ok(())
     }
 
@@ -110,10 +112,6 @@ impl Upload {
     }
 
     pub async fn store(&mut self, db: &Database) -> Result<Item, Error> {
-
-        //use std::time::Instant;
-       // let total_now = Instant::now();
-
         assert_eq!(self.bytes_read, self.file.size as usize);
         let hash = self.hasher.clone().finalize().to_string();
         for existing in Object::from_hash(db, &hash).await? {
@@ -122,7 +120,6 @@ impl Upload {
                 self.file.object = existing.id().clone();
                 self.item.file = Some(self.file.clone());
                 self.item.push(db).await?;
-                //println!("Compare existing total (found) : {:.2?}", total_now.elapsed());
                 return Ok(self.item.clone());
             }
         }

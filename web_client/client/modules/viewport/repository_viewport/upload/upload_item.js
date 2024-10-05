@@ -5,8 +5,6 @@ import {FilesystemItem} from "../../../../types/filesystem_stream";
 import {overwrite_or_restore} from "../../../tools/item_conflict/item_conflict";
 import {Message, NOTIFICATION} from "../../../tools/message_box/notification";
 
-const mime = require('mime');
-
 class UploadItem {
     constructor(data) {
         this.is_regular_file = data.is_regular_file;
@@ -20,7 +18,6 @@ class UploadItem {
         this.file = data.file;
         this.children = new Map();
         this.expanded = false;
-        this.mimetype = data.mimetype;
         /**
          * @type {UploadItem|Uploader}
          */
@@ -80,16 +77,11 @@ class UploadItem {
                     resolve(file);
                 })
             })
-            if (!file.type)
-                file.mimetype = mime.getType(file.name);
-            else
-                file.mimetype = file.type;
         }
         return new UploadItem({
             is_regular_file: fs_drop.isFile,
             name: fs_drop.name,
             file: file,
-            mimetype: file ? file.mimetype : null,
             directory: null
         });
     }
@@ -102,17 +94,10 @@ class UploadItem {
      * @constructor
      */
     static FromUploadModal(name, file = null) {
-        if (file) {
-            if (!file.type)
-                file.mimetype = mime.getType(file.name);
-            else
-                file.mimetype = file.type;
-        }
         return new UploadItem({
             is_regular_file: !!file,
             name: name,
             file: file,
-            mimetype: file ? file.mimetype : null,
             directory: null
         });
     }
@@ -127,7 +112,6 @@ class UploadItem {
             is_regular_file: false,
             name: directory.name.plain(),
             file: null,
-            mimetype: null,
             directory: directory
         });
     }
