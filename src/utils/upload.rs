@@ -1,5 +1,4 @@
 use std::{env, fs};
-use std::io::Write;
 use crate::database::item::{FileData, Item, ItemId};
 use crate::database::object::Object;
 use crate::database::repository::RepositoryId;
@@ -14,7 +13,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 use std::str::FromStr;
 use sha2::{Digest, Sha256};
-use tokio::io::AsyncReadExt;
+use tokio::io::{BufWriter};
 use tokio_util::io::StreamReader;
 
 pub struct Upload {
@@ -71,33 +70,17 @@ impl Upload {
         let stream = stream.map_err(|err| io::Error::new(io::ErrorKind::Other, err));
         let mut read = StreamReader::new(stream);
 
-        let mut buffer = [0u8; 1024];
-
         if !self.get_file_path().parent().unwrap().exists() {
             fs::create_dir_all(self.get_file_path().parent().unwrap())?;
         };
 
-        let mut file = fs::OpenOptions::new()
+        let mut file = BufWriter::new(tokio::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open(self.get_file_path()).map_err(|err| { Error::msg(format!("Cannot open file sink : {err}")) })?;
+            .open(self.get_file_path()).await.map_err(|err| { Error::msg(format!("Cannot open file sink : {err}")) })?);
 
-        loop {
-            let bytes = read.read(&mut buffer).await?;
-            if bytes == 0 {
-                break;
-            }
-            let input_bytes = &buffer[..bytes];
-            if self.hasher.write(input_bytes)? != bytes {
-                return Err(Error::msg("Invalid write amount"));
-            }
-            if file.write(input_bytes)? != bytes {
-                return Err(Error::msg("Invalid write amount"));
-            }
-            self.bytes_read += bytes;
-        }
-        file.flush()?;
-
+        let data_read = tokio::io::copy(&mut read, &mut file).await?;
+        self.bytes_read += data_read as usize;
         Ok(())
     }
 

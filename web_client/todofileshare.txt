@@ -1,8 +1,5 @@
 # Bugs avant release V3.0
 
-- upload
-    - mode die
-    - stats
 - dépot
     - modifier un dépot / ajouter des users
 - viewport
