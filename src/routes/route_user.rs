@@ -27,6 +27,7 @@ impl UserRoutes {
             .route("/login/", post(login).with_state(ctx.clone()))
             .route("/delete/", post(delete_user).with_state(ctx.clone()))
             .route("/logout/", post(logout).with_state(ctx.clone()))
+            .route("/search/", post(search).with_state(ctx.clone()))
             .route("/tokens/", get(auth_tokens).with_state(ctx.clone()))
             .route("/update/", post(update).with_state(ctx.clone()))
             .route("/repositories/:user_id/", get(repositories).with_state(ctx.clone()))
@@ -200,4 +201,18 @@ async fn update(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request)
     user.push(&ctx.database).await?;
 
     Ok(())
+}
+
+async fn search(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> Result<impl IntoResponse, ServerError> {
+    #[derive(Deserialize, Debug)]
+    struct Data {
+        name: EncString,
+        exact: bool
+    }
+    let json = Json::<Data>::from_request(request, &ctx).await?.0;
+    let mut users = vec![];
+    for user in User::search(&ctx.database, &json.name, json.exact).await? {
+        users.push(user.id().clone());
+    }
+    Ok(Json(users))
 }

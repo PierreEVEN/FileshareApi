@@ -1,7 +1,7 @@
 use crate::app_ctx::AppCtx;
 use crate::database::item::{Item, Trash};
 use crate::database::repository::{Repository, RepositoryId, RepositoryStatus};
-use crate::database::user::User;
+use crate::database::user::{User, UserId};
 use crate::require_connected_user;
 use crate::routes::route_user::UserCredentials;
 use crate::utils::enc_string::EncString;
@@ -14,10 +14,11 @@ use axum::http::{header, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use serde::Deserialize;
+use serde::{Deserialize};
 use std::sync::Arc;
 use tokio_util::io::ReaderStream;
 use crate::database::DatabaseId;
+use crate::database::subscription::{Subscription, SubscriptionAccessType};
 use crate::utils::async_zip::AsyncDirectoryZip;
 
 pub struct RepositoryRoutes {}
@@ -34,6 +35,10 @@ impl RepositoryRoutes {
             .route("/root-content/", post(root_content).with_state(ctx.clone()))
             .route("/download/:id/", get(download).with_state(ctx.clone()))
             .route("/update/", post(update).with_state(ctx.clone()))
+            .route("/subscribe/", post(subscribe).with_state(ctx.clone()))
+            .route("/unsubscribe/", post(unsubscribe).with_state(ctx.clone()))
+            .route("/stats/", post(stats).with_state(ctx.clone()))
+            .route("/subscriptions/", post(subscriptions).with_state(ctx.clone()))
             .route("/trash-content/", post(trash_content).with_state(ctx.clone()));
         Ok(router)
     }
@@ -204,4 +209,67 @@ async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) ->
         (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", repository.display_name.encoded()))
     ];
     Ok((headers, body))
+}
+
+async fn subscribe(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    require_connected_user!(request);
+
+    #[derive(Deserialize, Debug)]
+    struct Users {
+        user: UserId,
+        access_type: String
+    }
+
+    #[derive(Deserialize, Debug)]
+    struct Data {
+        repository: RepositoryId,
+        users: Vec<Users>
+    }
+
+    let permissions = Permissions::new(&request)?;
+    let data = Json::<Data>::from_request(request, &ctx).await?.0;
+    permissions.edit_repository(&ctx.database, &data.repository).await?.require()?;
+    let mut subscriptions = vec![];
+    for user in &data.users {
+
+        let mut subscription = Subscription::default();
+        subscription.owner = user.user.clone();
+        subscription.repository = data.repository.clone();
+        subscription.access_type = SubscriptionAccessType::from(user.access_type.clone());
+        subscription.push(&ctx.database).await?;
+        subscriptions.push(subscription);
+    }
+    Ok(Json(subscriptions))
+}
+
+async fn unsubscribe(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    require_connected_user!(request);
+
+    #[derive(Deserialize, Debug)]
+    struct Data {
+        repository: RepositoryId,
+        users: Vec<UserId>
+    }
+
+    let permissions = Permissions::new(&request)?;
+    let data = Json::<Data>::from_request(request, &ctx).await?.0;
+    permissions.edit_repository(&ctx.database, &data.repository).await?.require()?;
+    for user in &data.users {
+        Subscription::find(&ctx.database, user, &data.repository).await?.delete(&ctx.database).await?;
+    }
+    Ok(())
+}
+
+async fn subscriptions(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let permissions = Permissions::new(&request)?;
+    let data = Json::<RepositoryId>::from_request(request, &ctx).await?.0;
+    permissions.edit_repository(&ctx.database, &data).await?.require()?;
+    Ok(Json(Subscription::from_repository(&ctx.database, &data).await?))
+}
+
+async fn stats(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let permissions = Permissions::new(&request)?;
+    let data = Json::<RepositoryId>::from_request(request, &ctx).await?.0;
+    permissions.view_repository(&ctx.database, &data).await?.require()?;
+    Ok(Json(Repository::from_id(&ctx.database, &data).await?.stats(&ctx.database).await?))
 }

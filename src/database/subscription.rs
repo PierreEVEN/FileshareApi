@@ -67,7 +67,7 @@ impl Subscription {
 
     pub async fn push(&mut self, db: &Database) -> Result<(), Error> {
         query_fmt!(db, "INSERT INTO SCHEMA_NAME.subscriptions
-                        (id, repository, access_type) VALUES
+                        (owner, repository, access_type) VALUES
                         ($1, $2, $3);",
                 self.owner, self.repository, self.access_type);
         Ok(())

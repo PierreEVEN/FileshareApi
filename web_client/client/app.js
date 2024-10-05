@@ -18,7 +18,6 @@ import {FilesystemItem} from "./types/filesystem_stream";
 
 class FileshareApp {
     constructor() {
-
         /**
          * @type {HTMLElement}
          * @private
@@ -71,6 +70,8 @@ class FileshareApp {
                 await this._side_bar.expand_to(APP_CONFIG.display_repository(), null, APP_CONFIG.in_trash());
                 if (APP_CONFIG.in_trash())
                     await this.set_display_trash(APP_CONFIG.display_repository());
+                if (APP_CONFIG.repository_settings())
+                    await this.set_display_repository_settings(APP_CONFIG.display_repository());
                 else
                     await this.set_display_repository(APP_CONFIG.display_repository());
             } else if (APP_CONFIG.display_user()) {
@@ -91,6 +92,19 @@ class FileshareApp {
         await this.state.open_repository(repository);
         const viewport = await this._viewport.set_displayed_repository(repository);
         await viewport.open_root();
+    }
+
+    /**
+     * @param repository {Repository}
+     * @return {Promise<void>}
+     */
+    async set_display_repository_settings(repository) {
+        console.assert(repository, "invalid repository");
+        const {Viewport} = require("./modules/index/viewport/viewport");
+        if (!this._viewport)
+            this._viewport = new Viewport(this._elements.viewport);
+        await this.state.open_repository_settings(repository);
+        await this._viewport.set_displayed_repository_settings(repository);
     }
 
     /**
@@ -127,17 +141,6 @@ class FileshareApp {
             this._viewport = new Viewport(this._elements.viewport);
         await this._viewport.set_display_user(user);
         await this.state.open_user(user);
-    }
-
-    set_connected_user(user) {
-        this._global_header.set_connected_user(user);
-
-        if (user) {
-            if (!this._side_bar) {
-                this._side_bar = new SideBar(this, this._elements.side_bar);
-            }
-        }
-        this._side_bar.refresh(user);
     }
 }
 

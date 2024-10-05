@@ -35,6 +35,10 @@ class AppConfig {
          * @type {boolean}
          */
         this._in_trash = data.in_trash;
+        /**
+         * @type {boolean}
+         */
+        this._repository_settings = data.repository_settings;
     }
 
     set_connected_user(new_user) {
@@ -60,6 +64,10 @@ class AppConfig {
 
     in_trash() {
         return this._in_trash;
+    }
+
+    repository_settings() {
+        return this._repository_settings;
     }
 
     display_user() {

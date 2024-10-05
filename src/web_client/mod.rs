@@ -154,6 +154,7 @@ struct ClientAppConfig {
     pub display_repository: Option<Repository>,
     pub display_item: Option<Item>,
     pub in_trash: bool,
+    pub repository_settings: bool,
 }
 
 async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
@@ -190,6 +191,7 @@ async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<i
 
     if let Some(action) = get_action!(request) {
         client_config.in_trash = action == "trash";
+        client_config.repository_settings = action == "settings";
     }
 
     let index_path_buf = ctx.config.web_client_config.client_path.join("public").join("index.html");

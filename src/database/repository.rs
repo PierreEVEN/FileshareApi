@@ -62,6 +62,29 @@ pub struct Repository {
     pub allow_visitor_upload: bool,
 }
 
+#[derive(Serialize, Default)]
+pub struct RepositoryContributorStats {
+    id: UserId,
+    count: i64,
+}
+#[derive(Serialize, Default)]
+pub struct RepositoryExtensionStats {
+    mimetype: EncString,
+    count: i64,
+}
+#[derive(Serialize, Default)]
+pub struct RepositoryStats {
+    trash_items: usize,
+    trash_directories: usize,
+    trash_size: usize,
+    items: usize,
+    directories: usize,
+    size: usize,
+    contributors: Vec<RepositoryContributorStats>,
+    extensions: Vec<RepositoryExtensionStats>,
+}
+
+
 impl Repository {
     pub async fn from_id(db: &Database, id: &RepositoryId) -> Result<Self, Error> {
         match query_object!(db, Self, "SELECT * FROM SCHEMA_NAME.repository WHERE id = $1", id) {
@@ -101,7 +124,7 @@ impl Repository {
                         (url_name, owner, description, status, display_name, max_file_size, visitor_file_lifetime, allow_visitor_upload) VALUES
                         ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
                 self.url_name, self.owner, self.description, self.status, self.display_name, self.max_file_size, self.visitor_file_lifetime, self.allow_visitor_upload);
-            if let Some(res) =  res {
+            if let Some(res) = res {
                 self.id = res;
             }
         }
@@ -118,8 +141,39 @@ impl Repository {
         query_fmt!(db, r#"DELETE FROM SCHEMA_NAME.repository WHERE id = $1;"#, self.id);
         Ok(())
     }
-    
+
     pub fn id(&self) -> &RepositoryId {
         &self.id
+    }
+
+    pub async fn stats(&self, db: &Database) -> Result<RepositoryStats, Error> {
+        let mut stats = RepositoryStats::default();
+        if let Some(files) = query_fmt!(db, "SELECT COUNT(id) AS num, CAST(COALESCE(SUM(size), 0) AS BIGINT) AS size FROM SCHEMA_NAME.files WHERE id IN (SELECT id FROM SCHEMA_NAME.items WHERE repository = $1 AND NOT in_trash)", self.id).pop() {
+            stats.items = files.try_get::<&str, i64>("num")? as usize;
+            stats.size = files.try_get::<&str, i64>("size")? as usize;
+        }
+        if let Some(files) = query_fmt!(db, "SELECT COUNT(id) AS num FROM SCHEMA_NAME.items WHERE NOT is_regular_file AND id IN (SELECT id FROM SCHEMA_NAME.items WHERE repository = $1 AND NOT in_trash)", self.id).pop() {
+            stats.directories = files.try_get::<&str, i64>("num")? as usize;
+        }
+        if let Some(files) = query_fmt!(db, "SELECT COUNT(id) AS num, CAST(COALESCE(SUM(size), 0) AS BIGINT) AS size FROM SCHEMA_NAME.files WHERE id IN (SELECT id FROM SCHEMA_NAME.items WHERE repository = $1 AND in_trash)", self.id).pop() {
+            stats.trash_items = files.try_get::<&str, i64>("num")? as usize;
+            stats.trash_size = files.try_get::<&str, i64>("size")? as usize;
+        }
+        if let Some(files) = query_fmt!(db, "SELECT COUNT(id) AS num FROM SCHEMA_NAME.items WHERE NOT is_regular_file AND id IN (SELECT id FROM SCHEMA_NAME.items WHERE repository = $1 AND in_trash)", self.id).pop() {
+            stats.trash_directories = files.try_get::<&str, i64>("num")? as usize;
+        }
+        for extension in query_fmt!(db, "SELECT mimetype, COUNT(id) AS num FROM SCHEMA_NAME.files WHERE id IN (SELECT id FROM SCHEMA_NAME.items WHERE repository = $1) GROUP BY mimetype ORDER BY num DESC", self.id) {
+            stats.extensions.push(RepositoryExtensionStats {
+                mimetype: extension.try_get::<&str, EncString, >("mimetype")?,
+                count: extension.try_get::<&str, i64, >("num")?,
+            });
+        }
+        for user in query_fmt!(db, "SELECT owner, COUNT(id) AS num FROM SCHEMA_NAME.items WHERE repository = $1 GROUP BY owner ORDER BY num DESC", self.id) {
+            stats.contributors.push(RepositoryContributorStats {
+                id: user.try_get::<&str, UserId, >("owner")?,
+                count: user.try_get::<&str, i64, >("num")?,
+            });
+        }
+        Ok(stats)
     }
 }

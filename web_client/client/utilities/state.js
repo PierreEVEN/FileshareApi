@@ -29,8 +29,24 @@ class State {
 
         history.pushState({
             app_action: true,
-            repository: repository.id
+            repository: repository.id,
         }, "", `${APP_CONFIG.origin()}/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/`);
+    }
+
+    /**
+     * @param repository {Repository}
+     */
+    async open_repository_settings(repository) {
+        if (this._disable_state)
+            return;
+
+        APP_COOKIES.push_last_repositories(repository.id);
+
+        history.pushState({
+            app_action: true,
+            repository: repository.id,
+            settings: true
+        }, "", `${APP_CONFIG.origin()}/${await this._get_user_name(repository.owner)}/${repository.url_name.encoded()}/settings/`);
     }
 
     /**
@@ -82,6 +98,8 @@ class State {
             let repository = await Repository.find(state.repository);
             if (state.trash)
                 await this.app.set_display_trash(repository);
+            else if (state.settings)
+                await this.app.set_display_repository_settings(repository);
             else
                 await this.app.set_display_repository(repository);
         } else if (state.user) {

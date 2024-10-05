@@ -1,5 +1,6 @@
 import {RepositoryViewport} from "./repository_viewport/repository_viewport";
 import {UserViewport} from "./user_viewport/user_viewport";
+import {RepositorySettings} from "./repository_settings/repository_settings";
 
 class Viewport {
     /**
@@ -28,6 +29,19 @@ class Viewport {
             if (this._viewport_object)
             this.clear();
             this._viewport_object = new RepositoryViewport(repository, this._container);
+        }
+        return this._viewport_object;
+    }
+
+    /**
+     * @param repository {Repository}
+     * @return {Promise<RepositoryViewport>}
+     */
+    async set_displayed_repository_settings(repository) {
+        if (!this._viewport_object || !this._viewport_object instanceof RepositorySettings || repository !== this._viewport_object.repository) {
+            if (this._viewport_object)
+                this.clear();
+            this._viewport_object = new RepositorySettings(repository, this._container);
         }
         return this._viewport_object;
     }

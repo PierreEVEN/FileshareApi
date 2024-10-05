@@ -1,4 +1,5 @@
-@import "../../../stylesheets/colors";
+
+@import "../../../../stylesheets/palette";
 
 .repos-settings {
   width: 100%;
@@ -37,7 +38,7 @@
     }
   }
 
-  #repos-settings-authorizations {
+  .repos-settings-authorizations {
     display: flex;
     flex-direction: column;
     width: 100%;

@@ -132,6 +132,18 @@ impl User {
         }
     }
 
+    pub async fn search(db: &Database, name: &EncString, exact: bool) -> Result<Vec<Self>, Error> {
+        if exact {
+            match query_object!(db, User, "SELECT * FROM SCHEMA_NAME.users WHERE LOWER(name) = LOWER($1)", name) {
+                None => { Err(Error::msg("User not found")) }
+                Some(user) => { Ok(vec![user]) }
+            }
+        }
+        else {
+            Ok(query_objects!(db, User, "SELECT * FROM SCHEMA_NAME.users WHERE LOWER(name) LIKE '%' || LOWER($1) || '%'", name))
+        }
+    }
+    
     pub async fn exists(db: &Database, login: &EncString, email: &EncString) -> Result<bool, Error> {
         Ok(!query_objects!(db, User, r#"SELECT * FROM SCHEMA_NAME.users WHERE login = $1 OR email = $2"#, login, email).is_empty())
     }

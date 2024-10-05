@@ -99,7 +99,7 @@ class User {
 
 
     remove() {
-        this._build_from_data({id:0});
+        this._build_from_data({id: 0});
         this.events.broadcast('refresh', this);
         if (APP_CONFIG.connected_user() === this)
             APP_CONFIG.set_connected_user(null);
@@ -120,6 +120,21 @@ class User {
      */
     static find(id) {
         return User._LOCAL_CACHE.get(id);
+    }
+
+    /**
+     * @param name {EncString}
+     * @param exact {boolean}
+     * @returns {Promise<User[]>}
+     */
+    static async search_from_name(name, exact) {
+        let users = await fetch_api("user/search/", "POST", {name: name, exact: exact})
+            .catch(error => NOTIFICATION.fatal(new Message(error).title(`Recherche échouée`)));
+        const found_users = [];
+        for (const user_id of users) {
+            found_users.push(await User.fetch(user_id));
+        }
+        return found_users;
     }
 
     /**
