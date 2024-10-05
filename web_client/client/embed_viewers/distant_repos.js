@@ -29,7 +29,7 @@ function get(item) {
         case 'text':
             switch (mimetype[1]) {
                 case 'plain':
-                    if (item.name.plain().includes("log"))
+                    if (item.name.includes("log"))
                         return `<document-code src="${url}" class="language-log"></document-code>`
                     else
                         return `<document-code src="${url}" class="language-plain"></document-code>`

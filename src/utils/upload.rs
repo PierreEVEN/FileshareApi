@@ -79,8 +79,7 @@ impl Upload {
 
         let mut file = fs::OpenOptions::new()
             .create(true)
-            .truncate(true)
-            .write(true)
+            .append(true)
             .open(self.get_file_path()).map_err(|err| { Error::msg(format!("Cannot open file sink : {err}")) })?;
 
         loop {

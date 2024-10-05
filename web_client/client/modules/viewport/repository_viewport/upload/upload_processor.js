@@ -76,9 +76,9 @@ class UploadProcessor extends MemoryTracker {
                 }
             }
         };
-
+        this.processed_chunk_data = 0;
         this._request.upload.addEventListener("progress", (event) => {
-            this.uploader.progress(event.loaded, event.total);
+            this.uploader.progress(this.processed_chunk_data + event.loaded, this.item.file.size);
             event.loaded
         });
         this._send_next();
@@ -98,6 +98,7 @@ class UploadProcessor extends MemoryTracker {
         }
         this.waiting_unpause = false;
         const start = this._cursor;
+        this.processed_chunk_data = start;
         this._cursor = Math.min(this._cursor + UploadProcessor.MAX_BATCH_SIZE, this.item.file.size)
 
         const chunk =  this.item.file.slice(start, this._cursor);

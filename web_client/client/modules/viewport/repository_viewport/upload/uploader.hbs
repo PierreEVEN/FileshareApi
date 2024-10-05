@@ -1,15 +1,15 @@
 <div id="uploader-container">
     <div id="uploader" {{object "uploader"}}>
         <div class="header" onclick="{{ctx "expand(event)"}}">
-            <p {{object "infos"}}></p>
+            <p {{object "infos"}}>Ajouter des fichiers</p>
             <div class="details">
-                <p class="speed">2.5Mo/s</p>
-                <p class="time">~2h</p>
+                <p class="speed" {{object "speed"}}></p>
+                <p class="time" {{object "time"}}></p>
             </div>
             <button class="expand" {{object "expand"}}><img src="/public/images/icons/icons8-expand-50.png"></button>
         </div>
         <div class="add-files">
-            <button onclick="{{ctx "add_files()"}}"><img alt="new_file" src="/public/images/icons/icons8-add-properties-96.png"><p> ajouter un fichier</p></button>
+            <button onclick="{{ctx "add_files()"}}"><img alt="new_file" src="/public/images/icons/icons8-add-properties-96.png"><p> ajouter des fichiers</p></button>
             <button onclick="{{ctx "add_directory()"}}"><img alt="new_file" src="/public/images/icons/icons8-add-folder-48.png"><p> ajouter un dossier</p></button>
         </div>
         <div class="file-list" {{object "file_list"}}>

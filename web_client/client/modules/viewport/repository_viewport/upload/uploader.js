@@ -3,7 +3,8 @@ import {DirectoryContentProvider} from "../../../../types/viewport_content/provi
 import {UploadProcessor} from "./upload_processor";
 import {EventManager} from "../../../../types/event_manager";
 import {MemoryTracker} from "../../../../types/memory_handler";
-import {humanFileSize} from "../../../../common/tools/utils";
+import {human_readable_timestamp, humanFileSize, seconds_to_str} from "../../../../common/tools/utils";
+import {data} from "express-session/session/cookie";
 
 require("./uploader.scss")
 
@@ -114,6 +115,30 @@ class Uploader extends MemoryTracker {
         this.event = new EventManager();
         this.total_to_upload = 0;
         this.uploaded = 0;
+
+        this._time_records = [];
+
+        this.current_progress = 0;
+
+        this._data_update_timeout = setInterval(() => {
+            if (!this.uploading || this.pause)
+                return;
+            this._time_records.push({data: this.current_progress, time: performance.now()});
+
+            if (this._time_records.length !== 0) {
+                const last = this._time_records[this._time_records.length - 1];
+                let delta_data = last.data - this._time_records[0].data;
+                let delta_time = (last.time - this._time_records[0].time) / 1000;
+                let data_per_second = delta_data / delta_time;
+                const remaining = this.total_to_upload - this.current_progress
+                this._elements.speed.innerText = humanFileSize(data_per_second) + '/s';
+                this._elements.time.innerText = '~' + seconds_to_str(remaining / data_per_second);
+            }
+
+            if (this._time_records.length > 100) {
+                this._time_records.shift();
+            }
+        }, 100);
     }
 
     expand(expanded) {
@@ -134,6 +159,8 @@ class Uploader extends MemoryTracker {
             return;
         this._elements.pause_img.src = pause ? "/public/images/icons/icons8-play-64.png" : "/public/images/icons/icons8-pause-30.png";
         this.pause = pause;
+        this._time_records = [];
+        this.current_progress = this.uploaded;
         this.event.broadcast('pause', this.pause);
     }
 
@@ -157,7 +184,8 @@ class Uploader extends MemoryTracker {
     async start_upload() {
 
         this.total_to_upload = this.total_size;
-
+        this._time_records = [];
+        this.current_progress = this.uploaded;
         /**
          * @param root {UploadItem}
          * @return {UploadItem}
@@ -212,11 +240,22 @@ class Uploader extends MemoryTracker {
         this.viewport.close_upload_container();
     }
 
+    delete() {
+        super.delete();
+        if (this.processor)
+            this.processor.delete();
+        this.processor = null;
+        if (this._data_update_timeout)
+            clearTimeout(this._data_update_timeout)
+        this._data_update_timeout = null;
+    }
+
     /**
      * @param uploaded {number}
      * @param total {number}
      */
     progress(uploaded, total) {
+        this.current_progress = this.uploaded + uploaded;
         const current = (this.uploaded + uploaded) / this.total_to_upload;
         const after = (this.uploaded + total) / this.total_to_upload;
         this._elements.progress.style.width = `${current * 100}%`;
