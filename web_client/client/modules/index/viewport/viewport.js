@@ -25,9 +25,9 @@ class Viewport {
      * @return {Promise<RepositoryViewport>}
      */
     async set_displayed_repository(repository) {
-        if (!this._viewport_object || !this._viewport_object instanceof RepositoryViewport || repository !== this._viewport_object.repository) {
+        if (!this._viewport_object || !(this._viewport_object instanceof RepositoryViewport) || repository !== this._viewport_object.repository) {
             if (this._viewport_object)
-            this.clear();
+                this.clear();
             this._viewport_object = new RepositoryViewport(repository, this._container);
         }
         return this._viewport_object;
@@ -38,7 +38,7 @@ class Viewport {
      * @return {Promise<RepositoryViewport>}
      */
     async set_displayed_repository_settings(repository) {
-        if (!this._viewport_object || !this._viewport_object instanceof RepositorySettings || repository !== this._viewport_object.repository) {
+        if (!this._viewport_object || !(this._viewport_object instanceof RepositorySettings) || repository !== this._viewport_object.repository) {
             if (this._viewport_object)
                 this.clear();
             this._viewport_object = new RepositorySettings(repository, this._container);

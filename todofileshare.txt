@@ -1,7 +1,5 @@
 # Bugs avant release V3.0
 
-- dépot
-    - modifier un dépot / ajouter des users
 - viewport
     - navigation / selection / menu contextuel
     - fix taille des dossiers cassée
