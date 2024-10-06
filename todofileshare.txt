@@ -1,8 +1,5 @@
 # Bugs avant release V3.0
 
--upload
-    - fix bug upload "viewport is null"
-    - fix icons ne marge pas dans l'uploader
 - viewport
     - navigation / selection / menu contextuel
     - fix taille des dossiers cassée
@@ -11,10 +8,8 @@
     - fix download / share
 - implémenter les filtres
 - fix le client "lourd" (léger pour la nouvelle version)
-- side bar
-    - shared repos : s'ajoute pas au bon endroit
-
 - supporter les PDFS
+- fix connexion forcée
 
 # TODO
 - fix preview CR2 terne sous debian ??

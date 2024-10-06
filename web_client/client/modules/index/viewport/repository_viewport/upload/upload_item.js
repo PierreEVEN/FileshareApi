@@ -4,6 +4,7 @@ import {EncString} from "../../../../../types/encstring";
 import {FilesystemItem} from "../../../../../types/filesystem_stream";
 import {overwrite_or_restore} from "../../../tools/item_conflict/item_conflict";
 import {Message, NOTIFICATION} from "../../../tools/message_box/notification";
+import mime from 'mime';
 
 class UploadItem {
     constructor(data) {
@@ -26,6 +27,10 @@ class UploadItem {
          * @type {FilesystemItem}
          */
         this.directory = data.directory;
+        /**
+         * @type {String}
+         */
+        this.mimetype = data.mimetype;
 
         this.total_items = this.file ? 1 : 0;
         this.total_size = this.file ? this.file.size : 0;
@@ -63,7 +68,6 @@ class UploadItem {
         }
     }
 
-
     /**
      * @param fs_drop {FileSystemEntry}
      * @return {Promise<UploadItem>}
@@ -77,11 +81,16 @@ class UploadItem {
                     resolve(file);
                 })
             })
+            if (!file.type)
+                file.mimetype = mime.getType(file.name);
+            else
+                file.mimetype = file.type;
         }
         return new UploadItem({
             is_regular_file: fs_drop.isFile,
             name: fs_drop.name,
             file: file,
+            mimetype: file ? file.mimetype : '',
             directory: null
         });
     }
@@ -94,10 +103,15 @@ class UploadItem {
      * @constructor
      */
     static FromUploadModal(name, file = null) {
+        if (file && !file.type)
+            file.mimetype = mime.getType(file.name);
+        else
+            file.mimetype = file.type;
         return new UploadItem({
             is_regular_file: !!file,
             name: name,
             file: file,
+            mimetype: file ? file.mimetype : '',
             directory: null
         });
     }

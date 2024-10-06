@@ -136,10 +136,13 @@ class ViewportContent extends MemoryTracker {
         super.delete();
         if (this._filter)
             this._filter.delete();
+        this._filter = null;
         if (this._sorter)
             this._sorter.delete();
+        this._sorter = null;
         if (this._provider)
             this._provider.delete();
+        this._provider = null;
         if (this.add_event)
             this.add_event.remove();
         this._listener_remove.remove();

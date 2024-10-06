@@ -49,7 +49,6 @@ class RepositoryViewport extends MemoryTracker {
         this._elements = div.elements;
 
         this.content = new ViewportContent();
-
         this._visible_items = new Map();
 
         let content_num_items = 0;
@@ -81,7 +80,7 @@ class RepositoryViewport extends MemoryTracker {
 
         container.append(div);
 
-        new DropBox(this._elements.drop_box, () => {
+        this.drop_box = new DropBox(this._elements.drop_box, () => {
             if (!this.uploader)
                 this.open_upload_container();
             return this.uploader;
@@ -150,6 +149,10 @@ class RepositoryViewport extends MemoryTracker {
         if (this.content)
             this.content.delete();
         this.content = null;
+        if (this.drop_box)
+            this.drop_box.delete();
+        this.drop_box = null;
+
         this.close_carousel();
     }
 

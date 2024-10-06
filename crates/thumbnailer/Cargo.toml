@@ -1,0 +1,10 @@
+[package]
+name = "thumbnailer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.89"
+image = "0.25.2"
+pdfium-render = { version = "0.8.25", features = ["static"] }
+libloading = "0.8.5"

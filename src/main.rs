@@ -1,12 +1,4 @@
-pub mod routes;
-pub mod config;
-pub mod database;
-mod app_ctx;
-pub mod utils;
-mod web_client;
-mod compatibility_upgrade;
-
-use std::{env, thread};
+use std::{env};
 use std::net::{SocketAddr};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -18,17 +10,17 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum_extra::extract::CookieJar;
 use axum_server::tls_rustls::RustlsConfig;
-use axum_server_dual_protocol::ServerExt;
+use axum_server_dual_protocol::{tokio, ServerExt};
 use tracing::{error, info, warn};
 use http_body_util::BodyExt;
-use crate::app_ctx::AppCtx;
-use crate::compatibility_upgrade::Upgrade;
-use crate::config::{Config, WebClientConfig};
-use crate::database::user::User;
-use crate::routes::{RequestContext, RootRoutes};
-use crate::utils::enc_string::EncString;
-use crate::utils::server_error::ServerError;
-use crate::web_client::WebClient;
+use api::app_ctx::AppCtx;
+use api::{RequestContext, RootRoutes};
+use database::compatibility_upgrade::Upgrade;
+use database::user::User;
+use utils::config::{Config, WebClientConfig};
+use utils::enc_string::EncString;
+use utils::server_error::ServerError;
+use web_client::WebClient;
 
 async fn start_web_client(config: WebClientConfig) {
     match WebClient::new(&config).await {
@@ -107,8 +99,6 @@ impl Server {
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt().init();
-
-    warn!("MAIN THREAD : {:?}", thread::current());
 
     // Open Config
     let config = match Config::from_file(env::current_exe().expect("Failed to find executable path").parent().unwrap().join("config.json")) {
