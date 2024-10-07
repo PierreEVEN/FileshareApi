@@ -1,6 +1,6 @@
 use anyhow::Error;
 use std::ffi::OsString;
-use std::fs;
+use std::{env, fs};
 use std::path::{PathBuf};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
@@ -107,10 +107,30 @@ impl Thumbnail {
     }
 
     fn pdf_thumbnail(input_path: &PathBuf, output_path: &PathBuf, size: u32) -> Result<(), Error> {
-
         use pdfium_render::prelude::*;
 
-        let bindings = match Pdfium::bind_to_statically_linked_library() {
+        // binaries available at https://github.com/bblanchon/pdfium-binaries/releases
+        let path = if cfg!(target_pointer_width = "64") {
+            if cfg!(target_os = "windows") {
+                Some(env::current_exe()?.parent().unwrap().join("pdfium.dll"))
+            } else if cfg!(target_os = "linux") {
+                Some(env::current_exe()?.parent().unwrap().join("libpdfium.so"))
+            } else { None }
+        } else { None };
+
+
+        let path = if let Some(path) = path {
+            path
+        } else {
+            return Err(Error::msg("Failed to find pdfium binary"));
+        };
+
+        if !path.exists() {
+            return Err(Error::msg(format!("Invalid pdfium dll path : {}", path.display())));
+        }
+
+
+        let bindings = match Pdfium::bind_to_library(path) {
             Ok(bindings) => {
                 Ok(bindings)
             }
@@ -119,13 +139,13 @@ impl Thumbnail {
             }
         };
 
-        let pdfium =  pdfium_render::prelude::Pdfium::new(bindings?);
+        let pdfium = Pdfium::new(bindings?);
         let document = pdfium.load_pdf_from_file(input_path, None)?;
 
-        let render_config = pdfium_render::prelude::PdfRenderConfig::new()
-            .set_target_width(size as pdfium_render::prelude::Pixels)
-            .set_maximum_height(size as pdfium_render::prelude::Pixels)
-            .rotate_if_landscape(pdfium_render::prelude::PdfPageRenderRotation::Degrees90, true);
+        let render_config = PdfRenderConfig::new()
+            .set_target_width(size as Pixels)
+            .set_maximum_height(size as Pixels)
+            .rotate_if_landscape(PdfPageRenderRotation::Degrees90, true);
 
         document.pages().first()?.render_with_config(&render_config)?
             .as_image()
@@ -134,15 +154,14 @@ impl Thumbnail {
                 output_path,
                 image::ImageFormat::WebP,
             )
-            .map_err(|_| pdfium_render::prelude::PdfiumError::ImageError)?;
-
+            .map_err(|_| PdfiumError::ImageError)?;
         Ok(())
     }
 
     pub fn create(input_path: &PathBuf, output_path: &PathBuf, mimetype: &String, size: u32) -> Result<PathBuf, Error> {
         if mimetype.contains("pdf") {
             Self::pdf_thumbnail(input_path, output_path, size)?;
-            return Ok(output_path.clone())
+            return Ok(output_path.clone());
         }
 
         let mut mime_start = mimetype.split("/");
