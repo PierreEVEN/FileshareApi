@@ -21,8 +21,10 @@ jobs:
 
       - run: cargo run --release
 
-      - run: apt-get install tree
-      - run: tree .
+
+      - run: ls ${{ steps.compile.outputs.BUILT_ARCHIVE }}
+      - run: ls ${{ steps.compile.outputs.BUILT_CHECKSUM }}
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
