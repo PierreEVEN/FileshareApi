@@ -8,7 +8,6 @@
     - fix download / share
 - implémenter les filtres
 - fix le client "lourd" (léger pour la nouvelle version)
-- supporter les PDFS
 - fix connexion forcée
 
 # TODO
