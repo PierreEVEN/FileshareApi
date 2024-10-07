@@ -12,24 +12,18 @@ jobs:
   build_server:
     name: Fileshare-server
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        toolchain:
-          - stable
     steps:
       - uses: actions/checkout@main
-      - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.3
 
+      - run: cargo run --release
 
-      - name: Compile
-        id: compile
-        uses: rust-build/rust-build.action@v1.4.5
-        with:
-          RUSTTARGET: x86_64-unknown-linux-musl
-          UPLOAD_MODE: none
+      - run: apt-get install tree
+
+      - run: tree .
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
