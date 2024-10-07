@@ -75,9 +75,9 @@ jobs:
 
       - run: mkdir fileshare
       - run: mkdir fileshare/migrations
-      - run: unzip "./server_artifact/output/FileshareApi_null_x86_64-unknown-linux-musl.zip" -d ./fileshare
       - run: mv ./lib/libpdfium.so ./fileshare/libpdfium.so
       - run: mv ./server_artifact/migrations/* ./fileshare/migrations
+      - run: mv ./server_artifact/target/release/fileshare ./fileshare/
       - run: mv ./web_client_artifact/* ./fileshare
       - run: zip -r fileshare_linux.zip ./fileshare/
 
