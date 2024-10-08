@@ -1,3 +1,17 @@
+-- UPDATE ALL
+CREATE OR REPLACE PROCEDURE SCHEMA_NAME.update_all_directory_sizes() AS $$
+	DECLARE
+		directory_item RECORD;
+		leaf_content RECORD;
+	BEGIN
+	    FOR directory_item IN (SELECT * FROM SCHEMA_NAME.items WHERE is_regular_file = false) LOOP
+            UPDATE SCHEMA_NAME.directories SET (num_items, content_size) = (
+                SELECT COUNT(id) AS num_items, SUM(size) AS content_size FROM SCHEMA_NAME.files WHERE id IN (
+                    SELECT id FROM SCHEMA_NAME.items WHERE STARTS_WITH(absolute_path, directory_item.absolute_path)));
+	    END LOOP;
+	END;
+	$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE PROCEDURE SCHEMA_NAME.add_delta_on_directory(item BIGINT, count_delta BIGINT, size_delta BIGINT) AS $$
 	DECLARE
 	    parent_id BIGINT;
@@ -12,19 +26,6 @@ CREATE OR REPLACE PROCEDURE SCHEMA_NAME.add_delta_on_directory(item BIGINT, coun
 	END;
 	$$ LANGUAGE plpgsql;
 
--- UPDATE ALL
-CREATE OR REPLACE PROCEDURE SCHEMA_NAME.update_all_directory_sizes() AS $$
-	DECLARE
-		leaf_dirs RECORD;
-		leaf_content RECORD;
-	BEGIN
-	    FOR leaf_dirs IN (SELECT * FROM SCHEMA_NAME.directories WHERE id NOT IN (SELECT parent_item FROM SCHEMA_NAME.items WHERE is_regular_file = false AND parent_item IS NOT NULL)) LOOP
-            SELECT COUNT(id) AS num, SUM(size) AS size INTO leaf_content FROM SCHEMA_NAME.files WHERE id IN (SELECT id FROM SCHEMA_NAME.items WHERE parent_item = leaf_dirs.id);
-            UPDATE SCHEMA_NAME.directories SET num_items = leaf_content.num, content_size = leaf_content.size WHERE id = leaf_dirs.id;
-	    END LOOP;
-	END;
-	$$ LANGUAGE plpgsql;
-
 -- UPDATE ITEM
 CREATE OR REPLACE FUNCTION SCHEMA_NAME.update_directories_content_update() RETURNS TRIGGER AS $$
 	DECLARE
@@ -32,21 +33,22 @@ CREATE OR REPLACE FUNCTION SCHEMA_NAME.update_directories_content_update() RETUR
 	BEGIN
         IF (OLD.parent_item IS NULL AND NEW.parent_item IS NOT NULL) OR
            (OLD.parent_item IS NOT NULL AND NEW.parent_item IS NULL) OR
+           (NOT (OLD.in_trash = NEW.in_trash)) OR
            (OLD.parent_item != NEW.parent_item) THEN
            IF NEW.is_regular_file THEN
                 SELECT size INTO rec FROM SCHEMA_NAME.files WHERE id = NEW.id;
-                IF OLD.parent_item IS NOT NULL THEN
+                IF OLD.parent_item IS NOT NULL AND NOT OLD.in_trash THEN
 			        CALL SCHEMA_NAME.add_delta_on_directory(OLD.parent_item, -1, -rec.size);
                 END IF;
-                IF NEW.parent_item IS NOT NULL THEN
+                IF NEW.parent_item IS NOT NULL AND NOT NEW.in_trash THEN
 			        CALL SCHEMA_NAME.add_delta_on_directory(NEW.parent_item, 1, rec.size);
                 END IF;
            ELSE
                 SELECT num_items, content_size INTO rec FROM SCHEMA_NAME.directories WHERE id = NEW.id;
-                IF OLD.parent_item IS NOT NULL THEN
+                IF OLD.parent_item IS NOT NULL AND NOT OLD.in_trash THEN
 			        CALL SCHEMA_NAME.add_delta_on_directory(OLD.parent_item, -rec.num_items, -rec.content_size);
                 END IF;
-                IF NEW.parent_item IS NOT NULL THEN
+                IF NEW.parent_item IS NOT NULL AND NOT NEW.in_trash THEN
 			        CALL SCHEMA_NAME.add_delta_on_directory(NEW.parent_item, rec.num_items, rec.content_size);
                 END IF;
            END IF;

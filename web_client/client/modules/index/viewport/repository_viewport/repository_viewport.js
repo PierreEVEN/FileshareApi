@@ -55,27 +55,35 @@ class RepositoryViewport extends MemoryTracker {
         let content_total_size = 0;
 
         this.content.events.add('add', (item) => {
+
+            let in_trash = this.content.get_content_provider() instanceof TrashContentProvider;
+
+            if (!this._visible_items.has(item.id) && item.in_trash === in_trash) {
+                console.log('add ,', item.num_items)
+                content_total_size += item.content_size;
+                content_num_items += item.num_items;
+                this._elements.footer_text.innerText = `${content_num_items} fichiers - ${humanFileSize(content_total_size)}`
+            }
+
             this._visible_items.set(item.id, new ItemView(item, this._elements.content, {
                 clicked: async () => {
                     await APP.set_display_item(item);
                 }
             }))
-
-            content_total_size += item.content_size;
-            content_num_items += item.num_items;
-            this._elements.footer_text.innerText = `${content_num_items} fichiers - ${humanFileSize(content_total_size)}`
         });
 
         this.toolbar = new ViewportToolbar(div.elements.toolbar, this.repository);
 
         this.content.events.add('remove', (item) => {
             const div = this._visible_items.get(item.id);
-            if (div)
+            if (div) {
                 div.remove();
+                this._visible_items.delete(item.id);
 
-            content_total_size -= item.content_size;
-            content_num_items -= item.num_items;
-            this._elements.footer_text.innerText = `${content_num_items} fichiers - ${humanFileSize(content_total_size)}`
+                content_total_size -= item.content_size;
+                content_num_items -= item.num_items;
+                this._elements.footer_text.innerText = `${content_num_items} fichiers - ${humanFileSize(content_total_size)}`
+            }
         })
 
         container.append(div);

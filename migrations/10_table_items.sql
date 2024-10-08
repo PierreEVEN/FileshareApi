@@ -15,5 +15,5 @@ CREATE TABLE IF NOT EXISTS SCHEMA_NAME.items (
     );
 
 CREATE INDEX IF NOT EXISTS SCHEMA_NAME_items_parent_item_index ON SCHEMA_NAME.items USING hash(parent_item);
-CREATE INDEX IF NOT EXISTS SCHEMA_NAME_items_absolute_path_index ON SCHEMA_NAME.items USING hash(absolute_path);
+CREATE INDEX IF NOT EXISTS SCHEMA_NAME_items_absolute_path_index ON SCHEMA_NAME.items USING btree(absolute_path);
 CREATE INDEX IF NOT EXISTS SCHEMA_NAME_items_name_index ON SCHEMA_NAME.items USING hash(name);
