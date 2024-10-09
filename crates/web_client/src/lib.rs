@@ -90,10 +90,14 @@ impl WebClient {
             .route("/:display_user/", get(get_index).with_state(ctx.clone()))
             .route("/:display_user/:display_repository/", get(get_index).with_state(ctx.clone()))
             .route("/:display_user/:display_repository/*path", get(get_index).with_state(ctx.clone()))
-            .route("/favicon.ico", get(StaticFileServer::serve_file_from_path).with_state(ctx.config.web_client_config.client_path.join("public").join("images").join("icons").join("favicon.ico")))
+            .route("/favicon.ico", get(Self::get_favicon).with_state(ctx.clone()))
             .nest("/public/", StaticFileServer::router(ctx.config.web_client_config.client_path.join("public")))
             .layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_path_context))
         )
+    }
+
+    async fn get_favicon(State(ctx): State<Arc<AppCtx>>) -> Result<impl IntoResponse, ServerError> {
+        StaticFileServer::serve_file_from_path(ctx.config.web_client_config.client_path.join("public").join("images").join("icons").join("favicon.ico")).await
     }
 }
 

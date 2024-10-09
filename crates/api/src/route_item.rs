@@ -43,6 +43,7 @@ impl ItemRoutes {
     }
 }
 
+/// Get item data from ID
 async fn find_items(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let json = Json::<Vec<ItemId>>::from_request(request, &ctx).await?;
@@ -55,6 +56,7 @@ async fn find_items(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<
     Ok(Json(items))
 }
 
+/// Get items inside a given directory
 async fn directory_content(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let json = Json::<Vec<ItemId>>::from_request(request, &ctx).await?;
@@ -67,6 +69,7 @@ async fn directory_content(State(ctx): State<Arc<AppCtx>>, request: Request) -> 
     Ok(Json(items))
 }
 
+/// Create a directory
 async fn new_directory(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let user = require_connected_user!(request);
@@ -109,7 +112,7 @@ async fn new_directory(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
     Ok(Json(items))
 }
 
-
+/// Move item to trash
 async fn move_to_trash(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let json = Json::<Vec<ItemId>>::from_request(request, &ctx).await?;
@@ -127,6 +130,7 @@ async fn move_to_trash(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
     Ok(Json(items))
 }
 
+/// Restore item from trash
 async fn restore(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let json = Json::<Vec<ItemId>>::from_request(request, &ctx).await?;
@@ -143,6 +147,8 @@ async fn restore(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<imp
     Ok(Json(items))
 }
 
+
+/// Permanently delete item
 async fn delete(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let json = Json::<Vec<ItemId>>::from_request(request, &ctx).await?;
@@ -156,8 +162,12 @@ async fn delete(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl
     Ok(Json(items))
 }
 
-async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -> Result<impl IntoResponse, ServerError> {
+
+/// Get item thumbnail if available
+async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let item = Item::from_id(&ctx.database, &ItemId::from(id), Trash::Both).await?;
+    let permissions = Permissions::new(&request)?;
+    permissions.view_item(&ctx.database, item.id()).await?.require()?;
 
     let file = match &item.file {
         None => { return Err(ServerError::msg(StatusCode::NOT_ACCEPTABLE, "Cannot generate thumbnail for a directory")) }
@@ -176,13 +186,24 @@ async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -
     Ok((headers, body))
 }
 
+
+/// Upload item
 async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let permissions = Permissions::new(&request)?;
+
     let connected_user = require_connected_user!(request);
     let headers = request.headers().clone();
     let id = if let Some(content_id) = headers.get("Content-Id") {
         content_id.to_str()?.to_string()
     } else {
+        // Register new upload
         let upload = Upload::new(headers, connected_user.id().clone())?;
+        if let Some(parent) = &upload.item().parent_item {
+            permissions.upload_to_directory(&ctx.database, parent).await?.require()?;
+        }
+        else {
+            permissions.upload_to_repository(&ctx.database, &upload.item().repository).await?.require()?;
+        }
         ctx.add_upload(upload).await?
     };
 
@@ -199,8 +220,11 @@ async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
     Ok(Json(state))
 }
 
-async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -> Result<impl IntoResponse, ServerError> {
+/// Download item or directory
+async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let item = Item::from_id(&ctx.database, &ItemId::from(id), Trash::Both).await?;
+    let permissions = Permissions::new(&request)?;
+    permissions.view_item(&ctx.database, item.id()).await?.require()?;
 
     if let Some(file) = item.file {
         let object = Object::from_id(&ctx.database, &file.object).await?;
@@ -235,6 +259,7 @@ async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) ->
     }
 }
 
+/// Update item data
 async fn edit(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     require_connected_user!(request);
 
@@ -269,6 +294,7 @@ async fn edit(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
     Ok(Json(items))
 }
 
+/// Search item by filter
 async fn search(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let data = Json::<ItemSearchData>::from_request(request, &ctx).await?.0;

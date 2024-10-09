@@ -129,6 +129,10 @@ impl Upload {
         self.item.push(db).await?;
         Ok(self.item.clone())
     }
+    
+    pub fn item(&self) -> &Item {
+        &self.item
+    }
 }
 
 #[derive(Serialize, Debug)]

@@ -44,6 +44,7 @@ impl RepositoryRoutes {
     }
 }
 
+/// Find repository by url name
 async fn find_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<Json<Vec<Repository>>, ServerError> {
     let permission = Permissions::new(&request)?;
     let json = Json::<Vec<RepositoryId>>::from_request(request, &ctx).await.map_err(|err| { Error::msg(format!("Invalid body, {err} : expected Vec<RepositoryId>")) })?;
@@ -56,6 +57,7 @@ async fn find_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> 
     Ok(Json(repositories))
 }
 
+/// Create a new repository
 async fn create_repository(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let user = require_connected_user!(request);
 
@@ -85,22 +87,25 @@ async fn create_repository(State(ctx): State<Arc<AppCtx>>, request: Request) -> 
     Ok(Json(repositories))
 }
 
+/// Get repositories owned by connected user
 async fn get_owned_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> impl IntoResponse {
     let user = require_connected_user!(request);
     Ok(Json(Repository::from_user(&ctx.database, user.id()).await?))
 }
 
+/// Get repositories shared with connected user
 async fn get_shared_repositories(State(ctx): State<Arc<AppCtx>>, request: Request) -> impl IntoResponse {
     let user = require_connected_user!(request);
     Ok(Json(Repository::shared_with(&ctx.database, user.id()).await?))
 }
 
+/// Get all public repositories
 async fn get_public_repositories(State(ctx): State<Arc<AppCtx>>) -> Result<impl IntoResponse, ServerError> {
     Ok(Json(Repository::public(&ctx.database).await?))
 }
 
+/// Delete repository
 async fn delete_repository(State(ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<impl IntoResponse, ServerError> {
-    let permission = Permissions::new(&request)?;
     let connected_user = require_connected_user!(request);
 
     #[derive(Deserialize)]
@@ -115,15 +120,21 @@ async fn delete_repository(State(ctx): State<Arc<AppCtx>>, request: axum::http::
     let mut deleted_ids = vec![];
 
     for repository in &data.repositories {
-        if connected_user.id() != from_creds.id() || !permission.edit_repository(&ctx.database, repository).await?.granted() {
+        if connected_user.id() != from_creds.id() {
             continue;
         }
-        Repository::from_id(&ctx.database, repository).await?.delete(&ctx.database).await?;
+        let repository = Repository::from_id(&ctx.database, repository).await?;
+        if repository.owner != *connected_user.id() {
+            continue;
+        }
+
+        repository.delete(&ctx.database).await?;
         deleted_ids.push(repository.clone());
     }
     Ok(Json(deleted_ids))
 }
 
+/// Get all root items of a repository
 pub async fn root_content(State(ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<impl IntoResponse, ServerError> {
     let permission = Permissions::new(&request)?;
 
@@ -137,6 +148,7 @@ pub async fn root_content(State(ctx): State<Arc<AppCtx>>, request: axum::http::R
     Ok(Json(result))
 }
 
+/// Get trash root items of a repository
 pub async fn trash_content(State(ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<impl IntoResponse, ServerError> {
     let permission = Permissions::new(&request)?;
 
@@ -144,12 +156,13 @@ pub async fn trash_content(State(ctx): State<Arc<AppCtx>>, request: axum::http::
 
     let mut result = vec![];
     for repository in data.0 {
-        permission.view_repository(&ctx.database, &repository).await?.require()?;
+        permission.edit_repository(&ctx.database, &repository).await?.require()?;
         result.append(&mut Item::repository_trash_root(&ctx.database, &repository).await?);
     }
     Ok(Json(result))
 }
 
+/// Update repository data
 async fn update(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     require_connected_user!(request);
 
@@ -186,11 +199,14 @@ async fn update(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl
     Ok(Json(repositories))
 }
 
-async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) -> Result<impl IntoResponse, ServerError> {
-    let mut zip = AsyncDirectoryZip::new();
+/// Download items or directory from a repository
+async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>, request: Request) -> Result<impl IntoResponse, ServerError> {
 
     let repository = Repository::from_id(&ctx.database, &RepositoryId::from(id)).await?;
+    let permissions = Permissions::new(&request)?;
+    permissions.view_repository(&ctx.database, repository.id()).await?.require()?;
 
+    let mut zip = AsyncDirectoryZip::new();
     for item in Item::from_repository(&ctx.database, &RepositoryId::from(id), Trash::No).await? {
         zip.push_item(&ctx.database, item).await?;
     }
@@ -211,6 +227,7 @@ async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>) ->
     Ok((headers, body))
 }
 
+/// Subscribe user to a repository
 async fn subscribe(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     require_connected_user!(request);
 
@@ -242,6 +259,7 @@ async fn subscribe(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<i
     Ok(Json(subscriptions))
 }
 
+/// Remove user from subscribed users to a repository
 async fn unsubscribe(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     require_connected_user!(request);
 
@@ -260,6 +278,7 @@ async fn unsubscribe(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result
     Ok(())
 }
 
+/// Get all users subscribed to a repository
 async fn subscriptions(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let data = Json::<RepositoryId>::from_request(request, &ctx).await?.0;
@@ -267,9 +286,10 @@ async fn subscriptions(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
     Ok(Json(Subscription::from_repository(&ctx.database, &data).await?))
 }
 
+/// Get repository stats
 async fn stats(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let data = Json::<RepositoryId>::from_request(request, &ctx).await?.0;
-    permissions.view_repository(&ctx.database, &data).await?.require()?;
+    permissions.edit_repository(&ctx.database, &data).await?.require()?;
     Ok(Json(Repository::from_id(&ctx.database, &data).await?.stats(&ctx.database).await?))
 }

@@ -37,6 +37,7 @@ impl UserRoutes {
     }
 }
 
+/// Get user data by id
 async fn find_users(State(ctx): State<Arc<AppCtx>>, Json(json): Json<Vec<UserId>>) -> Result<impl IntoResponse, ServerError> {
     let mut repositories = vec![];
     for repository in &json {
@@ -52,6 +53,7 @@ struct CreateUserInfos {
     pub email: EncString,
     pub password: EncString,
 }
+/// Create a new account
 async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateUserInfos>) -> Result<impl IntoResponse, ServerError> {
     let forbidden_usernames: HashSet<&str> = HashSet::from_iter(vec!["auth", "delete-user", "api", "public", "repositories"]);
 
@@ -102,6 +104,7 @@ struct LoginInfos {
     pub password: EncString,
     pub device: Option<EncString>,
 }
+/// Get authentication token
 async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) -> Result<impl IntoResponse, ServerError> {
     let user = User::from_credentials(&ctx.database, &payload.login, &payload.password).await?;
     let auth_token = user.generate_auth_token(&ctx.database, &match payload.device {
@@ -121,11 +124,13 @@ async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) 
     }))
 }
 
+/// Get authentication tokens for current account
 async fn auth_tokens(State(_ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<Json<Vec<AuthToken>>, ServerError> {
     let connected_user = require_connected_user!(request);
     Ok(Json(AuthToken::from_user(&_ctx.database, connected_user.id()).await?))
 }
 
+/// Remove current authentication token
 async fn logout(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
     let token = match request.headers().get("content-authtoken").map(EncString::try_from) {
         None => { jar.get("authtoken").map(|token| EncString::from_url_path(token.value().to_string())) }
@@ -142,6 +147,7 @@ async fn logout(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, request: Request
     }
 }
 
+/// Delete the user logged in
 async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
     let connected_user = require_connected_user!(request);
 
@@ -156,8 +162,9 @@ async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> 
     Ok(())
 }
 
-
+/// Get the list of repositories of a given users
 async fn repositories(State(ctx): State<Arc<AppCtx>>, Path(user_id): Path<DatabaseId>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
+    // If connected, get all
     get_connected_user!(request, user, {
         let desired_user = User::from_id(&ctx.database, &UserId::from(user_id)).await?;
         if user.id() == desired_user.id() {
@@ -169,6 +176,7 @@ async fn repositories(State(ctx): State<Arc<AppCtx>>, Path(user_id): Path<Databa
         }
     });
 
+    // Else only get public repositories
     let mut repositories = vec![];
     for repository in Repository::from_user(&ctx.database, &UserId::from(user_id)).await? {
         if let RepositoryStatus::Public = repository.status {
@@ -178,6 +186,7 @@ async fn repositories(State(ctx): State<Arc<AppCtx>>, Path(user_id): Path<Databa
     Ok(Json(repositories))
 }
 
+/// Update user data
 async fn update(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> Result<impl IntoResponse, ServerError> {
     let mut user = require_connected_user!(request);
 
@@ -203,6 +212,7 @@ async fn update(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request)
     Ok(())
 }
 
+/// Search user by name
 async fn search(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request) -> Result<impl IntoResponse, ServerError> {
     #[derive(Deserialize, Debug)]
     struct Data {
