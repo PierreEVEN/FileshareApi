@@ -6,11 +6,12 @@
 - carousel
     - fix events item list
     - fix download / share
-- implémenter les filtres
 - fix le client "lourd" (léger pour la nouvelle version)
-- fix connexion forcée
+- reimplementer le reset-password
 
 # TODO
+- implémenter les filtres
+- fix connexion forcée
 - fix preview CR2 terne sous debian ??
 - supporter plus de 1000 items par dossiers
 - gérer le zoom dans le carousel sur les images / vidéos

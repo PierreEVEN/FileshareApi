@@ -16,16 +16,18 @@ class ItemView {
 
         if (item.is_regular_file)
             this.div = require('./file.hbs')({item: item.display_data()}, {
-
                 enter: () => {
 
                 },
                 leave: () => {
 
                 },
-                clicked: () => {
+                clicked: (event) => {
+
+                    this.events.select(event.ctrlKey, event.shiftKey);
+
                     if (!item.in_trash)
-                        this.events.clicked();
+                        ;//this.events.open();
                 },
                 context_menu: (e) => {
                     context_menu_item(item);
@@ -50,6 +52,7 @@ class ItemView {
                     e.preventDefault();
                 }
             });
+        this.div.id = item.id;
         container.append(this.div);
     }
 

@@ -16,6 +16,7 @@ import {Carousel} from "./carousel/carousel";
 import {Repository} from "../../../../types/repository";
 import {CarouselList} from "./carousel/list/carousel_list";
 import {humanFileSize} from "../../../../utilities/utils";
+import {Selector} from "./selector";
 
 require('./repository_viewport.scss')
 
@@ -49,6 +50,10 @@ class RepositoryViewport extends MemoryTracker {
         this._elements = div.elements;
 
         this.content = new ViewportContent();
+        /**
+         * @type {Map<number, ItemView>}
+         * @private
+         */
         this._visible_items = new Map();
 
         let content_num_items = 0;
@@ -66,8 +71,11 @@ class RepositoryViewport extends MemoryTracker {
             }
 
             this._visible_items.set(item.id, new ItemView(item, this._elements.content, {
-                clicked: async () => {
+                open: async () => {
                     await APP.set_display_item(item);
+                },
+                select: async (local_edit, fill_space) => {
+                    this.selector.action_select(item.id, local_edit, fill_space);
                 }
             }))
         });
@@ -93,6 +101,12 @@ class RepositoryViewport extends MemoryTracker {
                 this.open_upload_container();
             return this.uploader;
         });
+
+        this.selector = new Selector(this);
+    }
+
+    get_div(item_id) {
+        return this._visible_items.get(item_id).div;
     }
 
     /**
@@ -103,12 +117,10 @@ class RepositoryViewport extends MemoryTracker {
         if (!item.is_regular_file) {
             this.close_carousel();
             await this.content.set_content_provider(new DirectoryContentProvider(item));
-        }
-        else {
+        } else {
             if (item.parent_item) {
                 await this.content.set_content_provider(new DirectoryContentProvider(await item.filesystem().fetch_item(item.parent_item)));
-            }
-            else {
+            } else {
                 await this.content.set_content_provider(new RepositoryRootProvider(await Repository.find(item.repository)));
             }
             this.open_carousel(item);
@@ -160,6 +172,9 @@ class RepositoryViewport extends MemoryTracker {
         if (this.drop_box)
             this.drop_box.delete();
         this.drop_box = null;
+        if (this.selector)
+            this.selector.delete();
+        this.selector = null;
 
         this.close_carousel();
     }
