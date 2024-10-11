@@ -28,7 +28,7 @@ CREATE OR REPLACE PROCEDURE SCHEMA_NAME.add_delta_on_directory(item BIGINT, coun
 
         SELECT * INTO debug_record from SCHEMA_NAME.items WHERE id = item;
 
-        RAISE NOTICE 'delta % ON %',count_delta, debug_record.absolute_path;
+        RAISE NOTICE 'delta % ON % (in trash = %)',count_delta, debug_record.absolute_path, is_in_trash;
 
 	    SELECT parent_item INTO parent_id FROM SCHEMA_NAME.items WHERE id = item;
 	    IF parent_id IS NOT NULL THEN
@@ -42,15 +42,40 @@ CREATE OR REPLACE PROCEDURE SCHEMA_NAME.add_delta_on_directory(item BIGINT, coun
 CREATE OR REPLACE FUNCTION SCHEMA_NAME.update_directories_content_update() RETURNS TRIGGER AS $$
 	DECLARE
 		rec RECORD;
+		rec2 RECORD;
 	BEGIN
+
+        -- Sent to trash
+        IF NOT OLD.in_trash AND NEW.in_trash THEN
+            SELECT * INTO rec FROM SCHEMA_NAME.items WHERE id = OLD.parent_item;
+            -- Old parent is not in trash : unlink
+            IF NOT rec IS NULL AND NOT rec.in_trash THEN
+                SELECT COALESCE(num_items, 0) AS num_items, content_size INTO rec FROM SCHEMA_NAME.directories WHERE id = NEW.id;
+			    CALL SCHEMA_NAME.add_delta_on_directory(OLD.parent_item, -rec.num_items, -rec.content_size);
+            END IF;
+
+            -- Fix trash size
+            FOR rec IN SELECT * FROM SCHEMA_NAME.items WHERE parent_item = NEW.id LOOP
+                SELECT COALESCE(num_items, 0) AS num_items, content_size INTO rec2 FROM SCHEMA_NAME.directories WHERE id = rec.id;
+                IF NOT rec2 IS NULL THEN
+			        CALL SCHEMA_NAME.add_delta_on_directory(NEW.id, rec2.num_items, rec2.content_size);
+			    END IF;
+            END LOOP;
+
+        -- Restore from trash
+        ELSEIF OLD.in_trash AND NOT NEW.in_trash THEN
+            SELECT * INTO rec FROM SCHEMA_NAME.items WHERE id = NEW.parent_item;
+            -- New parent is not in trash : link
+            IF NOT rec IS NULL AND NOT rec.in_trash THEN
+                SELECT COALESCE(num_items, 0) AS num_items, content_size INTO rec FROM SCHEMA_NAME.directories WHERE id = NEW.id;
+			    CALL SCHEMA_NAME.add_delta_on_directory(NEW.parent_item, rec.num_items, rec.content_size);
+            END IF;
+        END IF;
 
 
         -- Was Added
-	    IF NOT NEW.in_trash AND (
-	        OLD.in_trash OR
-	        (OLD.parent_item IS NULL AND NEW.parent_item IS NOT NULL) OR
+	    IF ((OLD.parent_item IS NULL AND NEW.parent_item IS NOT NULL) OR
 	        (OLD.parent_item IS NOT NULL AND NEW.parent_item IS NOT NULL AND NOT (OLD.parent_item = NEW.parent_item))) THEN
-
 
            RAISE NOTICE 'ADD %', NEW.absolute_path;
 
@@ -60,7 +85,7 @@ CREATE OR REPLACE FUNCTION SCHEMA_NAME.update_directories_content_update() RETUR
 			        CALL SCHEMA_NAME.add_delta_on_directory(NEW.parent_item, 1, rec.size);
                 END IF;
            ELSE
-                SELECT num_items, content_size INTO rec FROM SCHEMA_NAME.directories WHERE id = NEW.id;
+                SELECT COALESCE(num_items, 0) AS num_items, content_size INTO rec FROM SCHEMA_NAME.directories WHERE id = NEW.id;
                 IF NEW.parent_item IS NOT NULL AND NOT NEW.in_trash THEN
 			        CALL SCHEMA_NAME.add_delta_on_directory(NEW.parent_item, rec.num_items, rec.content_size);
                 END IF;
@@ -68,10 +93,8 @@ CREATE OR REPLACE FUNCTION SCHEMA_NAME.update_directories_content_update() RETUR
 
 
 
-        ELSEIF NOT OLD.in_trash AND (
-                	        NEW.in_trash OR
-                	        (OLD.parent_item IS NOT NULL AND NEW.parent_item IS NULL) OR
-                	        (OLD.parent_item IS NOT NULL AND NEW.parent_item IS NOT NULL AND NOT (OLD.parent_item = NEW.parent_item))) THEN
+        ELSEIF ((OLD.parent_item IS NOT NULL AND NEW.parent_item IS NULL) OR
+                (OLD.parent_item IS NOT NULL AND NEW.parent_item IS NOT NULL AND NOT (OLD.parent_item = NEW.parent_item))) THEN
 
            RAISE NOTICE 'REMOVE %', NEW.absolute_path;
 
@@ -87,7 +110,6 @@ CREATE OR REPLACE FUNCTION SCHEMA_NAME.update_directories_content_update() RETUR
                 END IF;
            END IF;
 
-
 	    END IF;
 
 		RETURN NEW;
@@ -95,7 +117,7 @@ CREATE OR REPLACE FUNCTION SCHEMA_NAME.update_directories_content_update() RETUR
 	$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER trig_update_directories_content_update
-	AFTER UPDATE ON SCHEMA_NAME.items
+	BEFORE UPDATE ON SCHEMA_NAME.items
 	FOR EACH ROW EXECUTE FUNCTION SCHEMA_NAME.update_directories_content_update();
 
 -- REMOVE FILE

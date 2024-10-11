@@ -30,9 +30,6 @@ impl StaticFileServer {
 
     pub async fn serve_file_from_path(file_path: PathBuf) -> Result<impl IntoResponse, ServerError> {
         if file_path.exists() {
-            println!("{}", file_path.canonicalize()?.display());
-
-
             let file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
             let mime_type = match mime_guess::from_path(file_path.clone()).first_raw() {
                 None => { "application/octet-stream" }
@@ -55,9 +52,6 @@ impl StaticFileServer {
 
     async fn serve_file(State(ctx): State<StaticRouterConfig>, request: Request) -> Result<impl IntoResponse, ServerError> {
         let file_path = ctx.root_path.join(PathBuf::from(String::from(".") + request.uri().path()));
-
-        println!("{}   =>   {}", file_path.canonicalize()?.display(), ctx.root_path.canonicalize()?.display());
-        
         if !file_path.canonicalize()?.starts_with(ctx.root_path.canonicalize()?) {
             return Err(ServerError::msg(StatusCode::UNAUTHORIZED, "Cannot access elements outside public directory"));
         }

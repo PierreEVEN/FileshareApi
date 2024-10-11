@@ -16,7 +16,7 @@ import {Carousel} from "./carousel/carousel";
 import {Repository} from "../../../../types/repository";
 import {CarouselList} from "./carousel/list/carousel_list";
 import {humanFileSize} from "../../../../utilities/utils";
-import {Selector} from "./selector";
+//import {Selector} from "./selector";
 
 require('./repository_viewport.scss')
 
@@ -64,7 +64,6 @@ class RepositoryViewport extends MemoryTracker {
             let in_trash = this.content.get_content_provider() instanceof TrashContentProvider;
 
             if (!this._visible_items.has(item.id) && item.in_trash === in_trash) {
-                console.log('add ,', item.num_items, item.absolute_path.plain())
                 content_total_size += item.content_size;
                 content_num_items += item.num_items;
                 this._elements.footer_text.innerText = `${content_num_items} fichiers - ${humanFileSize(content_total_size)}`
@@ -102,7 +101,7 @@ class RepositoryViewport extends MemoryTracker {
             return this.uploader;
         });
 
-        this.selector = new Selector(this);
+        //this.selector = new Selector(this);
     }
 
     get_div(item_id) {
