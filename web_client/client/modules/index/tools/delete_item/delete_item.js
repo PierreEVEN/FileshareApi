@@ -3,23 +3,42 @@ import {FilesystemItem} from "../../../../types/filesystem_stream";
 import {Message, NOTIFICATION} from "../message_box/notification";
 
 /**
- * @param item {FilesystemItem}
+ * @param item {FilesystemItem|FilesystemItem[]}
  * @param move_to_trash {boolean}
  * @return {Promise<void>}
  */
 async function delete_item(item, move_to_trash) {
-    const fs = item.filesystem();
+    let ids = null;
+    let fs_map = new Map();
+    if (item instanceof Array) {
+        if (item.length === 0)
+            return;
+        ids = [];
+        for (const it of item) {
+            ids.push(it.id);
+            fs_map.set(it.id, it.filesystem());
+        }
+    }
+    else {
+        ids = [item.id];
+        fs_map.set(item.id, item.filesystem());
+    }
     const items = await fetch_api(`item/${move_to_trash ? 'move-to-trash' : 'delete'}/`, 'POST',
-        [item.id]
-    ).catch(error => NOTIFICATION.fatal(new Message(error).title("Impossible de supprimer le fichier")));
+        ids
+    ).catch(error => NOTIFICATION.fatal(new Message(error).title("Impossible de supprimer le(s) fichier(s)")));
     if (move_to_trash)
         for (const item_id of items) {
-            item.in_trash = true;
-            await set_item_to_trash(await fs.fetch_item(item_id), true);
-            await item.refresh();
+            let item_object = await fs_map.get(item_id).fetch_item(item_id);
+            item_object.in_trash = true;
+            await set_item_to_trash(item_object, true);
+            await item_object.refresh();
         }
-    else
-        await item.remove();
+    else {
+        for (const item_id of items) {
+            let item_object = await fs_map.get(item_id).fetch_item(item_id);
+            await item_object.remove();
+        }
+    }
 }
 
 /**
@@ -27,14 +46,29 @@ async function delete_item(item, move_to_trash) {
  * @return {Promise<void>}
  */
 async function restore_item(item) {
-    const fs = item.filesystem();
+    let ids = null;
+    let fs_map = new Map();
+    if (item instanceof Array) {
+        if (item.length === 0)
+            return;
+        ids = [];
+        for (const it of item) {
+            ids.push(it.id);
+            fs_map.set(it.id, it.filesystem());
+        }
+    }
+    else {
+        ids = [item.id];
+        fs_map.set(item.id, item.filesystem());
+    }
     const items = await fetch_api(`item/restore/`, 'POST',
-        [item.id]
+        ids
     ).catch(error => NOTIFICATION.fatal(new Message(error).title("Impossible de restorer le fichier")));
     for (const item_id of items) {
-        item.in_trash = false;
-        await set_item_to_trash(await fs.fetch_item(item_id), false);
-        await item.refresh();
+        let item_object = await fs_map.get(item_id).fetch_item(item_id);
+        item_object.in_trash = true;
+        await set_item_to_trash(item_object, false);
+        await item_object.refresh();
     }
 }
 

@@ -121,8 +121,7 @@ macro_rules! make_wrapped_db_type {
 macro_rules! make_database_id {
     ($T:ident) => {
         crate::make_wrapped_db_type!($T, crate::DatabaseId, Default, std::fmt::Debug, Clone);
-
-
+        
         impl std::ops::Deref for $T {
             type Target = crate::DatabaseId;
             fn deref(&self) -> &Self::Target {

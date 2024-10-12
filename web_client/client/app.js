@@ -70,7 +70,7 @@ class FileshareApp {
                 await this._side_bar.expand_to(APP_CONFIG.display_repository(), null, APP_CONFIG.in_trash());
                 if (APP_CONFIG.in_trash())
                     await this.set_display_trash(APP_CONFIG.display_repository());
-                if (APP_CONFIG.repository_settings())
+                else if (APP_CONFIG.repository_settings())
                     await this.set_display_repository_settings(APP_CONFIG.display_repository());
                 else
                     await this.set_display_repository(APP_CONFIG.display_repository());

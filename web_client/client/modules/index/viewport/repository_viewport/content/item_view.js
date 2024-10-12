@@ -23,15 +23,15 @@ class ItemView {
 
                 },
                 clicked: (event) => {
-
                     this.events.select(event.ctrlKey, event.shiftKey);
-
+                },
+                dblclicked: (event) => {
                     if (!item.in_trash)
-                        ;//this.events.open();
+                        this.events.open();
                 },
                 context_menu: (e) => {
-                    context_menu_item(item);
                     e.preventDefault();
+                    this.events.context_menu();
                 }
             });
         else
@@ -43,13 +43,16 @@ class ItemView {
                 leave: () => {
 
                 },
-                clicked: () => {
+                clicked: (event) => {
+                    this.events.select(event.ctrlKey, event.shiftKey);
+                },
+                dblclicked: (event) => {
                     if (!item.in_trash)
-                        this.events.clicked();
+                        this.events.open();
                 },
                 context_menu: (e) => {
-                    context_menu_item(item);
                     e.preventDefault();
+                    this.events.context_menu();
                 }
             });
         this.div.id = item.id;

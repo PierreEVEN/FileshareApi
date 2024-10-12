@@ -162,6 +162,17 @@ class FilesystemItem {
     async download() {
         window.open(`/api/item/get/${this.id}/`);
     }
+
+    /**
+     * @param ids {number[]}
+     * @return {Promise<void>}
+     */
+    static async downloads(ids) {
+        let str = '';
+        for (const id of ids)
+            str += `${id}-`;
+        window.open(`/api/item/download/${str}/`);
+    }
 }
 
 class FilesystemStream {

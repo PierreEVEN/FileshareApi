@@ -99,6 +99,17 @@ class Selector extends MemoryTracker {
         this._internal_select(item_id);
     }
 
+    is_selected(item_id) {
+        return this._selected_items.has(item_id);
+    }
+
+    /**
+     * @return {number[]}
+     */
+    get_selected_items() {
+        return Array.from(this._selected_items);
+    }
+
     action_select(item_id, local_edit, fill_space) {
         if (this._selected_items.has(item_id)) {
             if (local_edit) {

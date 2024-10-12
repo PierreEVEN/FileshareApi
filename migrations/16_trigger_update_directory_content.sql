@@ -18,6 +18,7 @@ CREATE OR REPLACE PROCEDURE SCHEMA_NAME.add_delta_on_directory(item BIGINT, coun
 		debug_record RECORD;
 		is_in_trash BOOLEAN;
 	BEGIN
+	    RETURN;
 	    SELECT in_trash INTO is_in_trash FROM SCHEMA_NAME.items WHERE id = item;
 	    if is_in_trash THEN
 	        return;
@@ -45,6 +46,7 @@ CREATE OR REPLACE FUNCTION SCHEMA_NAME.update_directories_content_update() RETUR
 		rec2 RECORD;
 	BEGIN
 
+	    RETURN NEW;
         -- Sent to trash
         IF NOT OLD.in_trash AND NEW.in_trash THEN
             SELECT * INTO rec FROM SCHEMA_NAME.items WHERE id = OLD.parent_item;

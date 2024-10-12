@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use crate::app_ctx::AppCtx;
 use database::item::{DirectoryData, Item, ItemId, ItemSearchData, Trash};
 use database::object::Object;
@@ -36,6 +37,7 @@ impl ItemRoutes {
             .route("/thumbnail/:id/", get(thumbnail).with_state(ctx.clone()))
             .route("/send/", post(send).with_state(ctx.clone()))
             .route("/get/:path/", get(download).with_state(ctx.clone()))
+            .route("/download/:ids/", get(download_multi).with_state(ctx.clone()))
             .route("/preview/:path/", get(download).with_state(ctx.clone()))
             .route("/update/", post(edit).with_state(ctx.clone()))
             .route("/search/", post(search).with_state(ctx.clone()))
@@ -200,8 +202,7 @@ async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
         let upload = Upload::new(headers, connected_user.id().clone())?;
         if let Some(parent) = &upload.item().parent_item {
             permissions.upload_to_directory(&ctx.database, parent).await?.require()?;
-        }
-        else {
+        } else {
             permissions.upload_to_repository(&ctx.database, &upload.item().repository).await?.require()?;
         }
         ctx.add_upload(upload).await?
@@ -257,6 +258,38 @@ async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>, re
         ];
         Ok((headers, body))
     }
+}
+
+/// Download item or directory
+async fn download_multi(State(ctx): State<Arc<AppCtx>>, Path(ids): Path<String>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let mut items = vec![];
+    for str in ids.split('-') {
+        if !str.is_empty() {
+            items.push(ItemId::from(DatabaseId::from_str(str)?))
+        }
+    }
+    let permissions = Permissions::new(&request)?;
+
+    let mut zip = AsyncDirectoryZip::new();
+    for item in items {
+        permissions.view_item(&ctx.database, &item).await?.require()?;
+        let item = Item::from_id(&ctx.database, &item, Trash::Both).await?;
+        zip.push_item(&ctx.database, item.clone()).await?;
+    }
+    let size = zip.size()?;
+
+    let (w, r) = tokio::io::duplex(4096);
+    tokio::spawn(async move {
+        zip.finalize(&ctx.database, w).await
+    });
+
+    let body = Body::from_stream(ReaderStream::new(r));
+    let headers = [
+        (header::CONTENT_TYPE, "application/zip".to_string()),
+        (header::CONTENT_LENGTH, size.to_string()),
+        (header::CONTENT_DISPOSITION, "attachment; filename=\"Archive.zip\"".to_string())
+    ];
+    Ok((headers, body))
 }
 
 /// Update item data

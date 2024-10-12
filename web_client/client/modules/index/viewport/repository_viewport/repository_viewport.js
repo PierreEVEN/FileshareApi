@@ -16,7 +16,7 @@ import {Carousel} from "./carousel/carousel";
 import {Repository} from "../../../../types/repository";
 import {CarouselList} from "./carousel/list/carousel_list";
 import {humanFileSize} from "../../../../utilities/utils";
-//import {Selector} from "./selector";
+import {Selector} from "./selector";
 
 require('./repository_viewport.scss')
 
@@ -75,6 +75,18 @@ class RepositoryViewport extends MemoryTracker {
                 },
                 select: async (local_edit, fill_space) => {
                     this.selector.action_select(item.id, local_edit, fill_space);
+                },
+                context_menu: async () => {
+                    if (this.selector.is_selected(item.id)) {
+                        const items = [];
+                        for (const item_id of this.selector.get_selected_items()) {
+                            items.push(await item.filesystem()?.fetch_item(item_id));
+                        }
+                        context_menu_item(items);
+                    } else {
+                        this.selector.select_item(item.id, false, false);
+                        context_menu_item(item);
+                    }
                 }
             }))
         });
@@ -101,7 +113,7 @@ class RepositoryViewport extends MemoryTracker {
             return this.uploader;
         });
 
-        //this.selector = new Selector(this);
+        this.selector = new Selector(this);
     }
 
     get_div(item_id) {
