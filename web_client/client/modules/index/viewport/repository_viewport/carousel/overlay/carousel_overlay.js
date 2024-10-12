@@ -1,5 +1,6 @@
 import {humanFileSize} from "../../../../../../utilities/utils";
 import {APP_CONFIG} from "../../../../../../types/app_config";
+import {Message, NOTIFICATION} from "../../../../tools/message_box/notification";
 
 class CarouselOverlay {
     /**
@@ -19,11 +20,12 @@ class CarouselOverlay {
                 carousel.close();
             },
             download: () => {
-                window.open(`${APP_CONFIG.origin()}/api/item/${item.id}/`, '_blank').focus();
+                item.download();
             },
             share: async () => {
-                let url = `${APP_CONFIG.origin()}/api/item/${item.id}/`;
+                let url = `${APP_CONFIG.origin()}/api/item/get/${item.id}/`;
                 await navigator.clipboard.writeText(url);
+                NOTIFICATION.success(new Message(url).title("Lien copié dans le presse-papier"))
             }
         });
         container.firstChild.before(this.carousel_overlay)

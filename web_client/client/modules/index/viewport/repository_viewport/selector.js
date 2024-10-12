@@ -65,9 +65,10 @@ class Selector extends MemoryTracker {
      */
     select_item(item_id, local_edit, fill_space) {
         if (!local_edit) {
-            for (const item of this._selected_items) {
+            const last_selected = this._last_selected;
+            for (const item of this._selected_items)
                 this.unselect_item(item, true);
-            }
+            this._last_selected = last_selected;
         }
 
         if (fill_space && this._last_selected !== null && this._last_selected !== undefined) {
@@ -108,6 +109,11 @@ class Selector extends MemoryTracker {
      */
     get_selected_items() {
         return Array.from(this._selected_items);
+    }
+
+    clear_selection() {
+        for (const item of this._selected_items)
+            this.unselect_item(item, true);
     }
 
     action_select(item_id, local_edit, fill_space) {

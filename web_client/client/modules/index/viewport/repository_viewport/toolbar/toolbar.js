@@ -1,4 +1,6 @@
 import {APP} from "../../../../../app";
+import {context_menu_item} from "../../../context_menu/contexts/context_item";
+import {context_menu_repository} from "../../../context_menu/contexts/context_repository";
 
 require("./toolbar.scss");
 
@@ -20,6 +22,12 @@ class ViewportToolbar {
                     this.current_item.download();
                 else
                     this.repository.download();
+            },
+            context: () => {
+                if (this.current_item)
+                    context_menu_item(this.current_item);
+                else
+                    context_menu_repository(this.repository);
             }
         });
         this.current_item = null;

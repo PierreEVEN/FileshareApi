@@ -194,6 +194,13 @@ class ViewportContent extends MemoryTracker {
         return this._provider
     }
 
+    get_filesystem() {
+        for (const item of this._displayed_items.values()) {
+            return item.filesystem();
+        }
+        return null;
+    }
+
     _add(item) {
         if (this._displayed_items.has(item.id))
             return;

@@ -43,7 +43,9 @@ class ContextMenu {
         if (CURRENT_CONTEXT_MENU)
             CURRENT_CONTEXT_MENU.close();
 
-        CURRENT_CONTEXT_MENU = this;
+        setTimeout(() => {
+            CURRENT_CONTEXT_MENU = this;
+        }, 10);
 
         this._actions = [];
 

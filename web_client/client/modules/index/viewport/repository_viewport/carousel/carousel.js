@@ -9,13 +9,11 @@ let FULLSCREEN_CONTAINER = null;
 
 class Carousel extends MemoryTracker {
     /**
-     * @param content {ViewportContent}
      * @param container {HTMLElement}
      * @param base_item
      */
-    constructor(content, container, base_item) {
+    constructor(container, base_item) {
         super(Carousel);
-        this.content = content;
         import('../../../../embed_viewers').then(async _ => {
             new CarouselViewport(container, base_item);
             new CarouselOverlay(this, container, base_item)

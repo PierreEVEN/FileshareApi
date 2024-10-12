@@ -1,15 +1,12 @@
 # Bugs avant release V3.0
 
 - viewport
-    - navigation / selection / menu contextuel
-    - fix taille des dossiers cassée
-- carousel
-    - fix events item list
-    - fix download / share
+    - navigation
 - fix le client "lourd" (léger pour la nouvelle version)
 - reimplementer le reset-password
 
 # TODO
+- fix taille des dossiers cassée
 - implémenter les filtres
 - fix connexion forcée
 - fix preview CR2 terne sous debian ??

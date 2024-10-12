@@ -3,11 +3,11 @@ const carousel_list_item_hbs = require('./carousel_list_item.hbs');
 
 class CarouselList {
     /**
-     * @param directory_content {ViewportContent}
+     * @param viewport {RepositoryViewport}
      * @param on_select_item
      */
-    constructor(directory_content, on_select_item) {
-        this.directory_content = directory_content;
+    constructor(viewport, on_select_item) {
+        this.viewport = viewport;
 
         this.on_select_item = on_select_item;
 
@@ -29,19 +29,18 @@ class CarouselList {
         if (this.on_select_item)
             this.on_select_item(meta_data);
         this._last_selected.scrollIntoView({behavior: "smooth", inline: scroll_center ? 'center' : 'nearest'});
-
         this.update_left_right_buttons();
     }
 
-    select_next() {
-        const meta_data = this.directory_content.navigator.filesystem.get_object_data(this._last_selected.nextSibling.item_id);
+    async select_next() {
+        const meta_data = await this.viewport.content.get_filesystem().fetch_item(this._last_selected.nextSibling.item_id);
         if (meta_data.is_regular_file) {
             this.select_item(meta_data, true);
         }
     }
 
-    select_previous() {
-        const meta_data = this.directory_content.navigator.filesystem.get_object_data(this._last_selected.previousSibling.item_id);
+    async select_previous() {
+        const meta_data = await this.viewport.content.get_filesystem().fetch_item(this._last_selected.previousSibling.item_id);
         if (meta_data.is_regular_file) {
             this.select_item(meta_data, true);
         }
@@ -76,7 +75,7 @@ class CarouselList {
         left_spacer.style.width = '100px';
         carousel_list_div.append(left_spacer);
 
-        let provider = this.directory_content.get_content_provider();
+        let provider = this.viewport.content.get_content_provider();
         if (!provider)
             return;
 
