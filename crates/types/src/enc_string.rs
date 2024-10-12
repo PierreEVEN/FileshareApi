@@ -2,12 +2,14 @@ use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Deref;
 use anyhow::Error;
-use axum::http::HeaderValue;
 use deunicode::deunicode;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use serde::de::Visitor;
 use tracing::error;
 use crate::make_wrapped_db_type;
+
+#[cfg(feature = "axum")]
+use axum::http::HeaderValue;
 
 make_wrapped_db_type!(EncString, String, Default, Serialize, Clone);
 
@@ -41,6 +43,10 @@ impl EncString {
             Ok(Self(encoded))
         }
     }
+
+    pub fn from_os_string(string: &std::ffi::OsStr) -> Self {
+        Self::encode(string.to_str().unwrap())
+    }
 }
 
 impl<'de> Deserialize<'de> for EncString {
@@ -63,9 +69,10 @@ impl<'de> Deserialize<'de> for EncString {
             {
                 match EncString::new(value.to_string()) {
                     Ok(res) => { Ok(res) }
-                    Err(err) => { 
+                    Err(err) => {
                         error!("Invalid encoded string : {}", err);
-                        Err(de::Error::custom(format!("Invalid encoded string : {}", err))) }
+                        Err(de::Error::custom(format!("Invalid encoded string : {}", err)))
+                    }
                 }
             }
         }
@@ -85,6 +92,7 @@ impl From<&str> for EncString {
     }
 }
 
+#[cfg(feature = "axum")]
 impl TryFrom<&HeaderValue> for EncString {
     type Error = Error;
     fn try_from(value: &HeaderValue) -> Result<Self, Self::Error> {

@@ -1,5 +1,3 @@
-use crate::repository::RepositoryId;
-use crate::user::UserId;
 use crate::Database;
 use crate::{query_fmt, query_object, query_objects};
 use anyhow::Error;
@@ -7,6 +5,7 @@ use postgres_from_row::FromRow;
 use postgres_types::private::BytesMut;
 use postgres_types::{to_sql_checked, IsNull, Type};
 use serde::{Deserialize, Serialize};
+use types::database_ids::{RepositoryId, UserId};
 
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum SubscriptionAccessType {

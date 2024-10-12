@@ -15,12 +15,12 @@ use tracing::{error, info, warn};
 use http_body_util::BodyExt;
 use api::app_ctx::AppCtx;
 use api::{RequestContext, RootRoutes};
+use client_web::WebClient;
 use database::compatibility_upgrade::Upgrade;
-use database::user::User;
+use database::user::DbUser;
+use types::enc_string::EncString;
 use utils::config::{Config, WebClientConfig};
-use utils::enc_string::EncString;
 use utils::server_error::ServerError;
-use web_client::WebClient;
 
 async fn start_web_client(config: WebClientConfig) {
     match WebClient::new(&config).await {
@@ -177,7 +177,7 @@ pub async fn middleware_get_request_context(jar: CookieJar, State(ctx): State<Ar
     };
 
     if let Some(token) = token {
-        context.connected_user = tokio::sync::RwLock::new(match User::from_auth_token(&ctx.database, &token?).await {
+        context.connected_user = tokio::sync::RwLock::new(match DbUser::from_auth_token(&ctx.database, &token?).await {
             Ok(connected_user) => { Some(connected_user) }
             Err(_) => { None }
         })

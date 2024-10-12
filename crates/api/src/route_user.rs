@@ -1,5 +1,4 @@
-use database::user::{AuthToken, PasswordHash, User, UserId, UserRole};
-use utils::enc_string::EncString;
+use types::enc_string::EncString;
 use utils::server_error::ServerError;
 use crate::{get_connected_user, require_connected_user};
 use anyhow::Error;
@@ -14,8 +13,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::log::info;
-use database::DatabaseId;
-use database::repository::{Repository, RepositoryStatus};
+use database::repository::DbRepository;
+use database::user::{DbAuthToken, DbUser};
+use types::database_ids::{DatabaseId, PasswordHash, UserId};
+use types::repository::RepositoryStatus;
+use types::user::{AuthToken, User, UserRole};
 use crate::app_ctx::AppCtx;
 
 pub struct UserRoutes {}
@@ -41,7 +43,7 @@ impl UserRoutes {
 async fn find_users(State(ctx): State<Arc<AppCtx>>, Json(json): Json<Vec<UserId>>) -> Result<impl IntoResponse, ServerError> {
     let mut repositories = vec![];
     for repository in &json {
-        repositories.push(User::from_id(&ctx.database, repository).await?)
+        repositories.push(DbUser::from_id(&ctx.database, repository).await?)
     }
     Ok(Json(repositories))
 }
@@ -63,9 +65,9 @@ async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateU
 
     let url_name = payload.username.url_formated()?;
 
-    if User::from_url_name(&ctx.database, &url_name).await.is_ok() {
+    if DbUser::from_url_name(&ctx.database, &url_name).await.is_ok() {
         return Ok((StatusCode::CONFLICT, "User already exists : duplicated url identifier !".to_string()));
-    } else if User::exists(&ctx.database, &payload.username, &payload.email).await? {
+    } else if DbUser::exists(&ctx.database, &payload.username, &payload.email).await? {
         return Ok((StatusCode::CONFLICT, "User already exists : duplicated logins !".to_string()));
     } else {
         let mut new_user = User::default();
@@ -76,13 +78,13 @@ async fn create_user(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<CreateU
         new_user.user_role = UserRole::Guest;
 
         if let Some(admin_user_name) = &ctx.config.admin_user_name {
-            if new_user.login.plain()? == *admin_user_name && !User::has_admin(&ctx.database).await? {
+            if new_user.login.plain()? == *admin_user_name && !DbUser::has_admin(&ctx.database).await? {
                 new_user.user_role = UserRole::Admin;
                 info!("Created default administrator")
             }
         }
 
-        match new_user.create_or_reset_password(&ctx.database, &PasswordHash::new(&payload.password)?).await {
+        match DbUser::create_or_reset_password(&mut new_user, &ctx.database, &PasswordHash::new(&payload.password)?).await {
             Ok(_) => {}
             Err(err) => {
                 return Ok((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create user : {err}")))
@@ -106,8 +108,8 @@ struct LoginInfos {
 }
 /// Get authentication token
 async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) -> Result<impl IntoResponse, ServerError> {
-    let user = User::from_credentials(&ctx.database, &payload.login, &payload.password).await?;
-    let auth_token = user.generate_auth_token(&ctx.database, &match payload.device {
+    let user = DbUser::from_credentials(&ctx.database, &payload.login, &payload.password).await?;
+    let auth_token = DbUser::generate_auth_token(&user, &ctx.database, &match payload.device {
         None => { EncString::from("Unknown device") }
         Some(device) => { device }
     }).await?;
@@ -125,9 +127,9 @@ async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) 
 }
 
 /// Get authentication tokens for current account
-async fn auth_tokens(State(_ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<Json<Vec<AuthToken>>, ServerError> {
+async fn auth_tokens(State(ctx): State<Arc<AppCtx>>, request: axum::http::Request<Body>) -> Result<Json<Vec<AuthToken>>, ServerError> {
     let connected_user = require_connected_user!(request);
-    Ok(Json(AuthToken::from_user(&_ctx.database, connected_user.id()).await?))
+    Ok(Json(DbAuthToken::from_user(&ctx.database, connected_user.id()).await?))
 }
 
 /// Remove current authentication token
@@ -140,8 +142,8 @@ async fn logout(jar: CookieJar, State(ctx): State<Arc<AppCtx>>, request: Request
     match token {
         None => { Err(Error::msg("No token provided".to_string()))? }
         Some(authentication_token) => {
-            let token = AuthToken::find(&ctx.database, &authentication_token?).await?;
-            token.delete(&ctx.database).await?;
+            let token = DbAuthToken::find(&ctx.database, &authentication_token?).await?;
+            DbAuthToken::delete(&token, &ctx.database).await?;
             Ok((StatusCode::ACCEPTED, "Successfully disconnected user".to_string()))
         }
     }
@@ -152,13 +154,13 @@ async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> 
     let connected_user = require_connected_user!(request);
 
     let data = Json::<UserCredentials>::from_request(request, &ctx).await?.0;
-    let from_creds = User::from_credentials(&ctx.database, &data.login, &data.password).await?;
+    let from_creds = DbUser::from_credentials(&ctx.database, &data.login, &data.password).await?;
 
     if *from_creds.id() != *connected_user.id() {
         return Err(Error::msg("Cannot delete someone else's account"))?;
     }
 
-    from_creds.delete(&ctx.database).await?;
+    DbUser::delete(&from_creds, &ctx.database).await?;
     Ok(())
 }
 
@@ -166,10 +168,10 @@ async fn delete_user(State(ctx): State<Arc<AppCtx>>, request: Request<Body>) -> 
 async fn repositories(State(ctx): State<Arc<AppCtx>>, Path(user_id): Path<DatabaseId>, request: Request<Body>) -> Result<impl IntoResponse, ServerError> {
     // If connected, get all
     get_connected_user!(request, user, {
-        let desired_user = User::from_id(&ctx.database, &UserId::from(user_id)).await?;
+        let desired_user = DbUser::from_id(&ctx.database, &UserId::from(user_id)).await?;
         if user.id() == desired_user.id() {
             let mut repositories = vec![];
-            for repository in Repository::from_user(&ctx.database, user.id()).await? {
+            for repository in DbRepository::from_user(&ctx.database, user.id()).await? {
                 repositories.push(repository.id().clone());
             }
             return Ok(Json(repositories))
@@ -178,7 +180,7 @@ async fn repositories(State(ctx): State<Arc<AppCtx>>, Path(user_id): Path<Databa
 
     // Else only get public repositories
     let mut repositories = vec![];
-    for repository in Repository::from_user(&ctx.database, &UserId::from(user_id)).await? {
+    for repository in DbRepository::from_user(&ctx.database, &UserId::from(user_id)).await? {
         if let RepositoryStatus::Public = repository.status {
             repositories.push(repository.id().clone());
         }
@@ -207,7 +209,7 @@ async fn update(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request)
     user.login = json.login;
     user.name = json.name;
     user.allow_contact = json.allow_contact;
-    user.push(&ctx.database).await?;
+    DbUser::push(&mut user, &ctx.database).await?;
 
     Ok(())
 }
@@ -221,7 +223,7 @@ async fn search(State(ctx): State<Arc<AppCtx>>, request: axum::extract::Request)
     }
     let json = Json::<Data>::from_request(request, &ctx).await?.0;
     let mut users = vec![];
-    for user in User::search(&ctx.database, &json.name, json.exact).await? {
+    for user in DbUser::search(&ctx.database, &json.name, json.exact).await? {
         users.push(user.id().clone());
     }
     Ok(Json(users))

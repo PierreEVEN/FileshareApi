@@ -1,5 +1,5 @@
 [package]
-name = "web_client"
+name = "client_web"
 version = "0.1.0"
 edition = "2021"
 
@@ -17,3 +17,4 @@ mime_guess = "2.0.5"
 utils = { path = "../utils" }
 api = { path = "../api" }
 database = { path = "../database" }
+types = { path = "../types" }

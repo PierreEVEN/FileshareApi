@@ -10,21 +10,25 @@ use axum::extract::{Path, Request, State};
 use axum::http::{StatusCode};
 use axum::middleware::Next;
 use axum::response::{Html, IntoResponse, Response};
-use axum::{middleware, Router};
+use axum::{middleware, Json, Router};
 use axum::routing::{get};
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command};
 use tracing::{info};
 use which::which;
 use utils::config::WebClientConfig;
-use database::repository::Repository;
-use database::user::User;
-use api::{get_action, get_connected_user, get_display_item, get_display_repository, get_display_user};
+use api::{get_action, get_connected_user, get_display_item, get_display_repository, get_display_user, require_display_repository};
 use api::app_ctx::AppCtx;
-use database::item::{Item, Trash};
+use database::item::{DbItem, Trash};
 use api::RequestContext;
-use utils::enc_path::EncPath;
-use utils::enc_string::EncString;
+use database::repository::DbRepository;
+use database::user::DbUser;
+use types::database_ids::RepositoryId;
+use types::enc_path::EncPath;
+use types::enc_string::EncString;
+use types::item::Item;
+use types::repository::Repository;
+use types::user::User;
 use utils::server_error::ServerError;
 use crate::static_file_server::StaticFileServer;
 
@@ -90,6 +94,7 @@ impl WebClient {
             .route("/:display_user/", get(get_index).with_state(ctx.clone()))
             .route("/:display_user/:display_repository/", get(get_index).with_state(ctx.clone()))
             .route("/:display_user/:display_repository/*path", get(get_index).with_state(ctx.clone()))
+            .route("/:display_user/:display_repository/api-link/", get(link).with_state(ctx.clone()))
             .route("/favicon.ico", get(Self::get_favicon).with_state(ctx.clone()))
             .nest("/public/", StaticFileServer::router(ctx.config.web_client_config.client_path.join("public")))
             .layer(middleware::from_fn_with_state(ctx.clone(), middleware_get_path_context))
@@ -110,7 +115,7 @@ pub struct PathData {
 pub async fn middleware_get_path_context(State(ctx): State<Arc<AppCtx>>, Path(PathData { display_user, display_repository }): Path<PathData>, request: axum::http::Request<Body>, next: Next) -> Result<Response, ServerError> {
     let context = request.extensions().get::<Arc<RequestContext>>().unwrap();
     if let Some(display_user) = display_user {
-        if let Ok(display_user) = User::from_url_name(&ctx.database, &EncString::from_url_path(display_user.clone())?).await {
+        if let Ok(display_user) = DbUser::from_url_name(&ctx.database, &EncString::from_url_path(display_user.clone())?).await {
             *context.display_user.write().await = Some(display_user);
         } else {
             return Err(ServerError::msg(StatusCode::NOT_FOUND, format!("Unknown user '{}'", display_user)));
@@ -119,7 +124,7 @@ pub async fn middleware_get_path_context(State(ctx): State<Arc<AppCtx>>, Path(Pa
 
     let mut repository_id = None;
     if let Some(display_repository) = display_repository {
-        if let Ok(display_repository) = Repository::from_url_name(&ctx.database, &EncString::from_url_path(display_repository.clone())?).await {
+        if let Ok(display_repository) = DbRepository::from_url_name(&ctx.database, &EncString::from_url_path(display_repository.clone())?).await {
             repository_id = Some(display_repository.id().clone());
             *context.display_repository.write().await = Some(display_repository);
         } else {
@@ -141,7 +146,7 @@ pub async fn middleware_get_path_context(State(ctx): State<Arc<AppCtx>>, Path(Pa
                     enc_path.push(EncString::from_url_path(item.to_string())?);
                 }
 
-                let item = Item::from_path(&ctx.database, &EncPath::from(enc_path), &repository, Trash::Both).await?;
+                let item = DbItem::from_path(&ctx.database, &EncPath::from(enc_path), &repository, Trash::Both).await?;
                 *context.display_item.write().await = Some(item);
             }
         }
@@ -161,22 +166,27 @@ struct ClientAppConfig {
     pub repository_settings: bool,
 }
 
-async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
-    let mut client_config = ClientAppConfig {
-        origin: format!("{}://{}", if ctx.config.use_tls { "https" } else { "http" }, match request.headers().get("host") {
-            None => {
-                match request.uri().host() {
-                    None => { ctx.config.addresses[0].to_string() }
-                    Some(host) => {
-                        match request.uri().port() {
-                            None => { ctx.config.addresses[0].to_string() }
-                            Some(port) => { format!("{}:{}", host, port.as_str()) }
-                        }
+fn get_origin(ctx: &Arc<AppCtx>, request: &Request) -> Result<String, ServerError> {
+    Ok(format!("{}://{}", if ctx.config.use_tls { "https" } else { "http" }, match request.headers().get("host") {
+        None => {
+            match request.uri().host() {
+                None => { ctx.config.addresses[0].to_string() }
+                Some(host) => {
+                    match request.uri().port() {
+                        None => { ctx.config.addresses[0].to_string() }
+                        Some(port) => { format!("{}:{}", host, port.as_str()) }
                     }
                 }
             }
-            Some(host) => { host.to_str()?.to_string() }
-        }),
+        }
+        Some(host) => { host.to_str()?.to_string() }
+    }))
+}
+
+
+async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    let mut client_config = ClientAppConfig {
+        origin: get_origin(&ctx, &request)?,
         ..Default::default()
     };
 
@@ -206,4 +216,18 @@ async fn get_index(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<i
     };
     let index_data = index_data.replace(r#"data-app_config='{}'"#, format!(r##"data-app_config='{}'"##, serde_json::to_string(&client_config)?).as_str());
     Ok(Html(index_data))
+}
+
+async fn link(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
+    #[derive(Serialize)]
+    struct Response {
+        origin: String,
+        id: RepositoryId,
+    }
+    let repository = require_display_repository!(request);    
+    let response = Response {
+        origin: get_origin(&ctx, &request)?,
+        id: repository.id().clone(),
+    };
+    Ok(Json(response))
 }

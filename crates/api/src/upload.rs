@@ -1,10 +1,7 @@
 use std::{env, fs};
 use std::io::Write;
-use database::item::{FileData, Item, ItemId};
 use database::object::Object;
-use database::repository::RepositoryId;
-use database::user::UserId;
-use utils::enc_string::EncString;
+use types::enc_string::EncString;
 use anyhow::Error;
 use axum::body::Body;
 use axum::http::HeaderMap;
@@ -14,7 +11,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 use tokio_util::io::StreamReader;
-use database::{Database, DatabaseId};
+use database::{Database};
+use database::item::DbItem;
+use types::database_ids::{DatabaseId, ItemId, RepositoryId, UserId};
+use types::item::{FileData, Item};
 
 pub struct Upload {
     pub id: String,
@@ -118,7 +118,7 @@ impl Upload {
                 fs::remove_file(self.get_file_path())?;
                 self.file.object = existing.id().clone();
                 self.item.file = Some(self.file.clone());
-                self.item.push(db).await?;
+                DbItem::push(&mut self.item, db).await?;
                 return Ok(self.item.clone());
             }
         }
@@ -126,7 +126,7 @@ impl Upload {
         let object = Object::insert(db, self.get_file_path().as_path(), &hash).await?;
         self.file.object = object.id().clone();
         self.item.file = Some(self.file.clone());
-        self.item.push(db).await?;
+        DbItem::push(&mut self.item, db).await?;
         Ok(self.item.clone())
     }
     

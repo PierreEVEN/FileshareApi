@@ -20,3 +20,4 @@ regex = "1.11.0"
 database = { path = "../database" }
 utils = { path = "../utils" }
 thumbnailer = { path = "../thumbnailer" }
+types = { path = "../types" }

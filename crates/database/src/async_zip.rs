@@ -1,11 +1,13 @@
 use std::collections::HashMap;
-use crate::item::{Item, ItemId, Trash};
+use crate::item::{DbItem, Trash};
 use crate::object::Object;
 use anyhow::Error;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio_util::bytes::BufMut;
+use types::database_ids::ItemId;
+use types::item::Item;
 use crate::Database;
 
 pub struct AsyncDirectoryZip {
@@ -23,7 +25,7 @@ impl AsyncDirectoryZip {
         let mut items_to_push = vec![item];
         while let Some(item) = items_to_push.pop() {
             if item.directory.is_some() {
-                let children = Item::from_parent(&db, item.id(), Trash::No).await?;
+                let children = DbItem::from_parent(db, item.id(), Trash::No).await?;
                 if children.is_empty() {
                     self.items.insert(item.id().clone(), item);
                 } else {
@@ -258,7 +260,7 @@ impl AsyncDirectoryZip {
             let mut object = None;
             let crc32 = if let Some(file) = &item.file {
                 let found_object = Object::from_id(db, &file.object).await?;
-                let crc = Self::compute_file_crc(File::open(found_object.data_path(db))?)?;
+                let crc = Self::compute_file_crc(File::open(Object::data_path(found_object.id(), db))?)?;
                 object = Some(found_object);
                 crc
             } else { 0 };
@@ -271,7 +273,7 @@ impl AsyncDirectoryZip {
             sink.write_all(header.as_slice()).await?;
 
             if let Some(object) = &object {
-                let mut file = File::open(object.data_path(db))?;
+                let mut file = File::open(Object::data_path(object.id(), db))?;
                 let mut buf = [0u8; 4096];
                 while let Ok(size) = file.read(&mut buf) {
                     if size == 0 { break; }

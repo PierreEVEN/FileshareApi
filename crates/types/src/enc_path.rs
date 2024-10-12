@@ -31,6 +31,7 @@ impl Display for EncPath {
     }
 }
 
+#[cfg(feature = "tokio-postgres")]
 impl postgres_types::ToSql for EncPath {
     fn to_sql(&self, ty: &postgres_types::Type, out: &mut postgres_types::private::BytesMut) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         let mut result = String::new();
@@ -43,6 +44,7 @@ impl postgres_types::ToSql for EncPath {
     fn accepts(ty: &postgres_types::Type) -> bool { <String>::accepts(ty) }
     postgres_types::to_sql_checked!();
 }
+#[cfg(feature = "tokio-postgres")]
 impl<'a> postgres_types::FromSql<'a> for EncPath {
     fn from_sql(ty: &postgres_types::Type, raw: &'a [u8]) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
         let data = <String>::from_sql(ty, raw)?;

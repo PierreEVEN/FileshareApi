@@ -1,5 +1,4 @@
-use database::item::{Item, ItemId, Trash};
-use database::repository::{Repository, RepositoryId, RepositoryStatus};
+use database::item::{DbItem, Trash};
 use database::subscription::{Subscription, SubscriptionAccessType};
 use database::Database;
 use crate::RequestContext;
@@ -7,6 +6,9 @@ use utils::server_error::ServerError;
 use axum::extract::Request;
 use axum::http::StatusCode;
 use std::sync::Arc;
+use database::repository::DbRepository;
+use types::database_ids::{ItemId, RepositoryId};
+use types::repository::RepositoryStatus;
 
 pub struct Permissions {
     request_context: Arc<RequestContext>,
@@ -44,7 +46,7 @@ impl Permissions {
     }
 
     pub async fn view_repository(&self, db: &Database, repository_id: &RepositoryId) -> Result<PermissionResult, ServerError> {
-        let repository = Repository::from_id(db, repository_id).await?;
+        let repository = DbRepository::from_id(db, repository_id).await?;
         match repository.status {
             RepositoryStatus::Public | RepositoryStatus::Hidden => {
                 return Ok(PermissionResult::Granted);
@@ -66,7 +68,7 @@ impl Permissions {
     }
 
     pub async fn edit_repository(&self, db: &Database, repository_id: &RepositoryId) -> Result<PermissionResult, ServerError> {
-        let repository = Repository::from_id(db, repository_id).await?;
+        let repository = DbRepository::from_id(db, repository_id).await?;
         Ok(if let Some(user) = &*self.request_context.connected_user().await {
             if repository.owner == *user.id() {
                 PermissionResult::Granted
@@ -84,7 +86,7 @@ impl Permissions {
     }
 
     pub async fn upload_to_repository(&self, db: &Database, repository_id: &RepositoryId) -> Result<PermissionResult, ServerError> {
-        let repository = Repository::from_id(db, repository_id).await?;
+        let repository = DbRepository::from_id(db, repository_id).await?;
         Ok(if let Some(user) = &*self.request_context.connected_user().await {
             if repository.owner == *user.id() || repository.allow_visitor_upload {
                 PermissionResult::Granted
@@ -103,12 +105,12 @@ impl Permissions {
     }
 
     pub async fn view_item(&self, db: &Database, item_id: &ItemId) -> Result<PermissionResult, ServerError> {
-        let item = Item::from_id(db, item_id, Trash::Both).await?;
+        let item = DbItem::from_id(db, item_id, Trash::Both).await?;
         self.view_repository(db, &item.repository).await
     }
 
     pub async fn edit_item(&self, db: &Database, item_id: &ItemId) -> Result<PermissionResult, ServerError> {
-        let item = Item::from_id(db, item_id, Trash::Both).await?;
+        let item = DbItem::from_id(db, item_id, Trash::Both).await?;
         self.edit_repository(db, &item.repository).await?.require()?;
         Ok(if let Some(user) = &*self.request_context.connected_user().await {
             if item.owner == *user.id() {
@@ -122,7 +124,7 @@ impl Permissions {
     }
 
     pub async fn upload_to_directory(&self, db: &Database, item_id: &ItemId) -> Result<PermissionResult, ServerError> {
-        let item = Item::from_id(db, item_id, Trash::Both).await?;
+        let item = DbItem::from_id(db, item_id, Trash::Both).await?;
         self.upload_to_repository(db, &item.repository).await?.require()?;
         Ok(if let Some(user) = &*self.request_context.connected_user().await {
             if item.owner == *user.id() {

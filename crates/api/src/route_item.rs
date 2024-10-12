@@ -1,12 +1,10 @@
 use std::str::FromStr;
 use crate::app_ctx::AppCtx;
-use database::item::{DirectoryData, Item, ItemId, ItemSearchData, Trash};
+use database::item::{DbItem, ItemSearchData, Trash};
 use database::object::Object;
-use database::repository::RepositoryId;
-use database::DatabaseId;
 use crate::{require_connected_user};
 use database::async_zip::AsyncDirectoryZip;
-use utils::enc_string::EncString;
+use types::enc_string::EncString;
 use crate::permissions::Permissions;
 use utils::server_error::ServerError;
 use thumbnailer::Thumbnail;
@@ -22,6 +20,8 @@ use regex::Regex;
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio_util::io::ReaderStream;
+use types::database_ids::{DatabaseId, ItemId, RepositoryId};
+use types::item::{DirectoryData, Item};
 
 pub struct ItemRoutes {}
 
@@ -52,7 +52,7 @@ async fn find_items(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<
     let mut items = vec![];
     for item_id in json.0 {
         if permissions.view_item(&ctx.database, &item_id).await?.granted() {
-            items.push(Item::from_id(&ctx.database, &item_id, Trash::Both).await?)
+            items.push(DbItem::from_id(&ctx.database, &item_id, Trash::Both).await?)
         }
     }
     Ok(Json(items))
@@ -65,7 +65,7 @@ async fn directory_content(State(ctx): State<Arc<AppCtx>>, request: Request) -> 
     let mut items = vec![];
     for directory in json.0 {
         if permissions.view_item(&ctx.database, &directory).await?.granted() {
-            items.append(&mut Item::from_parent(&ctx.database, &directory, Trash::Both).await?);
+            items.append(&mut DbItem::from_parent(&ctx.database, &directory, Trash::Both).await?);
         }
     }
     Ok(Json(items))
@@ -98,7 +98,7 @@ async fn new_directory(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
         }
 
         item.name = params.name;
-        item.repository = if let Some(parent) = &params.parent_item { Item::from_id(&ctx.database, parent, Trash::Both).await?.repository } else { params.repository };
+        item.repository = if let Some(parent) = &params.parent_item { DbItem::from_id(&ctx.database, parent, Trash::Both).await?.repository } else { params.repository };
         item.parent_item = params.parent_item;
         item.owner = user.id().clone();
         item.directory = Some(DirectoryData {
@@ -107,7 +107,7 @@ async fn new_directory(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
             content_size: 0,
         });
 
-        item.push(&ctx.database).await?;
+        DbItem::push(&mut item, &ctx.database).await?;
 
         items.push(item);
     }
@@ -121,10 +121,10 @@ async fn move_to_trash(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
     let mut items = vec![];
     for item in json.0 {
         if permissions.edit_item(&ctx.database, &item).await?.granted() {
-            if let Ok(mut item) = Item::from_id(&ctx.database, &item, Trash::No).await
+            if let Ok(mut item) = DbItem::from_id(&ctx.database, &item, Trash::No).await
             {
                 item.in_trash = true;
-                item.push(&ctx.database).await?;
+                DbItem::push(&mut item, &ctx.database).await?;
                 items.push(item.id().clone());
             }
         }
@@ -139,9 +139,9 @@ async fn restore(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<imp
     let mut items = vec![];
     for item in json.0 {
         if permissions.edit_item(&ctx.database, &item).await?.granted() {
-            if let Ok(mut item) = Item::from_id(&ctx.database, &item, Trash::Yes).await {
+            if let Ok(mut item) = DbItem::from_id(&ctx.database, &item, Trash::Yes).await {
                 item.in_trash = false;
-                item.push(&ctx.database).await?;
+                DbItem::push(&mut item, &ctx.database).await?;
                 items.push(item.id().clone());
             }
         }
@@ -157,7 +157,7 @@ async fn delete(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl
     let mut items = vec![];
     for item_id in json.0 {
         if permissions.edit_item(&ctx.database, &item_id).await?.granted() {
-            Item::from_id(&ctx.database, &item_id, Trash::Both).await?.delete(&ctx.database).await?;
+            DbItem::delete(&DbItem::from_id(&ctx.database, &item_id, Trash::Both).await?, &ctx.database).await?;
             items.push(item_id);
         }
     }
@@ -167,7 +167,7 @@ async fn delete(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl
 
 /// Get item thumbnail if available
 async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>, request: Request) -> Result<impl IntoResponse, ServerError> {
-    let item = Item::from_id(&ctx.database, &ItemId::from(id), Trash::Both).await?;
+    let item = DbItem::from_id(&ctx.database, &ItemId::from(id), Trash::Both).await?;
     let permissions = Permissions::new(&request)?;
     permissions.view_item(&ctx.database, item.id()).await?.require()?;
 
@@ -176,7 +176,7 @@ async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>, r
         Some(f) => { f }
     };
 
-    let thumbnail_path = Thumbnail::find_or_create(&file.object.data_path(&ctx.database), &file.object.thumbnail_path(&ctx.database), &file.mimetype.plain()?, 100)?;
+    let thumbnail_path = Thumbnail::find_or_create(&Object::data_path(&file.object, &ctx.database), &Object::thumbnail_path(&file.object, &ctx.database), &file.mimetype.plain()?, 100)?;
 
     let stream = ReaderStream::new(tokio::fs::File::open(thumbnail_path).await?);
     let body = Body::from_stream(stream);
@@ -223,14 +223,14 @@ async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
 
 /// Download item or directory
 async fn download(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>, request: Request) -> Result<impl IntoResponse, ServerError> {
-    let item = Item::from_id(&ctx.database, &ItemId::from(id), Trash::Both).await?;
+    let item = DbItem::from_id(&ctx.database, &ItemId::from(id), Trash::Both).await?;
     let permissions = Permissions::new(&request)?;
     permissions.view_item(&ctx.database, item.id()).await?.require()?;
 
     if let Some(file) = item.file {
         let object = Object::from_id(&ctx.database, &file.object).await?;
 
-        let stream = ReaderStream::new(tokio::fs::File::open(object.data_path(&ctx.database)).await?);
+        let stream = ReaderStream::new(tokio::fs::File::open(Object::data_path(object.id(), &ctx.database)).await?);
         let body = Body::from_stream(stream);
 
         let headers = [
@@ -273,7 +273,7 @@ async fn download_multi(State(ctx): State<Arc<AppCtx>>, Path(ids): Path<String>,
     let mut zip = AsyncDirectoryZip::new();
     for item in items {
         permissions.view_item(&ctx.database, &item).await?.require()?;
-        let item = Item::from_id(&ctx.database, &item, Trash::Both).await?;
+        let item = DbItem::from_id(&ctx.database, &item, Trash::Both).await?;
         zip.push_item(&ctx.database, item.clone()).await?;
     }
     let size = zip.size()?;
@@ -309,7 +309,7 @@ async fn edit(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
     let mut items = vec![];
     for data in json.0 {
         if permissions.edit_item(&ctx.database, &data.id).await?.granted() {
-            if let Ok(mut item) = Item::from_id(&ctx.database, &data.id, Trash::Both).await {
+            if let Ok(mut item) = DbItem::from_id(&ctx.database, &data.id, Trash::Both).await {
                 item.name = data.name;
                 item.description = data.description;
 
@@ -319,7 +319,7 @@ async fn edit(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
                     }
                 }
 
-                item.push(&ctx.database).await?;
+                DbItem::push(&mut item, &ctx.database).await?;
                 items.push(item.id().clone());
             }
         }
@@ -331,7 +331,7 @@ async fn edit(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
 async fn search(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
     let data = Json::<ItemSearchData>::from_request(request, &ctx).await?.0;
-    let result = Item::search(&ctx.database, data).await?;
+    let result = DbItem::search(&ctx.database, data).await?;
     let mut items = vec![];
     for data in result {
         if permissions.view_item(&ctx.database, data.id()).await?.granted() {
