@@ -57,7 +57,7 @@ async fn main() -> Result<(), Error> {
             ActionEditor::run(editor)
         }   
         RootCommands::Remote { remote } => {
-            ActionRemote::run(remote)
+            ActionRemote::run(remote).await
         }
     } {
         Ok(_) => {}

@@ -1,6 +1,5 @@
 use std::{env, fs};
 use std::io::{stdin, stdout, Write};
-use std::str::FromStr;
 use anyhow::Error;
 use gethostname::gethostname;
 use paris::{success, warn};
@@ -9,20 +8,20 @@ use rpassword::read_password;
 use serde_derive::{Deserialize, Serialize};
 use types::database_ids::RepositoryId;
 use types::enc_string::EncString;
+use types::repository::Repository;
+use types::user::{AuthToken, LoginInfos};
 use crate::content::meta_dir::MetaDir;
 
-
-
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct Url {
-    remote_id: Option<RepositoryId>,
-    origin: String
+    remote_id: RepositoryId,
+    origin: String,
 }
 
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Connection {
-    authentication_token: String,
+    authentication_token: Option<AuthToken>,
     url: Option<Url>,
     #[serde(skip_deserializing, skip_serializing)]
     meta_dir: MetaDir,
@@ -35,45 +34,56 @@ impl Connection {
         Ok(config)
     }
 
-    pub async fn set_public_url(&mut self, public_url: &str) -> Result<(), Error> {
+    pub async fn ping_repository(&mut self) -> Result<Repository, Error> {
+        let response = self.post("/repository/find/".to_string()).await?
+            .json(&vec![self.remote_id()?])
+            .send().await?;
+        let repositories: Vec<Repository> = self.parse_result(response).await?.error_for_status()?.json().await?;
+        if repositories.is_empty() {
+            Err(Error::msg("Repository does not exists"))
+        } else {
+            Ok(repositories[0].clone())
+        }
+    }
 
-        let response = self.get(format!("{}api-link/", self.repos_path()?)).await?.send().await?;
+    pub async fn set_public_url(&mut self, public_url: &str) -> Result<(), Error> {
+        let mut method = "";
+        let repository_url = if public_url.starts_with("https") {
+            method = "https://";
+            &public_url[8..]
+        } else if public_url.starts_with("http") {
+            method = "http://";
+            &public_url[7..]
+        } else {
+            public_url
+        };
+
+        let mut split = repository_url.split("/");
+
+        let domain = split.next().ok_or(Error::msg("Invalid domain"))?;
+        let user = split.next().ok_or(Error::msg("Invalid user"))?;
+        let repository = split.next().ok_or(Error::msg("Invalid repository"))?;
+        let response = reqwest::Client::new()
+            .get(format!("{}{}/{}/{}/api-link/", method, domain, user, repository))
+            .send().await?;
         #[derive(Deserialize)]
         struct RemoteResponse {
             id: RepositoryId,
         }
         let response: RemoteResponse = self.parse_result(response).await?.error_for_status()?.json().await?;
-        self.remote_id = Some(response.id);
-        Ok()
+        self.url = Some(Url {
+            remote_id: response.id,
+            origin: format!("{}{}", method, domain),
+        });
+        Ok(())
     }
 
-    pub async fn get(&mut self, path: String) -> Result<reqwest::RequestBuilder, Error> {
-        let auth_token = match &self.auth_token {
-            None => {
-                self.authenticate(None).await?
-            }
-            Some(auth_token) => { auth_token.token.clone() }
-        };
-
-        Ok(reqwest::Client::new()
-            .get(self.get_origin()?.join(path.as_str())?)
-            .header("content-authtoken", auth_token))
-    }
-
-
-    pub async fn authenticate(&mut self, username: Option<String>) -> Result<String, Error> {
-        #[derive(Serialize, Debug, Default)]
-        struct AuthenticationBody {
-            username: EncString,
-            password: String,
-            device: EncString,
-        }
-
-        let mut body = AuthenticationBody {
-            device: EncString::from(format!("Fileshare client - {} ({}) : {}", gethostname().to_str().unwrap(), env::consts::OS, env::current_dir()?.to_str().unwrap()).as_str()),
+    pub async fn authenticate(&mut self, username: Option<String>) -> Result<EncString, Error> {
+        let mut body = LoginInfos {
+            device: Some(EncString::from(format!("Cli client - {} ({}) : {}", gethostname().to_str().unwrap(), env::consts::OS, env::current_dir()?.to_str().unwrap()).as_str())),
             ..Default::default()
         };
-        body.username = match username {
+        body.login = match username {
             None => {
                 print!("Username or email : ");
                 stdout().flush()?;
@@ -90,17 +100,21 @@ impl Connection {
             Some(username) => { EncString::from(username.as_str()) }
         };
 
+        let url = if let Some(url) = &self.url {
+            url
+        } else { return Err(Error::msg("Remote url is not set !")) };
+
         for _ in 0..3 {
             print!("Password : ");
             stdout().flush()?;
             body.password = match read_password() {
-                Ok(pswd) => { pswd }
+                Ok(password) => { EncString::from(password) }
                 Err(err) => {
                     return Err(Error::msg(err));
                 }
             };
             let client = reqwest::Client::new()
-                .post(self.get_origin()?.join("api/create-authtoken")?)
+                .post(format!("{}/user/login/", url.origin))
                 .json(&body)
                 .send().await?;
 
@@ -109,11 +123,11 @@ impl Connection {
                 continue;
             }
 
-            self.auth_token = Some(client.error_for_status()?.json::<crate::repository::AuthToken>().await?);
-            return match &self.auth_token {
+            self.authentication_token = Some(client.error_for_status()?.json::<AuthToken>().await?);
+            return match &self.authentication_token {
                 None => { Err(Error::msg("Invalid authentication token")) }
-                Some(auth_token) => {
-                    Ok(auth_token.token.clone())
+                Some(new_token) => {
+                    Ok(new_token.token.clone())
                 }
             };
         }
@@ -121,36 +135,43 @@ impl Connection {
     }
 
     pub async fn logout(&mut self) -> Result<(), Error> {
-        let auth_token = match &self.auth_token {
-            None => {
-                warn!("Already disconnected");
-                return Ok(());
-            }
-            Some(auth_token) => {
-                auth_token.clone()
-            }
-        };
-
-        self.post(format!("api/delete-authtoken/{}/", auth_token.token)).await?
+        self.post("/logout/".to_string()).await?
             .send().await?.error_for_status()?;
-
-        self.auth_token = None;
+        self.authentication_token = None;
         success!("Successfully disconnected");
-
         Ok(())
     }
 
-    pub async fn post(&mut self, path: String) -> Result<reqwest::RequestBuilder, Error> {
-        let auth_token = match &self.auth_token {
-            None => {
-                self.authenticate(None).await?
-            }
-            Some(auth_token) => { auth_token.token.clone() }
+    pub async fn get(&mut self, mut path: String) -> Result<reqwest::RequestBuilder, Error> {
+        let url = if let Some(url) = self.url.clone() { url } else { return Err(Error::msg("Remote url is not set !")) };
+        
+        if !path.starts_with('/') {
+            path = String::from("/") + path.as_str()
         };
+        let mut request = reqwest::Client::new()
+            .get(format!("{}/api{}", url.origin, path));
+        if let Some(authentication_token) =  &self.authentication_token {
+            request = request.header("content-authtoken", authentication_token.token.encoded());
+        };
+        Ok(request)
+    }
 
-        Ok(reqwest::Client::new()
-            .post(self.get_origin()?.join(path.as_str())?)
-            .header("content-authtoken", auth_token))
+    pub async fn post(&mut self, path: String) -> Result<reqwest::RequestBuilder, Error> {
+        let url = if let Some(url) = self.url.clone() { url } else { return Err(Error::msg("Remote url is not set !")) };
+        let mut request = reqwest::Client::new()
+            .post(format!("{}/api{}", url.origin, path));
+        if let Some(authentication_token) =  &self.authentication_token {
+            request = request.header("content-authtoken", authentication_token.token.encoded());
+        };
+        Ok(request)
+    }
+
+    pub fn remote_id(&self) -> Result<RepositoryId, Error> {
+        if let Some(url) = &self.url {
+            Ok(url.remote_id.clone())
+        } else {
+            Err(Error::msg("Remote url is not set !"))
+        }
     }
 
     pub async fn parse_result(&mut self, response: Response) -> Result<Response, Error> {
@@ -158,6 +179,10 @@ impl Connection {
             self.authenticate(None).await?;
         }
         Ok(response)
+    }
+
+    pub fn metadata_directory(&self) -> &MetaDir {
+        &self.meta_dir
     }
 }
 

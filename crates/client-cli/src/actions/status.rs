@@ -2,12 +2,13 @@ use crate::content::diff::{Action, Diff};
 use crate::repository::Repository;
 use anyhow::Error;
 use paris::{success};
+use crate::content::meta_dir::MetaDir;
 
 pub struct ActionStatus {}
 
 impl ActionStatus {
     pub async fn run() -> Result<Repository, Error> {
-        let mut repos = Repository::new()?;
+        let mut repos = Repository::new(MetaDir::search_here()?)?;
         let diff = Diff::from_repository(&mut repos).await?;
 
         if diff.actions().is_empty() {

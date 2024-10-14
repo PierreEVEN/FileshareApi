@@ -128,3 +128,10 @@ impl AuthToken {
         &self.owner
     }
 }
+
+#[derive(Deserialize, Serialize, Default)]
+pub struct LoginInfos {
+    pub login: EncString,
+    pub password: EncString,
+    pub device: Option<EncString>,
+}

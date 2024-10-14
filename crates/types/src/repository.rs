@@ -48,7 +48,7 @@ impl postgres_types::ToSql for RepositoryStatus {
 }
 
 #[cfg_attr(feature = "tokio-postgres", derive(FromRow))]
-#[derive(Serialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Repository {
     id: RepositoryId,
     pub url_name: EncString,

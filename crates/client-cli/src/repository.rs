@@ -1,22 +1,20 @@
+use crate::content::connection::Connection;
 use crate::content::diff::Action;
 use crate::content::filesystem::{Filesystem, LocalFilesystem, RemoteFilesystem};
 use crate::content::item::{Item, LocalItem, RemoteItem};
+use crate::content::meta_dir::MetaDir;
+use anyhow::Error;
 use futures_util::StreamExt;
-use gethostname::gethostname;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use paris::{error, info, success, warn};
-use reqwest::{Body, Response, Url};
-use rpassword::read_password;
+use paris::{error, info};
+use reqwest::Body;
 use serde_derive::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{stdin, stdout, Write};
+use std::io::Write;
 use std::ops::Add;
-use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, UNIX_EPOCH};
 use std::{env, fs};
-use std::str::FromStr;
-use anyhow::Error;
 use tokio_util::io::ReaderStream;
 use types::enc_string::EncString;
 
@@ -28,24 +26,11 @@ struct AuthToken {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Repository {
-    #[serde(default = "empty_string")]
-    remote_origin: String,
-
-    #[serde(default = "empty_string")]
-    remote_user: String,
-
-    #[serde(default = "empty_string")]
-    remote_repository: String,
+    #[serde(default = "empty_connection")]
+    connection: Connection,
 
     #[serde(default = "empty_string")]
     editor_command: String,
-
-    remote_id: Option<i64>,
-
-    auth_token: Option<AuthToken>,
-
-    #[serde(skip_deserializing, skip_serializing)]
-    root_path: PathBuf,
 
     #[serde(skip_deserializing, skip_serializing)]
     scanned_content: Option<Arc<RwLock<LocalFilesystem>>>,
@@ -57,253 +42,48 @@ pub struct Repository {
     remote_content: Option<Arc<RwLock<RemoteFilesystem>>>,
 }
 
+fn empty_connection() -> Connection {
+    Connection::default()
+}
+
 fn empty_string() -> String {
     String::new()
 }
 
 impl Repository {
-    pub fn new() -> Result<Self, Error> {
-        if let Some(root) = Self::get_repository_root(env::current_dir()?.as_path())? {
-            env::set_current_dir(root)?;
+    pub fn new(metadata_directory: MetaDir) -> Result<Self, Error> {
+        let config_path = metadata_directory.repository_config_path()?;
+        let mut repository = if config_path.exists() {
+            serde_json::from_str(fs::read_to_string(config_path)?.as_str())?
         } else {
-            return Err(Error::msg("Not a fileshare repository !"));
-        }
-        let path = env::current_dir()?;
-        let config_path = path.join(".fileshare").join("config.json");
-        if config_path.exists() {
-            let file_data = fs::read_to_string(config_path)?;
-            let mut repository: Self = serde_json::from_str(file_data.as_str())?;
-            repository.init_directories(path)?;
-            Ok(repository)
-        } else {
-            let mut repository = Self::default();
-            repository.init_directories(path)?;
-            Ok(repository)
-        }
+            Self::default()
+        };
+        repository.connection = Connection::new(metadata_directory)?;
+        Ok(repository)
     }
 
-    pub fn init_here(path: PathBuf) -> Result<Self, Error> {
-        if Self::get_repository_root(env::current_dir()?.as_path())?.is_some() {
-            return Err(Error::msg("Already inside an initialized fileshare repository"));
-        }
-
-        let fileshare_dir = path.join(".fileshare").join("config.json");
-        if fileshare_dir.exists() {
-            Err(Error::msg("Already a fileshare repository"))
-        } else {
-            let mut repository = Self::default();
-            repository.init_directories(path)?;
-            Ok(repository)
-        }
-    }
-
-    fn init_directories(&mut self, root_path: PathBuf) -> Result<(), Error> {
-        self.root_path = root_path;
-        Self::create_config_dir(self.root_path.as_path())?;
-        Ok(())
-    }
-
-    fn get_repository_root(dir: &Path) -> Result<Option<PathBuf>, Error> {
-        for path in fs::read_dir(dir)? {
-            if path?.file_name() == ".fileshare" {
-                return Ok(Some(PathBuf::from(dir)));
-            }
-        }
-        match dir.parent() {
-            None => { Ok(None) }
-            Some(parent) => { Ok(Self::get_repository_root(parent)?.clone()) }
-        }
-    }
-
-    fn create_config_dir(path: &Path) -> Result<(), Error> {
-        let fileshare_cfg_path = path.join(".fileshare");
-        if !fileshare_cfg_path.exists() {
-            fs::create_dir(fileshare_cfg_path.clone())?;
-        }
-        let fileshare_tmp_download_path = fileshare_cfg_path.join("tmp");
-        if !fileshare_tmp_download_path.exists() {
-            fs::create_dir(fileshare_tmp_download_path)?;
-        }
-        Ok(())
-    }
-
-    pub fn set_remote_url(&mut self, new_remote_url: String) -> Result<(), Error> {
-        let url = Url::parse(new_remote_url.as_str())?;
-        self.remote_origin = url.origin().ascii_serialization();
-        let mut path = url.path_segments().ok_or_else(|| Error::msg("Cannot parse path"))?;
-        self.remote_user = path.next().ok_or(Error::msg("Missing user in remote path"))?.to_string();
-        self.remote_repository = path.next().ok_or(Error::msg("Missing repository in remote path"))?.to_string();
-        Ok(())
-    }
-
-    pub fn get_remote_url(&self) -> Result<String, Error> {
-        if self.remote_origin.is_empty() ||
-            self.remote_user.is_empty() ||
-            self.remote_repository.is_empty() {
-            return Err(Error::msg("Invalid remote url"));
-        }
-
-        Ok(format!("{}/{}/{}", self.remote_origin, self.remote_user, self.remote_repository))
-    }
     pub fn set_editor_command(&mut self, new_editor_command: String) {
         self.editor_command = new_editor_command;
     }
 
     pub fn get_editor_command(&self) -> &str { self.editor_command.as_str() }
 
-    pub fn get_origin(&self) -> Result<Url, Error> {
-        if self.remote_origin.is_empty() {
-            return Err(Error::msg("Invalid origin"));
-        }
-        Ok(Url::parse(self.remote_origin.as_str())?)
+    pub fn connection(&self) -> &Connection {
+        &self.connection
     }
 
-    pub fn repos_path(&self) -> Result<String, Error> {
-        if self.remote_user.is_empty() || self.remote_repository.is_empty() {
-            Err(Error::msg("Invalid remote repository path"))
-        } else {
-            Ok(format!("{}/{}/", self.remote_user, self.remote_repository))
-        }
+    pub fn connection_mut(&mut self) -> &mut Connection {
+        &mut self.connection
     }
-
-    pub async fn authenticate(&mut self, username: Option<String>) -> Result<String, Error> {
-        #[derive(Serialize, Debug, Default)]
-        struct AuthenticationBody {
-            username: EncString,
-            password: String,
-            device: EncString,
-        }
-
-        let mut body = AuthenticationBody {
-            device: EncString::from(format!("Fileshare client - {} ({}) : {}", gethostname().to_str().unwrap(), env::consts::OS, env::current_dir()?.to_str().unwrap()).as_str()),
-            ..Default::default()
-        };
-        body.username = match username {
-            None => {
-                print!("Username or email : ");
-                stdout().flush()?;
-                let mut buffer = String::new();
-                stdin().read_line(&mut buffer)?;
-                if let Some('\n') = buffer.chars().next_back() {
-                    buffer.pop();
-                }
-                if let Some('\r') = buffer.chars().next_back() {
-                    buffer.pop();
-                }
-                EncString::from(buffer.as_str())
-            }
-            Some(username) => { EncString::from(username.as_str()) }
-        };
-
-        for _ in 0..3 {
-            print!("Password : ");
-            stdout().flush()?;
-            body.password = match read_password() {
-                Ok(pswd) => { pswd }
-                Err(err) => {
-                    return Err(Error::msg(err));
-                }
-            };
-            let client = reqwest::Client::new()
-                .post(self.get_origin()?.join("api/create-authtoken")?)
-                .json(&body)
-                .send().await?;
-
-            if client.status().as_u16() == 401 {
-                warn!("Wrong credentials. Please try again...");
-                continue;
-            }
-
-            self.auth_token = Some(client.error_for_status()?.json::<AuthToken>().await?);
-            return match &self.auth_token {
-                None => { Err(Error::msg("Invalid authentication token")) }
-                Some(auth_token) => {
-                    Ok(auth_token.token.clone())
-                }
-            };
-        }
-        Err(Error::msg("Authentication failed"))
-    }
-
-    pub async fn logout(&mut self) -> Result<(), Error> {
-        let auth_token = match &self.auth_token {
-            None => {
-                warn!("Already disconnected");
-                return Ok(());
-            }
-            Some(auth_token) => {
-                auth_token.clone()
-            }
-        };
-
-        self.post(format!("api/delete-authtoken/{}/", auth_token.token)).await?
-            .send().await?.error_for_status()?;
-
-        self.auth_token = None;
-        success!("Successfully disconnected");
-
-        Ok(())
-    }
-
-    pub async fn post(&mut self, path: String) -> Result<reqwest::RequestBuilder, Error> {
-        let auth_token = match &self.auth_token {
-            None => {
-                self.authenticate(None).await?
-            }
-            Some(auth_token) => { auth_token.token.clone() }
-        };
-
-        Ok(reqwest::Client::new()
-            .post(self.get_origin()?.join(path.as_str())?)
-            .header("content-authtoken", auth_token))
-    }
-
-    pub async fn parse_result(&mut self, response: Response) -> Result<Response, Error> {
-        if response.status().as_u16() == 401 {
-            self.authenticate(None).await?;
-        }
-        Ok(response)
-    }
-
-    pub async fn get(&mut self, path: String) -> Result<reqwest::RequestBuilder, Error> {
-        let auth_token = match &self.auth_token {
-            None => {
-                self.authenticate(None).await?
-            }
-            Some(auth_token) => { auth_token.token.clone() }
-        };
-
-        Ok(reqwest::Client::new()
-            .get(self.get_origin()?.join(path.as_str())?)
-            .header("content-authtoken", auth_token))
-    }
-
-    pub async fn get_remote_id(&mut self) -> Result<i64, Error> {
-        if let Some(id) = self.remote_id {
-            return Ok(id);
-        }
-
-        let response = self.get(format!("{}api-link/", self.repos_path()?)).await?.send().await?;
-        #[derive(Deserialize)]
-        struct RemoteResponse {
-            id: String,
-        }
-        let response: RemoteResponse = self.parse_result(response).await?.error_for_status()?.json().await?;
-        let id = i64::from_str(response.id.as_str())?;
-        self.remote_id = Some(id);
-        Ok(id)
-    }
-
 
     pub async fn fetch_remote_content(&mut self) -> Result<Arc<RwLock<RemoteFilesystem>>, Error> {
         match &self.remote_content {
             None => {}
             Some(remote_content) => { return Ok(remote_content.clone()); }
         }
-        let remote_id = self.get_remote_id().await?;
-        let response = self.get(format!("{}/api/repository/content/{}/", self.remote_origin, remote_id)).await?.send().await?;
+        let response = self.connection.get(format!("/repository/content/{}/", self.connection.remote_id()?)).await?.send().await?;
 
-        let data = self.parse_result(response).await?
+        let data = self.connection.parse_result(response).await?
             .error_for_status()?
             .text().await?;
         
@@ -326,7 +106,7 @@ impl Repository {
             Some(local_content) => { return Ok(local_content.clone()); }
         }
 
-        let db_path = self.root_path.join(".fileshare").join("database.json");
+        let db_path = self.connection.metadata_directory().local_database_path()?;
         self.local_content = Some(if db_path.exists() {
             let mut local_content = serde_json::from_str::<LocalFilesystem>(fs::read_to_string(db_path)?.as_str())?;
             local_content.post_deserialize();
@@ -346,8 +126,7 @@ impl Repository {
             None => {}
             Some(scanned_content) => { return Ok(scanned_content.clone()); }
         }
-
-        let filesystem = Arc::new(RwLock::new(LocalFilesystem::from_fileshare_root(&self.root_path)?));
+        let filesystem = Arc::new(RwLock::new(LocalFilesystem::from_fileshare_root(self.connection.metadata_directory().root())?));
         self.scanned_content = Some(filesystem.clone());
         Ok(filesystem)
     }
@@ -362,11 +141,11 @@ impl Repository {
                         Ok(item) => {
                             let item = item.cast::<RemoteItem>();
                             if item.is_regular_file() {
-                                let downloaded_path = self.root_path.join(".fileshare").join("tmp").join(format!("download_{}", item.id()).as_str());
+                                let downloaded_path = self.connection.metadata_directory().tmp_download_dir()?.join(format!("download_{}", item.id()).as_str());
                                 let mut data_file = File::create(downloaded_path.clone())?;
                                 match self.download_file(item, &mut data_file).await {
                                     Ok(_) => {
-                                        let final_path = self.root_path.join(item.path_from_root()?);
+                                        let final_path = self.connection.metadata_directory().root().join(item.path_from_root()?);
 
                                         fs::rename(downloaded_path, final_path.clone())?;
 
@@ -447,7 +226,7 @@ impl Repository {
     }
 
     async fn download_file(&mut self, item: &RemoteItem, target_container: &mut File) -> Result<(), Error> {
-        let mut stream = self.get(format!("{}file/{}", self.repos_path()?, item.id())).await?
+        let mut stream = self.connection.get(format!("{}file/{}", "todo", item.id())).await?
             .send().await?
             .error_for_status()?
             .bytes_stream();
@@ -508,7 +287,7 @@ impl Repository {
 
         match item.get_parent()? {
             None => {
-                let new_dir: RemoteItem = self.post(format!("{}/make-directory/", self.repos_path()?)).await?
+                let new_dir: RemoteItem = self.connection.post(format!("{}/make-directory/", "todo")).await?
                     .json(&dir_data)
                     .send().await?
                     .json().await?;
@@ -525,7 +304,7 @@ impl Repository {
                         return Err(Error::msg("Failed to find parent item from path"));
                     }
                     Some(remote_parent) => {
-                        let new_dir: RemoteItem = self.post(format!("{}/make-directory/{}", self.repos_path()?, remote_parent.read().unwrap().cast::<RemoteItem>().id())).await?
+                        let new_dir: RemoteItem = self.connection.post(format!("{}/make-directory/{}", "todo", remote_parent.read().unwrap().cast::<RemoteItem>().id())).await?
                             .json(&dir_data)
                             .send().await?
                             .json().await?;
@@ -612,7 +391,7 @@ impl Repository {
             }
         };
 
-        let json_data: UploadResult = self.post(format!("{}send/{parent}", self.repos_path()?)).await?
+        let json_data: UploadResult = self.connection.post(format!("{}send/{parent}", "todo")).await?
             .header("content-name", item.name().encoded().as_str())
             .header("content-size", item.size().to_string().as_str())
             .header("content-timestamp", item.timestamp().to_string().as_str())
@@ -643,7 +422,7 @@ impl Repository {
     }
 
     async fn remove_remote_item(&mut self, scanned_ref: &Arc<RwLock<dyn Item>>, remote_ref: &Arc<RwLock<dyn Item>>) -> Result<(), Error> {
-        self.post(format!("{}move-to-trash/", self.repos_path().unwrap()))
+        self.connection.post(format!("{}move-to-trash/", "todo"))
             .await?.json(&vec![remote_ref.read().unwrap().cast::<RemoteItem>().id()])
             .send().await?;
         self.remove_local_item(scanned_ref).await?;
@@ -714,11 +493,10 @@ impl Repository {
 
 impl Drop for Repository {
     fn drop(&mut self) {
-        Self::create_config_dir(self.root_path.as_path()).ok();
         if let Some(local_content) = &self.local_content {
             match serde_json::to_string(&*local_content.read().unwrap()) {
                 Ok(local_db_string) => {
-                    match fs::write(self.root_path.join(".fileshare").join("database.json"), local_db_string.as_str()) {
+                    match fs::write(self.connection.metadata_directory().local_database_path().unwrap(), local_db_string.as_str()) {
                         Ok(_) => {}
                         Err(_err) => { panic!("Failed to serialize local database : {_err}") }
                     };
@@ -728,7 +506,6 @@ impl Drop for Repository {
         }
 
         let serialized = serde_json::to_string(self).expect("Failed to serialize configuration data");
-        fs::write(self.root_path.join(".fileshare").join("config.lock.json"), serialized).expect("Unable to write configuration lock file");
-        fs::rename(self.root_path.join(".fileshare").join("config.lock.json"), self.root_path.join(".fileshare").join("config.json")).expect("Failed to write configuration file : cannot move");
+        fs::write(self.connection.metadata_directory().repository_config_path().unwrap(), serialized).expect("Unable to write configuration lock file");
     }
 }

@@ -17,7 +17,7 @@ use database::repository::DbRepository;
 use database::user::{DbAuthToken, DbUser};
 use types::database_ids::{DatabaseId, PasswordHash, UserId};
 use types::repository::RepositoryStatus;
-use types::user::{AuthToken, User, UserRole};
+use types::user::{AuthToken, LoginInfos, User, UserRole};
 use crate::app_ctx::AppCtx;
 
 pub struct UserRoutes {}
@@ -100,12 +100,7 @@ pub struct UserCredentials {
     pub login: EncString,
     pub password: EncString,
 }
-#[derive(Deserialize)]
-struct LoginInfos {
-    pub login: EncString,
-    pub password: EncString,
-    pub device: Option<EncString>,
-}
+
 /// Get authentication token
 async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) -> Result<impl IntoResponse, ServerError> {
     let user = DbUser::from_credentials(&ctx.database, &payload.login, &payload.password).await?;

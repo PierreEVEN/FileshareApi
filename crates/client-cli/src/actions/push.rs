@@ -1,12 +1,13 @@
 use crate::content::diff::{Action, Diff};
 use crate::repository::Repository;
 use anyhow::Error;
+use crate::content::meta_dir::MetaDir;
 
 pub struct ActionPush {}
 
 impl ActionPush {
     pub async fn run() -> Result<Repository, Error> {
-        let mut repos = Repository::new()?;
+        let mut repos = Repository::new(MetaDir::search_here()?)?;
         let diff = Diff::from_repository(&mut repos).await?;
 
         let mut actions = vec![];

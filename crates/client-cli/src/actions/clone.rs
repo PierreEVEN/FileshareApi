@@ -3,6 +3,7 @@ use crate::repository::Repository;
 use anyhow::Error;
 use reqwest::Url;
 use std::{env, fs};
+use crate::content::meta_dir::MetaDir;
 
 pub struct ActionClone {}
 
@@ -33,9 +34,9 @@ impl ActionClone {
     }
 
     async fn try_clone_here(repository_url: String) -> Result<Repository, Error> {
-        let mut repository = Repository::init_here(env::current_dir()?)?;
-        repository.set_remote_url(repository_url)?;
-
+        todo!();
+        let mut repository = Repository::new(MetaDir::new_here()?)?;
+        repository.connection_mut().set_public_url(repository_url.as_str()).await?;
         let diff = Diff::from_repository(&mut repository).await?;
         repository.apply_actions(diff.actions()).await?;
         Ok(repository)
