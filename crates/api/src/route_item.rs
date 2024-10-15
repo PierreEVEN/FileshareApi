@@ -19,9 +19,8 @@ use axum::{Json, Router};
 use regex::Regex;
 use serde::Deserialize;
 use std::sync::Arc;
-use mime_guess::mime::Params;
 use tokio_util::io::ReaderStream;
-use types::database_ids::{DatabaseId, ItemId, RepositoryId};
+use types::database_ids::{DatabaseId, ItemId};
 use types::item::{CreateDirectoryParams, DirectoryData, Item};
 
 pub struct ItemRoutes {}
