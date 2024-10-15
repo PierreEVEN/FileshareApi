@@ -1,16 +1,16 @@
 use crate::content::filesystem::RemoteFilesystem;
 use crate::serialization_utils::vec_arc_rwlock_serde;
 use anyhow::Error;
-use serde_derive::{Deserialize, Serialize};
 use std::any::Any;
 use std::ffi::OsString;
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
 use std::os::windows::fs::MetadataExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock, Weak};
 use std::time::UNIX_EPOCH;
-use std::{env, fs};
+use std::{fs};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use types::enc_string::EncString;
 
 pub trait ItemCast: 'static {
@@ -58,12 +58,24 @@ impl Debug for dyn Item {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct RemoteItem {
     item: types::item::Item,
-
-    #[serde(skip_deserializing, skip_serializing)]
     filesystem: Option<Weak<RwLock<RemoteFilesystem>>>,
+}
+
+impl Serialize for RemoteItem {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.item.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for RemoteItem {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut item = Self::default();
+        item.item = types::item::Item::deserialize(deserializer)?;
+        Ok(item)
+    }
 }
 
 impl RemoteItem {
@@ -170,7 +182,7 @@ pub struct LocalItem {
 }
 
 impl LocalItem {
-    pub fn from_filesystem(path: &PathBuf, parent: Option<Arc<RwLock<dyn Item>>>) -> Result<Self, Error> {
+    pub fn from_filesystem(root_dir: &Path, path: &Path, parent: Option<Arc<RwLock<dyn Item>>>) -> Result<Self, Error> {
         let metadata = fs::metadata(path)?;
         Ok(Self {
             name: EncString::from_os_string(path.file_name().ok_or(Error::msg("Invalid file name"))?),
@@ -183,7 +195,7 @@ impl LocalItem {
                 None
             },
             size: metadata.file_size(),
-            relative_path: pathdiff::diff_paths(path, env::current_dir()?).ok_or(Error::msg("Failed to get relative path"))?,
+            relative_path: pathdiff::diff_paths(path, root_dir).ok_or(Error::msg("Failed to get relative path"))?,
             parent: parent.map(|parent| Arc::downgrade(&parent)),
             children: vec![],
         })

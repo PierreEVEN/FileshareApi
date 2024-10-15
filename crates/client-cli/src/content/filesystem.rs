@@ -3,8 +3,7 @@ use crate::serialization_utils::vec_arc_rwlock_serde;
 use anyhow::Error;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use tokio::fs;
 use types::database_ids::ItemId;
@@ -113,13 +112,13 @@ pub struct LocalFilesystem {
 }
 
 impl LocalFilesystem {
-    pub fn from_fileshare_root(root_dir: &PathBuf) -> Result<Self, Error> {
+    pub fn from_fileshare_root(root_dir: &Path) -> Result<Self, Error> {
         let mut filesystem = Self::default();
-        filesystem.scan_dir(root_dir, None)?;
+        filesystem.scan_dir(root_dir, &root_dir.to_path_buf(), None)?;
         Ok(filesystem)
     }
 
-    pub fn scan_dir(&mut self, path: &PathBuf, parent: Option<Arc<RwLock<dyn Item>>>) -> Result<(), Error> {
+    pub fn scan_dir(&mut self, root_dir: &Path, path: &PathBuf, parent: Option<Arc<RwLock<dyn Item>>>) -> Result<(), Error> {
         let dir_data = std::fs::read_dir(path)?;
         for entry in dir_data {
             let entry = entry?;
@@ -128,11 +127,11 @@ impl LocalFilesystem {
                 continue;
             }
 
-            let item = LocalItem::from_filesystem(&entry.path(), parent.clone())?;
+            let item = LocalItem::from_filesystem(root_dir, &entry.path(), parent.clone())?;
             let is_regular_file = item.is_regular_file();
             let item = Arc::new(RwLock::new(item));
             if !is_regular_file {
-                self.scan_dir(&entry.path(), Some(item.clone()))?;
+                self.scan_dir(root_dir, &entry.path(), Some(item.clone()))?;
             }
             match &parent {
                 None => {
@@ -181,8 +180,8 @@ impl LocalFilesystem {
         Ok(None)
     }
 
-    pub async fn remove_item(&mut self, item: &LocalItem) -> Result<(), Error> {
-        let item_path = env::current_dir()?.join(item.path_from_root()?);
+    pub async fn remove_item(&mut self, root_path: &Path, item: &LocalItem) -> Result<(), Error> {
+        let item_path = root_path.join(item.path_from_root()?);
         if item_path.exists() {
             if item_path.is_file() {
                 fs::remove_file(item_path).await?;

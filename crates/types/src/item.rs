@@ -191,6 +191,7 @@ impl<'de> Deserialize<'de> for Item {
                     match key {
                         "id" => { item.id = map.next_value()? }
                         "repository" => { item.repository = map.next_value()? }
+                        "owner" => { item.owner = map.next_value()? }
                         "name" => { item.name = map.next_value()? }
                         "description" => { item.description = map.next_value()? }
                         "parent_item" => { item.parent_item = map.next_value()? }
@@ -218,4 +219,11 @@ impl<'de> Deserialize<'de> for Item {
         const FIELDS: &[&str] = &["id", "repository", "owner", "name", "description", "parent_item", "absolute_path", "in_trash", "open_upload", "content_size", "num_items", "is_regular_file", "timestamp", "mimetype", "size"];
         deserializer.deserialize_struct("Item", FIELDS, ItemVisitor)
     }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct CreateDirectoryParams {
+    pub name: EncString,
+    pub repository: RepositoryId,
+    pub parent_item: Option<ItemId>,
 }

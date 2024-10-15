@@ -1,5 +1,6 @@
+use std::fmt::Formatter;
 use anyhow::Error;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::ser::SerializeStruct;
 use crate::database_ids::{DatabaseIdTrait, UserId};
 use crate::enc_string::EncString;
@@ -10,7 +11,7 @@ use postgres_from_row::FromRow;
 use postgres_types::private::BytesMut;
 #[cfg(feature = "tokio-postgres")]
 use postgres_types::{to_sql_checked, IsNull, Type};
-
+use serde::de::{MapAccess, Visitor};
 #[cfg(feature = "password")]
 use crate::database_ids::PasswordHash;
 
@@ -114,6 +115,47 @@ impl Serialize for User {
     }
 }
 
+impl<'de> Deserialize<'de> for User {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct UserVisitor;
+
+        impl<'de> Visitor<'de> for UserVisitor {
+            type Value = User;
+
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("Item data")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut user = User::default();
+                user.allow_contact = false;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        "id" => { user.id = map.next_value()? }
+                        "email" => {
+                            user.email = map.next_value()?;
+                            user.allow_contact = true;
+                        }
+                        "name" => { user.name = map.next_value()? }
+                        "login" => { user.login = map.next_value()? }
+                        "user_role" => { user.user_role = map.next_value()? }
+                        _ => {}
+                    }
+                }
+                Ok(user)
+            }
+        }
+        const FIELDS: &[&str] = &["id", "email", "name", "login", "user_role"];
+        deserializer.deserialize_struct("Item", FIELDS, UserVisitor)
+    }
+}
+
 #[cfg_attr(feature = "tokio-postgres", derive(FromRow))]
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AuthToken {
@@ -134,4 +176,10 @@ pub struct LoginInfos {
     pub login: EncString,
     pub password: EncString,
     pub device: Option<EncString>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LoginResult {
+    pub token: AuthToken,
+    pub user: User,
 }

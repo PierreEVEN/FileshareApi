@@ -9,7 +9,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use axum_extra::extract::CookieJar;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::log::info;
@@ -17,7 +17,7 @@ use database::repository::DbRepository;
 use database::user::{DbAuthToken, DbUser};
 use types::database_ids::{DatabaseId, PasswordHash, UserId};
 use types::repository::RepositoryStatus;
-use types::user::{AuthToken, LoginInfos, User, UserRole};
+use types::user::{AuthToken, LoginInfos, LoginResult, User, UserRole};
 use crate::app_ctx::AppCtx;
 
 pub struct UserRoutes {}
@@ -103,17 +103,11 @@ pub struct UserCredentials {
 
 /// Get authentication token
 async fn login(State(ctx): State<Arc<AppCtx>>, Json(payload): Json<LoginInfos>) -> Result<impl IntoResponse, ServerError> {
-    let user = DbUser::from_credentials(&ctx.database, &payload.login, &payload.password).await?;
+    let user = DbUser::from_credentials(&ctx.database, &payload.login, &payload.password).await.map_err(|err| {ServerError::msg(StatusCode::UNAUTHORIZED, format!("{err}"))})?;
     let auth_token = DbUser::generate_auth_token(&user, &ctx.database, &match payload.device {
         None => { EncString::from("Unknown device") }
         Some(device) => { device }
     }).await?;
-
-    #[derive(Serialize)]
-    struct LoginResult {
-        token: AuthToken,
-        user: User,
-    }
 
     Ok(Json(LoginResult {
         user,

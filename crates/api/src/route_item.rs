@@ -19,9 +19,10 @@ use axum::{Json, Router};
 use regex::Regex;
 use serde::Deserialize;
 use std::sync::Arc;
+use mime_guess::mime::Params;
 use tokio_util::io::ReaderStream;
 use types::database_ids::{DatabaseId, ItemId, RepositoryId};
-use types::item::{DirectoryData, Item};
+use types::item::{CreateDirectoryParams, DirectoryData, Item};
 
 pub struct ItemRoutes {}
 
@@ -76,14 +77,7 @@ async fn new_directory(State(ctx): State<Arc<AppCtx>>, request: Request) -> Resu
     let permissions = Permissions::new(&request)?;
     let user = require_connected_user!(request);
 
-    #[derive(Deserialize)]
-    struct Params {
-        name: EncString,
-        repository: RepositoryId,
-        parent_item: Option<ItemId>,
-    }
-
-    let json = Json::<Vec<Params>>::from_request(request, &ctx).await?;
+    let json = Json::<Vec<CreateDirectoryParams>>::from_request(request, &ctx).await?;
     let mut items = vec![];
     for params in json.0 {
         let mut item = Item::default();
@@ -192,7 +186,6 @@ async fn thumbnail(State(ctx): State<Arc<AppCtx>>, Path(id): Path<DatabaseId>, r
 /// Upload item
 async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl IntoResponse, ServerError> {
     let permissions = Permissions::new(&request)?;
-
     let connected_user = require_connected_user!(request);
     let headers = request.headers().clone();
     let id = if let Some(content_id) = headers.get("Content-Id") {
@@ -207,7 +200,6 @@ async fn send(State(ctx): State<Arc<AppCtx>>, request: Request) -> Result<impl I
         }
         ctx.add_upload(upload).await?
     };
-
 
     let mut state = {
         let found_upload = ctx.get_upload(&id).await?;

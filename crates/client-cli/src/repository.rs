@@ -14,9 +14,11 @@ use std::io::Write;
 use std::ops::Add;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, UNIX_EPOCH};
-use std::{env, fs};
+use std::{fs};
+use std::path::Path;
 use tokio_util::io::ReaderStream;
 use types::enc_string::EncString;
+use types::item::CreateDirectoryParams;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AuthToken {
@@ -86,11 +88,8 @@ impl Repository {
         let data = self.connection.parse_result(response).await?
             .error_for_status()?
             .text().await?;
-        
         let mut content: Vec<RemoteItem> = serde_json::from_str(data.as_str())?;
-
         let filesystem = Arc::new(RwLock::new(RemoteFilesystem::default()));
-
         for item in &mut content {
             item.set_filesystem(&filesystem);
             filesystem.write().unwrap().add_item(Arc::new(RwLock::new(item.clone())));
@@ -126,7 +125,7 @@ impl Repository {
             None => {}
             Some(scanned_content) => { return Ok(scanned_content.clone()); }
         }
-        let filesystem = Arc::new(RwLock::new(LocalFilesystem::from_fileshare_root(self.connection.metadata_directory().root())?));
+        let filesystem = Arc::new(RwLock::new(LocalFilesystem::from_fileshare_root(&self.connection.metadata_directory().root()?)?));
         self.scanned_content = Some(filesystem.clone());
         Ok(filesystem)
     }
@@ -145,14 +144,14 @@ impl Repository {
                                 let mut data_file = File::create(downloaded_path.clone())?;
                                 match self.download_file(item, &mut data_file).await {
                                     Ok(_) => {
-                                        let final_path = self.connection.metadata_directory().root().join(item.path_from_root()?);
+                                        let final_path = self.connection.metadata_directory().root()?.join(item.path_from_root()?);
 
                                         fs::rename(downloaded_path, final_path.clone())?;
 
                                         let timestamp = item.timestamp();
                                         File::options().write(true).open(final_path)?.set_modified(UNIX_EPOCH.add(Duration::from_millis(timestamp)))?;
-
-                                        self.update_local_item_state(item as &dyn Item)?;
+                                        let root = self.connection.metadata_directory().root()?.clone();
+                                        self.update_local_item_state(&root, item as &dyn Item)?;
                                     }
                                     Err(err) => {
                                         if downloaded_path.exists() {
@@ -166,7 +165,7 @@ impl Repository {
                                 match remote_content.read().unwrap().find_from_path(&item.path_from_root()?)? {
                                     None => {}
                                     Some(remote_item_data) => {
-                                        let dir_path = env::current_dir()?.join(item.path_from_root()?);
+                                        let dir_path = self.connection.metadata_directory().root()?.join(item.path_from_root()?);
                                         if dir_path.exists() {
                                             if !dir_path.metadata()?.is_dir() {
                                                 error!("Cannot create directory {} : a file with the same name already exists !", dir_path.display());
@@ -174,7 +173,8 @@ impl Repository {
                                         } else {
                                             fs::create_dir(dir_path.clone())?;
                                         }
-                                        self.update_local_item_state(item as &dyn Item)?;
+                                        let root = self.connection.metadata_directory().root()?.clone();
+                                        self.update_local_item_state(&root, item as &dyn Item)?;
                                         for child in remote_item_data.read().unwrap().get_children()? {
                                             items_to_download.push(child);
                                         }
@@ -193,7 +193,8 @@ impl Repository {
     }
 
     fn resync_local_item_state(&mut self, item: &dyn Item) -> Result<(), Error> {
-        self.update_local_item_state(item)?;
+        let root = self.connection.metadata_directory().root()?.clone();
+        self.update_local_item_state(&root, item)?;
 
         for child in item.get_children()? {
             self.resync_local_item_state(&*child.read().unwrap())?;
@@ -202,19 +203,19 @@ impl Repository {
         Ok(())
     }
 
-    fn update_local_item_state(&mut self, item: &dyn Item) -> Result<(), Error> {
-        let item_path = env::current_dir()?.join(item.path_from_root()?);
+    fn update_local_item_state(&mut self, root_dir: &Path, item: &dyn Item) -> Result<(), Error> {
+        let item_path = root_dir.join(item.path_from_root()?);
 
         match self.fetch_local_content() {
             Ok(local_filesystem) => {
                 let local_filesystem = &mut *local_filesystem.write().unwrap();
                 match item.get_parent()? {
                     None => {
-                        local_filesystem.update_item_from_filesystem(&Arc::new(RwLock::new(LocalItem::from_filesystem(&item_path, None)?)))?;
+                        local_filesystem.update_item_from_filesystem(&Arc::new(RwLock::new(LocalItem::from_filesystem(&self.connection.metadata_directory().root()?, &item_path, None)?)))?;
                     }
                     Some(parent) => {
                         let found_parent = local_filesystem.find_from_path(&parent.read().unwrap().path_from_root()?)?.clone();
-                        local_filesystem.update_item_from_filesystem(&Arc::new(RwLock::new(LocalItem::from_filesystem(&item_path, found_parent)?)))?;
+                        local_filesystem.update_item_from_filesystem(&Arc::new(RwLock::new(LocalItem::from_filesystem(&self.connection.metadata_directory().root()?, &item_path, found_parent)?)))?;
                     }
                 }
                 Ok(())
@@ -226,7 +227,7 @@ impl Repository {
     }
 
     async fn download_file(&mut self, item: &RemoteItem, target_container: &mut File) -> Result<(), Error> {
-        let mut stream = self.connection.get(format!("{}file/{}", "todo", item.id())).await?
+        let mut stream = self.connection.get(format!("/item/get/{}/", item.id())).await?
             .send().await?
             .error_for_status()?
             .bytes_stream();
@@ -258,43 +259,43 @@ impl Repository {
         while let Some(item_ref) = items_to_upload.pop() {
             match item_ref.read() {
                 Ok(item) => {
-                    {
-                        let item = item.cast::<LocalItem>();
+                    let item = item.cast::<LocalItem>();
 
-                        if item.is_regular_file() {
-                            self.upload_file(item).await?;
-                        } else {
-                            self.create_remote_dir(item).await?;
-                            for child in item.get_children()? {
-                                items_to_upload.push(child);
-                            }
+                    if item.is_regular_file() {
+                        self.upload_file(item).await?;
+                    } else {
+                        self.create_remote_dir(item).await?;
+                        for child in item.get_children()? {
+                            items_to_upload.push(child);
                         }
                     }
                 }
                 Err(err) => { return Err(Error::msg(format!("{}", err))) }
             }
-            self.update_local_item_state(&*item_ref.read().unwrap())?;
+            let root = self.connection.metadata_directory().root()?.clone();
+            self.update_local_item_state(&root, &*item_ref.read().unwrap())?;
         }
         Ok(())
     }
 
     async fn create_remote_dir(&mut self, item: &LocalItem) -> Result<(), Error> {
-        #[derive(Serialize)]
-        struct DirNameData {
-            pub name: EncString,
-        }
-        let dir_data = DirNameData { name: item.name() };
-
         match item.get_parent()? {
             None => {
-                let new_dir: RemoteItem = self.connection.post(format!("{}/make-directory/", "todo")).await?
-                    .json(&dir_data)
-                    .send().await?
-                    .json().await?;
+                let dir_data = CreateDirectoryParams {
+                    name: item.name(),
+                    repository: self.connection.remote_id()?,
+                    parent_item: None,
+                };
 
+                let result = self.connection.post("/item/new-directory/".to_string()).await?
+                    .json(&vec![dir_data])
+                    .send().await?;
+                let new_dirs: Vec<RemoteItem> = self.connection.parse_result(result).await?.json().await?;
                 let remote_content = self.fetch_remote_content().await?;
                 let mut remote_content = remote_content.write().unwrap();
-                remote_content.add_item(Arc::new(RwLock::new(new_dir)));
+                for dir in new_dirs {
+                    remote_content.add_item(Arc::new(RwLock::new(dir)));
+                }
             }
             Some(parent) => {
                 let remote_content = self.fetch_remote_content().await?;
@@ -304,18 +305,27 @@ impl Repository {
                         return Err(Error::msg("Failed to find parent item from path"));
                     }
                     Some(remote_parent) => {
-                        let new_dir: RemoteItem = self.connection.post(format!("{}/make-directory/{}", "todo", remote_parent.read().unwrap().cast::<RemoteItem>().id())).await?
-                            .json(&dir_data)
-                            .send().await?
-                            .json().await?;
+                        let dir_data = CreateDirectoryParams {
+                            name: item.name(),
+                            repository: self.connection.remote_id()?,
+                            parent_item: Some(remote_parent.read().unwrap().cast::<RemoteItem>().id().clone()),
+                        };
 
-                        remote_content.add_item(Arc::new(RwLock::new(new_dir)));
+                        let result = self.connection.post("/item/new-directory/".to_string()).await?
+                            .json(&vec![dir_data])
+                            .send().await?;
+                        let new_dirs: Vec<RemoteItem> = self.connection.parse_result(result).await?.json().await?;
+
+                        for dir in new_dirs {
+                            remote_content.add_item(Arc::new(RwLock::new(dir)));
+                        }
                     }
                 }
             }
         }
 
-        let new_dir = Arc::new(RwLock::new(LocalItem::from_filesystem(&env::current_dir()?.join(item.path_from_root()?), item.get_parent()?)?));
+        let root = self.connection.metadata_directory().root()?.clone();
+        let new_dir = Arc::new(RwLock::new(LocalItem::from_filesystem(&root, &root.join(item.path_from_root()?), item.get_parent()?)?));
         match item.get_parent()? {
             None => {
                 let local_content = self.scan_local_content()?;
@@ -331,13 +341,13 @@ impl Repository {
 
     async fn upload_file(&mut self, item: &LocalItem) -> Result<(), Error> {
         let parent = match item.get_parent()? {
-            None => { String::new() }
+            None => { None }
             Some(parent) => {
                 let remote_content = self.fetch_remote_content().await?;
                 let remote_content = remote_content.read().unwrap();
                 match remote_content.find_from_path(&parent.read().unwrap().path_from_root()?)? {
                     None => { return Err(Error::msg("Failed to find remote directory")) }
-                    Some(parent) => { parent.read().unwrap().cast::<RemoteItem>().id().to_string() }
+                    Some(parent) => { Some(parent.read().unwrap().cast::<RemoteItem>().id().clone()) }
                 }
             }
         };
@@ -360,7 +370,7 @@ impl Repository {
             encoded_path += "/";
         });
 
-        let file = tokio::fs::File::open(env::current_dir()?.join(item.path_from_root()?)).await?;
+        let file = tokio::fs::File::open(self.connection.metadata_directory().root()?.join(item.path_from_root()?)).await?;
 
         let m = MultiProgress::new();
         let pb = m.add(ProgressBar::new(item.size()));
@@ -391,17 +401,22 @@ impl Repository {
             }
         };
 
-        let json_data: UploadResult = self.connection.post(format!("{}send/{parent}", "todo")).await?
-            .header("content-name", item.name().encoded().as_str())
-            .header("content-size", item.size().to_string().as_str())
-            .header("content-timestamp", item.timestamp().to_string().as_str())
-            .header("content-mimetype", item.mime_type().encoded().as_str())
-            .header("content-path", encoded_path.as_str())
-            .header("content-description", "")
+        let mut request = self.connection.post("/item/send/".to_string()).await?
+            .header("Content-Name", item.name().encoded().as_str())
+            .header("Content-Size", item.size().to_string().as_str())
+            .header("Content-Timestamp", item.timestamp().to_string().as_str())
+            .header("Content-Mimetype", item.mime_type().encoded().as_str())
+            .header("Content-Repository", self.connection.remote_id()?.to_string());
+        if let Some(parent) = parent {
+            request = request.header("Content-Parent", parent.to_string());
+        }
+
+        let json_data: UploadResult = self.connection_mut().parse_result(request
             .body(Body::wrap_stream(async_stream))
-            .send().await?
+            .send().await?).await?
             .error_for_status()?
             .json().await?;
+
 
         if let Some(message) = json_data.message {
             if !message.is_empty() {
@@ -416,15 +431,17 @@ impl Repository {
     async fn remove_local_item(&mut self, item_ref: &Arc<RwLock<dyn Item>>) -> Result<(), Error> {
         if let Ok(local_filesystem) = self.fetch_local_content() {
             let local_filesystem = &mut *local_filesystem.write().unwrap();
-            local_filesystem.remove_item(item_ref.read().unwrap().cast::<LocalItem>()).await?;
+            let root = self.connection.metadata_directory().root()?.clone();
+            local_filesystem.remove_item(&root, item_ref.read().unwrap().cast::<LocalItem>()).await?;
         }
         Ok(())
     }
 
     async fn remove_remote_item(&mut self, scanned_ref: &Arc<RwLock<dyn Item>>, remote_ref: &Arc<RwLock<dyn Item>>) -> Result<(), Error> {
-        self.connection.post(format!("{}move-to-trash/", "todo"))
+        let result = self.connection.post(format!("{}move-to-trash/", "todo"))
             .await?.json(&vec![remote_ref.read().unwrap().cast::<RemoteItem>().id()])
             .send().await?;
+        self.connection_mut().parse_result(result).await?;
         self.remove_local_item(scanned_ref).await?;
         Ok(())
     }

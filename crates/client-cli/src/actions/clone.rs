@@ -1,41 +1,13 @@
 use crate::content::diff::Diff;
 use crate::repository::Repository;
 use anyhow::Error;
-use reqwest::Url;
-use std::{env, fs};
 use crate::content::meta_dir::MetaDir;
 
 pub struct ActionClone {}
 
 impl ActionClone {
     pub async fn run(repository_url: String) -> Result<Repository, Error> {
-        let url = Url::parse(repository_url.as_str())?;
-        let mut path = url.path_segments().ok_or_else(|| Error::msg("Cannot parse path"))?;
-        path.next().ok_or(Error::msg("Missing user in remote path"))?.to_string();
-        let remote_repository = path.next().ok_or(Error::msg("Missing repository in remote path"))?.to_string();
-        let root_path = env::current_dir()?.join(remote_repository.clone());
-        if root_path.exists() {
-            return Err(Error::msg(format!("Cannot clone : a directory named '{remote_repository}' already exists")));
-        }
-        fs::create_dir(root_path.clone())?;
-        env::set_current_dir(root_path.clone())?;
-        let repository = match Self::try_clone_here(repository_url).await {
-            Ok(repository) => { repository }
-            Err(error) => {
-                env::set_current_dir(root_path.parent().unwrap())?;
-                fs::remove_dir_all(root_path)?;
-                return Err(error);
-            }
-        };
-
-        env::set_current_dir("..")?;
-
-        Ok(repository)
-    }
-
-    async fn try_clone_here(repository_url: String) -> Result<Repository, Error> {
-        todo!();
-        let mut repository = Repository::new(MetaDir::new_here()?)?;
+        let mut repository = Repository::new(MetaDir::new_create(&repository_url)?)?;
         repository.connection_mut().set_public_url(repository_url.as_str()).await?;
         let diff = Diff::from_repository(&mut repository).await?;
         repository.apply_actions(diff.actions()).await?;

@@ -18,16 +18,10 @@ use crate::cli::{FileshareArgs, RootCommands};
 use clap::Parser;
 use anyhow::Error;
 use paris::error;
-use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let args = FileshareArgs::parse();
-    if env::current_dir()?.join(".fileshare").join("config.lock.json").exists() {
-        error!("A fileshare process is already running here. Please ensure it is stopped then remove the config.lock.json file");
-        return Err(Error::msg("A fileshare process is already running here."));
-    }
-
     match match args.commands {
         RootCommands::Clone { repository_url } => {
             ActionClone::run(repository_url).await

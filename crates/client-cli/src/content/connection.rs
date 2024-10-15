@@ -2,14 +2,14 @@ use std::{env, fs};
 use std::io::{stdin, stdout, Write};
 use anyhow::Error;
 use gethostname::gethostname;
-use paris::{success, warn};
+use paris::{error, success, warn};
 use reqwest::Response;
 use rpassword::read_password;
 use serde_derive::{Deserialize, Serialize};
 use types::database_ids::RepositoryId;
 use types::enc_string::EncString;
 use types::repository::Repository;
-use types::user::{AuthToken, LoginInfos};
+use types::user::{AuthToken, LoginInfos, LoginResult};
 use crate::content::meta_dir::MetaDir;
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -18,6 +18,25 @@ pub struct Url {
     origin: String,
 }
 
+impl Url {
+    pub fn parse(public_url: &str) -> Result<(String, String, String, String), Error> {
+        let mut method = "";
+        let repository_url = if public_url.starts_with("https") {
+            method = "https://";
+            &public_url[8..]
+        } else if public_url.starts_with("http") {
+            method = "http://";
+            &public_url[7..]
+        } else {
+            public_url
+        };
+        let mut split = repository_url.split("/");
+        let domain = split.next().ok_or(Error::msg("Invalid domain"))?;
+        let user = split.next().ok_or(Error::msg("Invalid user"))?;
+        let repository = split.next().ok_or(Error::msg("Invalid repository"))?;
+        Ok((method.to_string(), domain.to_string(), user.to_string(), repository.to_string()))
+    }
+}
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Connection {
@@ -25,11 +44,19 @@ pub struct Connection {
     url: Option<Url>,
     #[serde(skip_deserializing, skip_serializing)]
     meta_dir: MetaDir,
+    #[serde(skip_deserializing, skip_serializing)]
+    client: reqwest::Client,
 }
 
 impl Connection {
     pub fn new(meta_dir: MetaDir) -> Result<Self, Error> {
-        let mut config: Self = serde_json::from_str(fs::read_to_string(meta_dir.connection_config_path()?)?.as_str())?;
+        let path = meta_dir.connection_config_path()?;
+
+        let mut config = if path.exists() {
+            serde_json::from_str(fs::read_to_string(path)?.as_str())?
+        } else {
+            Self::default()
+        };
         config.meta_dir = meta_dir;
         Ok(config)
     }
@@ -47,24 +74,8 @@ impl Connection {
     }
 
     pub async fn set_public_url(&mut self, public_url: &str) -> Result<(), Error> {
-        let mut method = "";
-        let repository_url = if public_url.starts_with("https") {
-            method = "https://";
-            &public_url[8..]
-        } else if public_url.starts_with("http") {
-            method = "http://";
-            &public_url[7..]
-        } else {
-            public_url
-        };
-
-        let mut split = repository_url.split("/");
-
-        let domain = split.next().ok_or(Error::msg("Invalid domain"))?;
-        let user = split.next().ok_or(Error::msg("Invalid user"))?;
-        let repository = split.next().ok_or(Error::msg("Invalid repository"))?;
-        let response = reqwest::Client::new()
-            .get(format!("{}{}/{}/{}/api-link/", method, domain, user, repository))
+        let (method, domain, user, repository) = Url::parse(public_url)?;
+        let response = self.client.get(format!("{}{}/{}/{}/api-link/", method, domain, user, repository))
             .send().await?;
         #[derive(Deserialize)]
         struct RemoteResponse {
@@ -79,8 +90,16 @@ impl Connection {
     }
 
     pub async fn authenticate(&mut self, username: Option<String>) -> Result<EncString, Error> {
+        
+        if self.authentication_token.is_some() {
+            match self.logout().await {
+                Ok(_) => {}
+                Err(err) => {error!("Failed to log out before login : {}", err)}
+            }
+        }
+        
         let mut body = LoginInfos {
-            device: Some(EncString::from(format!("Cli client - {} ({}) : {}", gethostname().to_str().unwrap(), env::consts::OS, env::current_dir()?.to_str().unwrap()).as_str())),
+            device: Some(EncString::from(format!("Cli client - {} ({}) : {}", gethostname().to_str().unwrap(), env::consts::OS, self.meta_dir.root()?.display()).as_str())),
             ..Default::default()
         };
         body.login = match username {
@@ -113,8 +132,7 @@ impl Connection {
                     return Err(Error::msg(err));
                 }
             };
-            let client = reqwest::Client::new()
-                .post(format!("{}/user/login/", url.origin))
+            let client = self.client.post(format!("{}/api/user/login/", url.origin))
                 .json(&body)
                 .send().await?;
 
@@ -123,7 +141,7 @@ impl Connection {
                 continue;
             }
 
-            self.authentication_token = Some(client.error_for_status()?.json::<AuthToken>().await?);
+            self.authentication_token = Some(client.error_for_status()?.json::<LoginResult>().await?.token);
             return match &self.authentication_token {
                 None => { Err(Error::msg("Invalid authentication token")) }
                 Some(new_token) => {
@@ -135,7 +153,10 @@ impl Connection {
     }
 
     pub async fn logout(&mut self) -> Result<(), Error> {
-        self.post("/logout/".to_string()).await?
+        if self.authentication_token.is_none() {
+            return Err(Error::msg("Already disconnected"));
+        }
+        self.post("/user/logout/".to_string()).await?
             .send().await?.error_for_status()?;
         self.authentication_token = None;
         success!("Successfully disconnected");
@@ -148,8 +169,7 @@ impl Connection {
         if !path.starts_with('/') {
             path = String::from("/") + path.as_str()
         };
-        let mut request = reqwest::Client::new()
-            .get(format!("{}/api{}", url.origin, path));
+        let mut request = self.client.get(format!("{}/api{}", url.origin, path));
         if let Some(authentication_token) =  &self.authentication_token {
             request = request.header("content-authtoken", authentication_token.token.encoded());
         };
@@ -158,8 +178,7 @@ impl Connection {
 
     pub async fn post(&mut self, path: String) -> Result<reqwest::RequestBuilder, Error> {
         let url = if let Some(url) = self.url.clone() { url } else { return Err(Error::msg("Remote url is not set !")) };
-        let mut request = reqwest::Client::new()
-            .post(format!("{}/api{}", url.origin, path));
+        let mut request = self.client.post(format!("{}/api{}", url.origin, path));
         if let Some(authentication_token) =  &self.authentication_token {
             request = request.header("content-authtoken", authentication_token.token.encoded());
         };
@@ -190,10 +209,12 @@ impl Drop for Connection {
     fn drop(&mut self) {
         match serde_json::to_string(self) {
             Ok(config_string) => {
-                match fs::write(self.meta_dir.connection_config_path().unwrap(), config_string.as_str()) {
-                    Ok(_) => {}
-                    Err(_err) => { panic!("Failed to serialize local database : {_err}") }
-                };
+                if let Ok(config_path) = self.meta_dir.connection_config_path() {
+                    match fs::write(config_path, config_string.as_str()) {
+                        Ok(_) => {}
+                        Err(_err) => { panic!("Failed to serialize local database : {_err}") }
+                    };
+                }
             }
             Err(_err) => { panic!("Failed to serialize local database : {_err}") }
         }
