@@ -5,11 +5,14 @@ use std::any::Any;
 use std::ffi::OsString;
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
+#[cfg(target_os = "windows")]
 use std::os::windows::fs::MetadataExt;
-use std::path::{Path, PathBuf};
+#[cfg(target_os = "linux")]
+use std::os::linux::fs::MetadataExt;
 use std::sync::{Arc, RwLock, Weak};
 use std::time::UNIX_EPOCH;
 use std::{fs};
+use std::path::{Path, PathBuf};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use types::enc_string::EncString;
 
@@ -194,7 +197,10 @@ impl LocalItem {
             } else {
                 None
             },
+            #[cfg(target_os = "windows")]
             size: metadata.file_size(),
+            #[cfg(target_os = "linux")]
+            size: metadata.st_size(),
             relative_path: pathdiff::diff_paths(path, root_dir).ok_or(Error::msg("Failed to get relative path"))?,
             parent: parent.map(|parent| Arc::downgrade(&parent)),
             children: vec![],

@@ -2,7 +2,6 @@
 
 - viewport
     - navigation
-- fix le client "lourd" (léger pour la nouvelle version)
 - reimplementer le reset-password
 
 # TODO
