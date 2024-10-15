@@ -100,7 +100,7 @@ jobs:
       # Create Linux server zip
       - run: mkdir fileshare
       - run: mkdir fileshare/migrations
-      - run: mv ./lib/libpdfium.so ./fileshare/libpdfium.so
+      - run: cp ./lib/libpdfium.so ./fileshare/
       - run: mv ./artifact_rust_linux/migrations/* ./fileshare/migrations
       - run: mv ./artifact_rust_linux/target/release/fileshare-server ./fileshare/
       - run: mv ./artifact_web_app/* ./fileshare
@@ -110,7 +110,6 @@ jobs:
       # Create Windows server zip
       - run: mkdir fileshare
       - run: mkdir fileshare/migrations
-      - run: mv ./lib/libpdfium.so ./fileshare/libpdfium.so
       - run: mv ./artifact_rust_linux/migrations/* ./fileshare/migrations
       - run: mv ./artifact_rust_windows/target/release/fileshare-server.exe ./fileshare/
       - run: mv ./artifact_web_app/* ./fileshare
