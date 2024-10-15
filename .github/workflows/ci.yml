@@ -49,6 +49,7 @@ jobs:
           name: artifact-rust-windows
           retention-days: 1
           path: |
+            ./migrations/*
             ./target/release/fileshare-cli.exe
             ./target/release/fileshare-server.exe
             ${{ steps.compile.outputs.BUILT_ARCHIVE }}
@@ -110,7 +111,7 @@ jobs:
       # Create Windows server zip
       - run: mkdir fileshare
       - run: mkdir fileshare/migrations
-      - run: mv ./artifact_rust_linux/migrations/* ./fileshare/migrations
+      - run: mv ./artifact_rust_windows/migrations/* ./fileshare/migrations
       - run: mv ./artifact_rust_windows/target/release/fileshare-server.exe ./fileshare/
       - run: mv ./artifact_web_app/* ./fileshare
       - run: zip -r fileshare_windows.zip ./fileshare/
