@@ -104,7 +104,7 @@ jobs:
       - run: cp ./lib/libpdfium.so ./fileshare/
       - run: mv ./artifact_rust_linux/migrations/* ./fileshare/migrations
       - run: mv ./artifact_rust_linux/target/release/fileshare-server ./fileshare/
-      - run: mv ./artifact_web_app/* ./fileshare
+      - run: cp -r ./artifact_web_app/* ./fileshare/
       - run: zip -r fileshare_linux.zip ./fileshare/
       - run: rm -r ./fileshare
 
@@ -113,7 +113,7 @@ jobs:
       - run: mkdir fileshare/migrations
       - run: mv ./artifact_rust_windows/migrations/* ./fileshare/migrations
       - run: mv ./artifact_rust_windows/target/release/fileshare-server.exe ./fileshare/
-      - run: mv ./artifact_web_app/* ./fileshare
+      - run: cp -r ./artifact_web_app/* ./fileshare/
       - run: zip -r fileshare_windows.zip ./fileshare/
       - run: rm -r ./fileshare
 
