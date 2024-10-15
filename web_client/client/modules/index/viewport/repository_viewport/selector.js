@@ -34,8 +34,6 @@ class Selector extends MemoryTracker {
 
     delete() {
         super.delete();
-        this._remove_event.remove();
-        this._remove_event = null;
         this._add_content_event.remove();
         this._add_content_event = null;
         this._remove_content_event.remove();

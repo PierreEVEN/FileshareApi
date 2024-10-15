@@ -71,6 +71,34 @@ class ContentSorter extends MemoryTracker {
     }
 
     /**
+     * @param entries
+     * @param reverse
+     * @return {{directories: *[], files: *[]}}
+     */
+    lex_sort_entries(entries, reverse = false) {
+        const directories = [];
+        const files = [];
+
+        for (const entry of entries) {
+            if (entry.is_regular_file)
+                files.push(entry);
+            else
+                directories.push(entry)
+        }
+
+        if (reverse)
+            return {
+                directories: directories.sort((a, b) => b.name.plain().localeCompare(a.name.plain())),
+                files: files.sort((a, b) => b.name.plain().localeCompare(a.name.plain()))
+            };
+        else
+            return {
+                directories: directories.sort((a, b) => a.name.plain().localeCompare(b.name.plain())),
+                files: files.sort((a, b) => a.name.plain().localeCompare(b.name.plain()))
+            };
+    }
+
+    /**
      * @param source {FilesystemItem[]}
      * @return {FilesystemItem[]}
      */
@@ -85,6 +113,13 @@ class ContentSorter extends MemoryTracker {
     join(sorter) {
         this._inner = sorter;
         return this._inner;
+    }
+}
+
+class LexicographicSorter extends ContentSorter {
+    sort_content(source) {
+        let result = this.lex_sort_entries(source, false)
+        return result.directories.concat(result.files);
     }
 }
 
@@ -114,7 +149,7 @@ class ViewportContent extends MemoryTracker {
          * @type {ContentSorter|null}
          * @private
          */
-        this._sorter = null;
+        this._sorter = new LexicographicSorter();
 
         /**
          * @type {ContentProvider|null}
@@ -122,8 +157,10 @@ class ViewportContent extends MemoryTracker {
          */
         this._provider = null;
 
+        this._pending_regeneration = false;
+
         this._listener_remove = GLOBAL_EVENTS.add('remove_item', async (item) => {
-            this._remove_entry(item);
+            await this._remove_entry(item);
 
             if (this._provider instanceof DirectoryContentProvider) {
                 if (await this._provider.directory.is_in_parents(item.id) || this._provider.directory.id === item.id)
@@ -178,6 +215,8 @@ class ViewportContent extends MemoryTracker {
             this._provider.delete();
         this._provider = provider;
         this.add_event = this._provider.events.add('add', (item) => {
+            if (this._pending_regeneration)
+                return;
             if (this._filter) {
                 if (this._filter.test(item))
                     this._add(item)
@@ -201,32 +240,33 @@ class ViewportContent extends MemoryTracker {
         return null;
     }
 
-    _add(item) {
+    async _add(item) {
         if (this._displayed_items.has(item.id))
             return;
         this._displayed_items.set(item.id, item);
-        this.events.broadcast('add', item);
+        await this.events.broadcast('add', item);
     }
 
-    _remove_entry(item) {
+    async _remove_entry(item) {
         if (!this._displayed_items.has(item.id))
             return;
         this._displayed_items.delete(item.id);
-        this.events.broadcast('remove', item);
+        await this.events.broadcast('remove', item);
     }
 
-    _clear() {
+    async _clear() {
         for (const item of this._displayed_items.values())
-            this._remove_entry(item);
+            await this._remove_entry(item);
     }
 
     async _regen_content() {
-        this._clear();
+        await this._clear();
 
         if (!this._provider)
             return;
-
+        this._pending_regeneration = true;
         const sources = await this._provider.get_content();
+        this._pending_regeneration = false;
         let filtered_sources = [];
 
         if (this._filter) {
@@ -239,8 +279,9 @@ class ViewportContent extends MemoryTracker {
         if (this._sorter)
             filtered_sources = this._sorter.sort_content(filtered_sources);
 
-        for (const source of filtered_sources)
-            this._add(source);
+        for (const source of filtered_sources) {
+            await this._add(source);
+        }
     }
 }
 

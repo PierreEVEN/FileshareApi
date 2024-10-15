@@ -23,7 +23,6 @@ class RepositoryRootProvider extends ContentProvider {
         if (!item.in_trash && item.parent_item === undefined && item.repository === this.repository.id)
             this.events.broadcast('add', item);
     }
-
 }
 
 class DirectoryContentProvider extends ContentProvider {

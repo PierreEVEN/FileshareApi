@@ -50,11 +50,11 @@ class EventManager {
      * @param event {string}
      * @param payload {any}
      */
-    broadcast(event, payload) {
+    async broadcast(event, payload) {
         const callbacks = this._events.get(event);
         if (callbacks)
             for (const callback of callbacks.values())
-                callback.execute(payload);
+                await callback.execute(payload);
     }
 }
 
